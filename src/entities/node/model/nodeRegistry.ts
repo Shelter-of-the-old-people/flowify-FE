@@ -17,6 +17,7 @@ import {
   MdTableChart,
 } from "react-icons/md";
 
+import type { DataType } from "./dataType";
 import type { NodeCategory, NodeConfig, NodeType } from "./types";
 
 // ─── NodeMeta 인터페이스 ─────────────────────────────────────
@@ -30,6 +31,10 @@ export interface NodeMeta {
   color: string;
   /** 노드 생성 시 사용할 기본 Config */
   defaultConfig: NodeConfig;
+  /** 이 노드가 받아들이는 데이터 타입 (빈 배열 = 시작 노드) */
+  defaultInputTypes: DataType[];
+  /** 이 노드가 내보내는 데이터 타입 */
+  defaultOutputTypes: DataType[];
 }
 
 // ─── NODE_REGISTRY ───────────────────────────────────────────
@@ -51,6 +56,8 @@ export const NODE_REGISTRY: Record<NodeType, NodeMeta> = {
       labelFilter: null,
       messageFormat: null,
     },
+    defaultInputTypes: [],
+    defaultOutputTypes: ["email-list", "text"],
   },
 
   storage: {
@@ -66,6 +73,8 @@ export const NODE_REGISTRY: Record<NodeType, NodeMeta> = {
       action: null,
       permissions: null,
     },
+    defaultInputTypes: [],
+    defaultOutputTypes: ["file-list", "single-file"],
   },
 
   spreadsheet: {
@@ -82,6 +91,8 @@ export const NODE_REGISTRY: Record<NodeType, NodeMeta> = {
       action: null,
       range: null,
     },
+    defaultInputTypes: [],
+    defaultOutputTypes: ["spreadsheet"],
   },
 
   "web-scraping": {
@@ -97,6 +108,8 @@ export const NODE_REGISTRY: Record<NodeType, NodeMeta> = {
       outputFields: [],
       pagination: false,
     },
+    defaultInputTypes: [],
+    defaultOutputTypes: ["api-response"],
   },
 
   calendar: {
@@ -113,6 +126,8 @@ export const NODE_REGISTRY: Record<NodeType, NodeMeta> = {
       calendarId: null,
       dateRange: null,
     },
+    defaultInputTypes: [],
+    defaultOutputTypes: ["api-response"],
   },
 
   // ── 프로세싱 & 로직 ──────────────────────────────────────
@@ -129,6 +144,8 @@ export const NODE_REGISTRY: Record<NodeType, NodeMeta> = {
       eventService: null,
       eventType: null,
     },
+    defaultInputTypes: [],
+    defaultOutputTypes: [],
   },
 
   filter: {
@@ -144,6 +161,18 @@ export const NODE_REGISTRY: Record<NodeType, NodeMeta> = {
       value: null,
       removeDuplicates: false,
     },
+    defaultInputTypes: [
+      "file-list",
+      "email-list",
+      "spreadsheet",
+      "api-response",
+    ],
+    defaultOutputTypes: [
+      "file-list",
+      "email-list",
+      "spreadsheet",
+      "api-response",
+    ],
   },
 
   loop: {
@@ -158,6 +187,8 @@ export const NODE_REGISTRY: Record<NodeType, NodeMeta> = {
       maxIterations: 100,
       timeout: 300,
     },
+    defaultInputTypes: ["file-list", "email-list", "spreadsheet"],
+    defaultOutputTypes: ["single-file", "text", "spreadsheet"],
   },
 
   condition: {
@@ -172,6 +203,22 @@ export const NODE_REGISTRY: Record<NodeType, NodeMeta> = {
       operator: null,
       value: null,
     },
+    defaultInputTypes: [
+      "file-list",
+      "single-file",
+      "text",
+      "email-list",
+      "spreadsheet",
+      "api-response",
+    ],
+    defaultOutputTypes: [
+      "file-list",
+      "single-file",
+      "text",
+      "email-list",
+      "spreadsheet",
+      "api-response",
+    ],
   },
 
   "multi-output": {
@@ -185,6 +232,22 @@ export const NODE_REGISTRY: Record<NodeType, NodeMeta> = {
       outputCount: 2,
       conditions: [],
     },
+    defaultInputTypes: [
+      "file-list",
+      "single-file",
+      "text",
+      "email-list",
+      "spreadsheet",
+      "api-response",
+    ],
+    defaultOutputTypes: [
+      "file-list",
+      "single-file",
+      "text",
+      "email-list",
+      "spreadsheet",
+      "api-response",
+    ],
   },
 
   "data-process": {
@@ -200,6 +263,15 @@ export const NODE_REGISTRY: Record<NodeType, NodeMeta> = {
       sortDirection: null,
       aggregateFunction: null,
     },
+    defaultInputTypes: [
+      "file-list",
+      "single-file",
+      "text",
+      "email-list",
+      "spreadsheet",
+      "api-response",
+    ],
+    defaultOutputTypes: ["text", "spreadsheet", "api-response"],
   },
 
   "output-format": {
@@ -213,6 +285,8 @@ export const NODE_REGISTRY: Record<NodeType, NodeMeta> = {
       format: null,
       template: null,
     },
+    defaultInputTypes: ["text", "spreadsheet", "api-response"],
+    defaultOutputTypes: ["text"],
   },
 
   "early-exit": {
@@ -226,6 +300,15 @@ export const NODE_REGISTRY: Record<NodeType, NodeMeta> = {
       condition: null,
       exitMessage: null,
     },
+    defaultInputTypes: [
+      "file-list",
+      "single-file",
+      "text",
+      "email-list",
+      "spreadsheet",
+      "api-response",
+    ],
+    defaultOutputTypes: [],
   },
 
   notification: {
@@ -240,6 +323,8 @@ export const NODE_REGISTRY: Record<NodeType, NodeMeta> = {
       recipient: null,
       messageTemplate: null,
     },
+    defaultInputTypes: ["text"],
+    defaultOutputTypes: [],
   },
 
   // ── AI ───────────────────────────────────────────────────
@@ -256,6 +341,15 @@ export const NODE_REGISTRY: Record<NodeType, NodeMeta> = {
       outputFormat: "text",
       temperature: 0.7,
     },
+    defaultInputTypes: [
+      "file-list",
+      "single-file",
+      "text",
+      "email-list",
+      "spreadsheet",
+      "api-response",
+    ],
+    defaultOutputTypes: ["text"],
   },
 };
 

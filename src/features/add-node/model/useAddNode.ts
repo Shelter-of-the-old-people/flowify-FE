@@ -29,6 +29,8 @@ export const useAddNode = () => {
         type,
         label: meta.label,
         config: { ...meta.defaultConfig },
+        inputTypes: [...meta.defaultInputTypes],
+        outputTypes: [...meta.defaultOutputTypes],
       },
     };
 

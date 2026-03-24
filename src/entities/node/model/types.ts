@@ -172,4 +172,8 @@ export interface FlowNodeData extends Record<string, unknown> {
   type: NodeType;
   label: string;
   config: NodeConfig;
+  /** 이 노드가 받아들이는 데이터 타입 목록 (빈 배열 = 시작 노드) */
+  inputTypes: import("./dataType").DataType[];
+  /** 이 노드가 내보내는 데이터 타입 목록 */
+  outputTypes: import("./dataType").DataType[];
 }
