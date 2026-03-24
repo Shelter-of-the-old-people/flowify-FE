@@ -12,7 +12,7 @@ export const CommunicationNode = ({
   const config = data.config as CommunicationNodeConfig;
   return (
     <BaseNode id={id} data={data} selected={selected}>
-      <Text>{config.service ?? "서비스 미선택"}</Text>
+      <Text>{config.service ?? "서비스 미설정"}</Text>
       <Text>{config.action ?? "동작 미설정"}</Text>
     </BaseNode>
   );
