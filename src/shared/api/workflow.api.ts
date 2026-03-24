@@ -1,32 +1,18 @@
+import type { Workflow, WorkflowSummary } from "@/entities/workflow";
+
 import type { ApiResponse } from "../types";
 
 import { apiClient } from "./client";
 
-// ─── 타입 ───────────────────────────────────────────────
-export type WorkflowStatus = "active" | "inactive";
-
-export interface WorkflowSummary {
-  id: string;
-  name: string;
-  status: WorkflowStatus;
-  createdAt: string;
-  updatedAt: string;
-}
-
-// nodes / edges의 상세 타입은 entities/node에서 정의된 후 교체 예정
-export interface WorkflowDetail extends WorkflowSummary {
-  nodes: unknown[];
-  edges: unknown[];
-}
-
+// ─── API 전용 타입 ──────────────────────────────────────────
 export interface CreateWorkflowRequest {
   name: string;
 }
 
 export interface UpdateWorkflowRequest {
   name?: string;
-  nodes?: unknown[];
-  edges?: unknown[];
+  nodes?: Workflow["nodes"];
+  edges?: Workflow["edges"];
 }
 
 export interface ExecuteWorkflowResponse {
@@ -41,15 +27,15 @@ export const workflowApi = {
 
   /** 워크플로우 상세 조회 */
   getById: (id: string) =>
-    apiClient.get<ApiResponse<WorkflowDetail>>(`/workflows/${id}`),
+    apiClient.get<ApiResponse<Workflow>>(`/workflows/${id}`),
 
   /** 워크플로우 생성 */
   create: (body: CreateWorkflowRequest) =>
-    apiClient.post<ApiResponse<WorkflowDetail>>("/workflows", body),
+    apiClient.post<ApiResponse<Workflow>>("/workflows", body),
 
   /** 워크플로우 수정 (노드/엣지 저장 포함) */
   update: (id: string, body: UpdateWorkflowRequest) =>
-    apiClient.put<ApiResponse<WorkflowDetail>>(`/workflows/${id}`, body),
+    apiClient.put<ApiResponse<Workflow>>(`/workflows/${id}`, body),
 
   /** 워크플로우 삭제 */
   delete: (id: string) =>
