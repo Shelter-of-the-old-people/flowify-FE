@@ -77,7 +77,16 @@ export const BaseNode = ({ id, data, selected, children }: BaseNodeProps) => {
       </HStack>
 
       {/* 본문 — 설정 요약 */}
-      <Box px={3} py={2} fontSize="xs" color="text.secondary" minH="36px">
+      <Box
+        px={3}
+        py={2}
+        fontSize="xs"
+        color="text.secondary"
+        minH="36px"
+        overflow="hidden"
+        textOverflow="ellipsis"
+        whiteSpace="nowrap"
+      >
         {data.config.isConfigured ? (
           children
         ) : (

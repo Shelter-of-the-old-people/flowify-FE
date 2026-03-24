@@ -12,9 +12,7 @@ export const EarlyExitNode = ({
   const config = data.config as EarlyExitNodeConfig;
   return (
     <BaseNode id={id} data={data} selected={selected}>
-      <Text overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
-        {config.condition ?? "조건 미설정"}
-      </Text>
+      <Text>{config.condition ?? "조건 미설정"}</Text>
     </BaseNode>
   );
 };

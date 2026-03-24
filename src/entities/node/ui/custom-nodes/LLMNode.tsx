@@ -13,9 +13,7 @@ export const LLMNode = ({
   return (
     <BaseNode id={id} data={data} selected={selected}>
       <Text>{config.model ?? "모델 미선택"}</Text>
-      <Text overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
-        {config.prompt || "프롬프트 미입력"}
-      </Text>
+      <Text>{config.prompt || "프롬프트 미입력"}</Text>
     </BaseNode>
   );
 };
