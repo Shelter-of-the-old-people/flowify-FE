@@ -12,8 +12,8 @@ export const LLMNode = ({
   const config = data.config as LLMNodeConfig;
   return (
     <BaseNode id={id} data={data} selected={selected}>
-      <Text>{config.model ?? "모델 미선택"}</Text>
-      <Text>{config.prompt || "프롬프트 미입력"}</Text>
+      <Text>{config.model ?? "모델 미설정"}</Text>
+      <Text>{config.prompt || "프롬프트 미설정"}</Text>
     </BaseNode>
   );
 };
