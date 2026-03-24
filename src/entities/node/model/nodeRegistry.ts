@@ -1,3 +1,22 @@
+import type { IconType } from "react-icons";
+import {
+  MdArticle,
+  MdAutoAwesome,
+  MdBolt,
+  MdCalendarMonth,
+  MdCallMade,
+  MdCallSplit,
+  MdEmail,
+  MdExitToApp,
+  MdFilterList,
+  MdFolder,
+  MdLanguage,
+  MdLoop,
+  MdNotifications,
+  MdSettings,
+  MdTableChart,
+} from "react-icons/md";
+
 import type { NodeCategory, NodeConfig, NodeType } from "./types";
 
 // ─── NodeMeta 인터페이스 ─────────────────────────────────────
@@ -5,8 +24,8 @@ export interface NodeMeta {
   type: NodeType;
   label: string;
   category: NodeCategory;
-  /** react-icons 컴포넌트 식별자 (UI 레이어에서 매핑) */
-  iconKey: string;
+  /** react-icons 컴포넌트 */
+  iconComponent: IconType;
   /** Chakra UI 시맨틱 토큰 — colorSemanticToken.nodeColor.xxx */
   color: string;
   /** 노드 생성 시 사용할 기본 Config */
@@ -21,7 +40,7 @@ export const NODE_REGISTRY: Record<NodeType, NodeMeta> = {
     type: "communication",
     label: "커뮤니케이션",
     category: "domain",
-    iconKey: "MdEmail",
+    iconComponent: MdEmail,
     color: "nodeColor.communication",
     defaultConfig: {
       isConfigured: false,
@@ -38,7 +57,7 @@ export const NODE_REGISTRY: Record<NodeType, NodeMeta> = {
     type: "storage",
     label: "저장소",
     category: "domain",
-    iconKey: "MdFolder",
+    iconComponent: MdFolder,
     color: "nodeColor.storage",
     defaultConfig: {
       isConfigured: false,
@@ -53,7 +72,7 @@ export const NODE_REGISTRY: Record<NodeType, NodeMeta> = {
     type: "spreadsheet",
     label: "스프레드시트",
     category: "domain",
-    iconKey: "MdTableChart",
+    iconComponent: MdTableChart,
     color: "nodeColor.spreadsheet",
     defaultConfig: {
       isConfigured: false,
@@ -69,7 +88,7 @@ export const NODE_REGISTRY: Record<NodeType, NodeMeta> = {
     type: "web-scraping",
     label: "웹 스크래핑",
     category: "domain",
-    iconKey: "MdLanguage",
+    iconComponent: MdLanguage,
     color: "nodeColor.webScraping",
     defaultConfig: {
       isConfigured: false,
@@ -84,7 +103,7 @@ export const NODE_REGISTRY: Record<NodeType, NodeMeta> = {
     type: "calendar",
     label: "캘린더",
     category: "domain",
-    iconKey: "MdCalendarMonth",
+    iconComponent: MdCalendarMonth,
     color: "nodeColor.calendar",
     defaultConfig: {
       isConfigured: false,
@@ -101,7 +120,7 @@ export const NODE_REGISTRY: Record<NodeType, NodeMeta> = {
     type: "trigger",
     label: "트리거",
     category: "processing",
-    iconKey: "MdBolt",
+    iconComponent: MdBolt,
     color: "nodeColor.trigger",
     defaultConfig: {
       isConfigured: false,
@@ -116,7 +135,7 @@ export const NODE_REGISTRY: Record<NodeType, NodeMeta> = {
     type: "filter",
     label: "필터",
     category: "processing",
-    iconKey: "MdFilterList",
+    iconComponent: MdFilterList,
     color: "nodeColor.filter",
     defaultConfig: {
       isConfigured: false,
@@ -131,7 +150,7 @@ export const NODE_REGISTRY: Record<NodeType, NodeMeta> = {
     type: "loop",
     label: "반복",
     category: "processing",
-    iconKey: "MdLoop",
+    iconComponent: MdLoop,
     color: "nodeColor.loop",
     defaultConfig: {
       isConfigured: false,
@@ -145,7 +164,7 @@ export const NODE_REGISTRY: Record<NodeType, NodeMeta> = {
     type: "condition",
     label: "조건 분기",
     category: "processing",
-    iconKey: "MdCallSplit",
+    iconComponent: MdCallSplit,
     color: "nodeColor.condition",
     defaultConfig: {
       isConfigured: false,
@@ -159,7 +178,7 @@ export const NODE_REGISTRY: Record<NodeType, NodeMeta> = {
     type: "multi-output",
     label: "다중 출력",
     category: "processing",
-    iconKey: "MdCallMade",
+    iconComponent: MdCallMade,
     color: "nodeColor.multiOutput",
     defaultConfig: {
       isConfigured: false,
@@ -172,7 +191,7 @@ export const NODE_REGISTRY: Record<NodeType, NodeMeta> = {
     type: "data-process",
     label: "데이터 처리",
     category: "processing",
-    iconKey: "MdSettings",
+    iconComponent: MdSettings,
     color: "nodeColor.dataProcess",
     defaultConfig: {
       isConfigured: false,
@@ -187,7 +206,7 @@ export const NODE_REGISTRY: Record<NodeType, NodeMeta> = {
     type: "output-format",
     label: "출력 포맷",
     category: "processing",
-    iconKey: "MdArticle",
+    iconComponent: MdArticle,
     color: "nodeColor.outputFormat",
     defaultConfig: {
       isConfigured: false,
@@ -200,7 +219,7 @@ export const NODE_REGISTRY: Record<NodeType, NodeMeta> = {
     type: "early-exit",
     label: "조기 종료",
     category: "processing",
-    iconKey: "MdExitToApp",
+    iconComponent: MdExitToApp,
     color: "nodeColor.earlyExit",
     defaultConfig: {
       isConfigured: false,
@@ -213,7 +232,7 @@ export const NODE_REGISTRY: Record<NodeType, NodeMeta> = {
     type: "notification",
     label: "알림",
     category: "processing",
-    iconKey: "MdNotifications",
+    iconComponent: MdNotifications,
     color: "nodeColor.notification",
     defaultConfig: {
       isConfigured: false,
@@ -228,7 +247,7 @@ export const NODE_REGISTRY: Record<NodeType, NodeMeta> = {
     type: "llm",
     label: "AI 처리",
     category: "ai",
-    iconKey: "MdAutoAwesome",
+    iconComponent: MdAutoAwesome,
     color: "nodeColor.llm",
     defaultConfig: {
       isConfigured: false,
