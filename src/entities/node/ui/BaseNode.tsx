@@ -16,12 +16,6 @@ interface BaseNodeProps {
   children?: React.ReactNode;
 }
 
-const ICON_STYLE: React.CSSProperties = {
-  color: "white",
-  width: "16px",
-  height: "16px",
-};
-
 export const BaseNode = ({ id, data, selected, children }: BaseNodeProps) => {
   const meta = NODE_REGISTRY[data.type];
   const openPanel = useWorkflowStore((s) => s.openPanel);
@@ -49,7 +43,7 @@ export const BaseNode = ({ id, data, selected, children }: BaseNodeProps) => {
         justify="space-between"
       >
         <HStack gap={1.5}>
-          <Icon as={meta.iconComponent as IconType} style={ICON_STYLE} />
+          <Icon as={meta.iconComponent as IconType} color="white" boxSize={4} />
           <Text color="white" fontWeight="bold" fontSize="sm">
             {meta.label}
           </Text>
