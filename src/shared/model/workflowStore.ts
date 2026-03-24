@@ -64,6 +64,9 @@ interface WorkflowEditorActions {
   /** 워크플로우 메타 설정 (페이지 진입 시 호출) */
   setWorkflowMeta: (id: string, name: string) => void;
 
+  /** 워크플로우 이름만 단독 변경 (인라인 편집 시 호출) */
+  setWorkflowName: (name: string) => void;
+
   /** 실행 상태 변경 */
   setExecutionStatus: (status: ExecutionStatus) => void;
 
@@ -148,6 +151,11 @@ export const useWorkflowStore = create<
     setWorkflowMeta: (id, name) =>
       set((state) => {
         state.workflowId = id;
+        state.workflowName = name;
+      }),
+
+    setWorkflowName: (name) =>
+      set((state) => {
         state.workflowName = name;
       }),
 
