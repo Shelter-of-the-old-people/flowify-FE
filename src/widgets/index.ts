@@ -1,5 +1,6 @@
 export * from "./canvas";
 export * from "./editor-layout";
 export * from "./editor-toolbar";
+export * from "./input-panel";
 export * from "./layout";
-export * from "./node-settings-panel";
+export * from "./output-panel";

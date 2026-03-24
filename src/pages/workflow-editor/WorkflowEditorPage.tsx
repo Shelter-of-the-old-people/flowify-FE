@@ -7,7 +7,7 @@ import { ReactFlowProvider } from "@xyflow/react";
 
 import { AddNodeButton } from "@/features/add-node";
 import { ROUTE_PATHS, useWorkflowStore } from "@/shared";
-import { Canvas, EditorToolbar, NodeSettingsPanel } from "@/widgets";
+import { Canvas, EditorToolbar, InputPanel, OutputPanel } from "@/widgets";
 
 // ─── 로딩 상태 ───────────────────────────────────────────────
 const EditorLoadingView = () => (
@@ -83,10 +83,11 @@ const WorkflowEditorInner = () => {
   return (
     <Box display="flex" flexDirection="column" height="100%">
       <EditorToolbar />
-      {/* Canvas 영역 — NodeSettingsPanel과 AddNodeButton이 absolute로 올라탐 */}
+      {/* Canvas 영역 — InputPanel·OutputPanel·AddNodeButton이 absolute로 올라탐 */}
       <Box flex={1} position="relative" overflow="hidden">
         <Canvas />
-        <NodeSettingsPanel />
+        <InputPanel />
+        <OutputPanel />
         <Box position="absolute" bottom={4} left={4} zIndex={10}>
           <AddNodeButton />
         </Box>
