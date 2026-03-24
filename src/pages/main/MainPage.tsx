@@ -1,4 +1,4 @@
-const MainPage = () => {
+export default function MainPage() {
   return (
     <section>
       <h1>Flowify</h1>
@@ -6,6 +6,4 @@ const MainPage = () => {
       <p>### 추가</p>
     </section>
   );
-};
-
-export default MainPage;
+}

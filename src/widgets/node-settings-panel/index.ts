@@ -1,1 +1,1 @@
-export { NodeSettingsPanel } from "./ui/NodeSettingsPanel";
+export * from "./ui";

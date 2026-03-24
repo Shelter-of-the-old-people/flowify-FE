@@ -1,1 +1,1 @@
-export { Canvas } from "./ui";
+export * from "./ui";

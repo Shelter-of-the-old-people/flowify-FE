@@ -1,3 +1,3 @@
-export const TemplatesPage = () => {
+export default function TemplatesPage() {
   return <div>TemplatesPage</div>;
-};
+}

@@ -1,1 +1,1 @@
-export { WorkflowNewPage } from "./WorkflowNewPage";
+export { default as WorkflowNewPage } from "./WorkflowNewPage";

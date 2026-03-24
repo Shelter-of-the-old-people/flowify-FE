@@ -1,1 +1,1 @@
-export { WorkflowsPage } from "./WorkflowsPage";
+export { default as WorkflowsPage } from "./WorkflowsPage";

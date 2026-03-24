@@ -1,3 +1,3 @@
-export const WorkflowNewPage = () => {
+export default function WorkflowNewPage() {
   return <div>WorkflowNewPage</div>;
-};
+}

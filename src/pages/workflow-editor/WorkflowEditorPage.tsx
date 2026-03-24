@@ -97,10 +97,10 @@ const WorkflowEditorInner = () => {
 };
 
 // ─── WorkflowEditorPage ───────────────────────────────────────
-export const WorkflowEditorPage = () => {
+export default function WorkflowEditorPage() {
   return (
     <ReactFlowProvider>
       <WorkflowEditorInner />
     </ReactFlowProvider>
   );
-};
+}

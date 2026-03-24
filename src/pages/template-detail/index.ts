@@ -1,1 +1,1 @@
-export { TemplateDetailPage } from "./TemplateDetailPage";
+export { default as TemplateDetailPage } from "./TemplateDetailPage";

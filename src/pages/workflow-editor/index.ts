@@ -1,1 +1,1 @@
-export { WorkflowEditorPage } from "./WorkflowEditorPage";
+export { default as WorkflowEditorPage } from "./WorkflowEditorPage";
