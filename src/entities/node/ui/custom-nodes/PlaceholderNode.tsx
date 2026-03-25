@@ -2,8 +2,15 @@ import { MdAdd } from "react-icons/md";
 
 import { Box, Icon, Text, VStack } from "@chakra-ui/react";
 import { Handle, Position } from "@xyflow/react";
+import type { Node, NodeProps } from "@xyflow/react";
 
-export const PlaceholderNode = () => {
+type PlaceholderNodeData = {
+  label?: string;
+};
+
+export const PlaceholderNode = ({
+  data,
+}: NodeProps<Node<PlaceholderNodeData>>) => {
   return (
     <VStack gap="10px" cursor="pointer">
       <Handle type="target" position={Position.Left} />
@@ -23,7 +30,7 @@ export const PlaceholderNode = () => {
         <Icon as={MdAdd} boxSize={8} color="gray.400" />
       </Box>
       <Text fontSize="20px" fontWeight="bold" color="black" textAlign="center">
-        다음
+        {data.label ?? "다음"}
       </Text>
     </VStack>
   );

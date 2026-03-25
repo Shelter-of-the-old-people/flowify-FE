@@ -65,13 +65,38 @@ export const Canvas = () => {
       const filtered = changes.filter(
         (change) => !("id" in change && change.id.startsWith("placeholder-")),
       );
-      onNodesChange(filtered);
+      if (filtered.length > 0) {
+        onNodesChange(filtered);
+      }
     },
     [onNodesChange],
   );
 
   const nodesWithPlaceholders = useMemo(() => {
-    if (nodes.length === 0) return nodes;
+    if (nodes.length === 0) {
+      return [
+        {
+          id: "placeholder-start",
+          type: "placeholder",
+          position: { x: 0, y: 0 },
+          data: { label: "시작" },
+          initialWidth: 100,
+          initialHeight: 134,
+          selectable: false,
+          draggable: false,
+        },
+        {
+          id: "placeholder-end",
+          type: "placeholder",
+          position: { x: PLACEHOLDER_OFFSET_X, y: 0 },
+          data: { label: "다음" },
+          initialWidth: 100,
+          initialHeight: 134,
+          selectable: false,
+          draggable: false,
+        },
+      ];
+    }
 
     const nodeIds = nodes.map((n) => n.id);
     const leafIds = getLeafNodeIds(nodeIds, edges);
