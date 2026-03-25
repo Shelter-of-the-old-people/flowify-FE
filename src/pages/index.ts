@@ -4,5 +4,4 @@ export * from "./not-found";
 export * from "./template-detail";
 export * from "./templates";
 export * from "./workflow-editor";
-export * from "./workflow-new";
 export * from "./workflows";
