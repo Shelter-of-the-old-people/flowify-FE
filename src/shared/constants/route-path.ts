@@ -4,7 +4,6 @@ export const ROUTE_PATHS = {
   LOGIN: "/login",
   TEMPLATES: "/templates",
   WORKFLOWS: "/workflows",
-  WORKFLOW_NEW: "/workflows/new",
   NOT_FOUND: "*",
 };
 

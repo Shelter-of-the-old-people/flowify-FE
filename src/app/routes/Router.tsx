@@ -7,7 +7,6 @@ import {
   TemplateDetailPage,
   TemplatesPage,
   WorkflowEditorPage,
-  WorkflowNewPage,
   WorkflowsPage,
 } from "@/pages";
 import { DYNAMIC_ROUTE_PATHS, ROUTE_PATHS } from "@/shared";
@@ -31,10 +30,6 @@ export const Router = () => {
 
         {/* 에디터 레이아웃 (풀스크린 캔버스) */}
         <Route element={<EditorLayout />}>
-          <Route
-            path={ROUTE_PATHS.WORKFLOW_NEW}
-            element={<WorkflowNewPage />}
-          />
           <Route
             path={DYNAMIC_ROUTE_PATHS.WORKFLOW_EDITOR}
             element={<WorkflowEditorPage />}

@@ -5,24 +5,26 @@ import { Handle, Position } from "@xyflow/react";
 
 export const PlaceholderNode = () => {
   return (
-    <Box
-      border="2px dashed"
-      borderColor="border.default"
-      borderRadius="lg"
-      minW="200px"
-      bg="bg.surface"
-      cursor="pointer"
-      _hover={{ borderColor: "blue.400", bg: "blue.50" }}
-      transition="border-color 150ms ease, background 150ms ease"
-    >
+    <VStack gap="10px" cursor="pointer">
       <Handle type="target" position={Position.Left} />
 
-      <VStack gap={1} py={6} px={4}>
-        <Icon as={MdAdd} boxSize={6} color="text.secondary" />
-        <Text fontSize="sm" color="text.secondary">
-          다음 단계를 설정하세요
-        </Text>
-      </VStack>
-    </Box>
+      <Box
+        w="100px"
+        h="100px"
+        border="2px dashed"
+        borderColor="gray.400"
+        borderRadius="lg"
+        display="flex"
+        alignItems="center"
+        justifyContent="center"
+        _hover={{ borderColor: "blue.400", bg: "blue.50" }}
+        transition="border-color 150ms ease, background 150ms ease"
+      >
+        <Icon as={MdAdd} boxSize={8} color="gray.400" />
+      </Box>
+      <Text fontSize="20px" fontWeight="bold" color="black" textAlign="center">
+        다음
+      </Text>
+    </VStack>
   );
 };

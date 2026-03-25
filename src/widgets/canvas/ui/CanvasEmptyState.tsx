@@ -1,6 +1,6 @@
 import { MdAdd } from "react-icons/md";
 
-import { Box, Icon, IconButton, Text, VStack } from "@chakra-ui/react";
+import { Box, Icon, Text, VStack } from "@chakra-ui/react";
 
 interface CanvasEmptyStateProps {
   onAdd: () => void;
@@ -20,18 +20,29 @@ export const CanvasEmptyState = ({ onAdd }: CanvasEmptyStateProps) => {
       pointerEvents="none"
       zIndex={5}
     >
-      <VStack gap={4} pointerEvents="auto">
-        <Text fontSize="md" color="text.secondary" fontWeight="medium">
-          워크플로우를 시작하세요
-        </Text>
-        <IconButton
-          aria-label="시작하기"
-          rounded="full"
-          size="lg"
-          onClick={onAdd}
+      <VStack gap="10px" pointerEvents="auto" cursor="pointer" onClick={onAdd}>
+        <Box
+          w="100px"
+          h="100px"
+          border="2px dashed"
+          borderColor="gray.400"
+          borderRadius="lg"
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+          _hover={{ borderColor: "blue.400", bg: "blue.50" }}
+          transition="border-color 150ms ease, background 150ms ease"
         >
-          <Icon as={MdAdd} boxSize={6} />
-        </IconButton>
+          <Icon as={MdAdd} boxSize={8} color="gray.400" />
+        </Box>
+        <Text
+          fontSize="20px"
+          fontWeight="bold"
+          color="black"
+          textAlign="center"
+        >
+          시작
+        </Text>
       </VStack>
     </Box>
   );
