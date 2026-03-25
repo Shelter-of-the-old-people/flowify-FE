@@ -1,94 +1,121 @@
-import { type IconType } from "react-icons";
-import { MdClose, MdSettings } from "react-icons/md";
+import type { MouseEvent, ReactNode } from "react";
+import { MdClose } from "react-icons/md";
 
-import { Box, HStack, Icon, IconButton, Text } from "@chakra-ui/react";
+import { Box, Icon, IconButton, Text } from "@chakra-ui/react";
 import { Handle, Position } from "@xyflow/react";
 
 import { useWorkflowStore } from "@/shared";
 
-import { NODE_REGISTRY } from "../model/nodeRegistry";
+import { getNodePresentation } from "../model";
 import type { FlowNodeData } from "../model/types";
 
 interface BaseNodeProps {
   id: string;
   data: FlowNodeData;
   selected: boolean;
-  children?: React.ReactNode;
+  children?: ReactNode;
 }
 
+const getSummaryContent = (
+  helperText: string | null,
+  children?: ReactNode,
+): ReactNode => {
+  if (helperText) {
+    return helperText;
+  }
+
+  return children ?? null;
+};
+
 export const BaseNode = ({ id, data, selected, children }: BaseNodeProps) => {
-  const meta = NODE_REGISTRY[data.type];
-  const openPanel = useWorkflowStore((s) => s.openPanel);
   const removeNode = useWorkflowStore((s) => s.removeNode);
+  const openPanel = useWorkflowStore((s) => s.openPanel);
+  const startNodeId = useWorkflowStore((s) => s.startNodeId);
+  const endNodeId = useWorkflowStore((s) => s.endNodeId);
+
+  const presentation = getNodePresentation(data, {
+    nodeId: id,
+    startNodeId,
+    endNodeId,
+  });
+  const summaryContent = getSummaryContent(presentation.helperText, children);
+
+  const handleOpenPanel = () => {
+    openPanel(id);
+  };
+
+  const handleRemoveNode = (event: MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    removeNode(id);
+  };
 
   return (
     <Box
+      position="relative"
+      display="flex"
+      flexDirection="column"
+      alignItems="center"
+      gap={2}
+      minW="172px"
+      px={4}
+      py={3}
       border="2px solid"
       borderColor={selected ? "border.selected" : "border.default"}
-      borderRadius="lg"
-      minW="200px"
+      borderRadius="xl"
       bg="bg.surface"
       boxShadow={selected ? "md" : "sm"}
       transition="border-color 150ms ease, box-shadow 150ms ease"
+      cursor="pointer"
+      onClick={handleOpenPanel}
     >
-      {/* 입력 핸들 */}
       <Handle type="target" position={Position.Left} />
 
-      {/* 헤더 */}
-      <HStack
-        bg={meta.color}
-        px={3}
-        py={2}
-        borderTopRadius="md"
-        justify="space-between"
-      >
-        <HStack gap={1.5}>
-          <Icon as={meta.iconComponent as IconType} color="white" boxSize={4} />
-          <Text color="white" fontWeight="bold" fontSize="sm">
-            {meta.label}
-          </Text>
-        </HStack>
-        <HStack gap={0}>
-          <IconButton
-            aria-label="설정"
-            size="xs"
-            variant="ghost"
-            colorPalette="whiteAlpha"
-            onClick={() => openPanel(id)}
-          >
-            <MdSettings color="white" />
-          </IconButton>
-          <IconButton
-            aria-label="삭제"
-            size="xs"
-            variant="ghost"
-            colorPalette="whiteAlpha"
-            onClick={() => removeNode(id)}
-          >
-            <MdClose color="white" />
-          </IconButton>
-        </HStack>
-      </HStack>
+      <Text fontSize="xs" fontWeight="medium" color="text.secondary">
+        {presentation.roleLabel}
+      </Text>
 
-      {/* 본문 — 설정 요약 */}
-      <Box
-        px={3}
-        py={2}
-        fontSize="xs"
-        color="text.secondary"
-        minH="36px"
-        overflow="hidden"
-        textOverflow="ellipsis"
-        whiteSpace="nowrap"
-      >
-        {data.config.isConfigured ? (
-          children
-        ) : (
-          <Text color="warning.500">설정이 필요합니다</Text>
-        )}
-      </Box>
+      <Icon
+        as={presentation.iconComponent}
+        boxSize={14}
+        color={data.config.isConfigured ? "text.primary" : "text.secondary"}
+      />
 
-      {/* 출력 핸들 */}
+      <Text
+        fontSize="lg"
+        fontWeight="bold"
+        color="text.primary"
+        textAlign="center"
+        lineHeight="short"
+      >
+        {presentation.title}
+      </Text>
+
+      {summaryContent ? (
+        <Box
+          width="100%"
+          fontSize="xs"
+          color="text.secondary"
+          textAlign="center"
+          lineHeight="short"
+        >
+          {summaryContent}
+        </Box>
+      ) : null}
+
+      {selected ? (
+        <IconButton
+          aria-label="노드 삭제"
+          size="xs"
+          position="absolute"
+          top={1}
+          right={1}
+          variant="ghost"
+          onClick={handleRemoveNode}
+        >
+          <MdClose />
+        </IconButton>
+      ) : null}
+
       <Handle type="source" position={Position.Right} />
     </Box>
   );
