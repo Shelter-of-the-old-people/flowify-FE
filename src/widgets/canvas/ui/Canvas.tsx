@@ -1,8 +1,11 @@
+import { useMemo } from "react";
+
 import {
   Background,
   BackgroundVariant,
   Controls,
   MiniMap,
+  type Node,
   type NodeTypes,
   ReactFlow,
 } from "@xyflow/react";
@@ -20,12 +23,15 @@ import {
   MultiOutputNode,
   NotificationNode,
   OutputFormatNode,
+  PlaceholderNode,
   SpreadsheetNode,
   StorageNode,
   TriggerNode,
   WebScrapingNode,
 } from "@/entities/node";
-import { useWorkflowStore } from "@/shared";
+import { getLeafNodeIds, useWorkflowStore } from "@/shared";
+
+const PLACEHOLDER_OFFSET_X = 280;
 
 const nodeTypes: NodeTypes = {
   communication: CommunicationNode,
@@ -43,6 +49,7 @@ const nodeTypes: NodeTypes = {
   "early-exit": EarlyExitNode,
   notification: NotificationNode,
   llm: LLMNode,
+  placeholder: PlaceholderNode,
 };
 
 export const Canvas = () => {
@@ -52,9 +59,33 @@ export const Canvas = () => {
   const onEdgesChange = useWorkflowStore((s) => s.onEdgesChange);
   const onConnect = useWorkflowStore((s) => s.onConnect);
 
+  const nodesWithPlaceholders = useMemo(() => {
+    if (nodes.length === 0) return nodes;
+
+    const nodeIds = nodes.map((n) => n.id);
+    const leafIds = getLeafNodeIds(nodeIds, edges);
+
+    const placeholders: Node[] = leafIds.map((leafId) => {
+      const leafNode = nodes.find((n) => n.id === leafId)!;
+      return {
+        id: `placeholder-${leafId}`,
+        type: "placeholder",
+        position: {
+          x: leafNode.position.x + PLACEHOLDER_OFFSET_X,
+          y: leafNode.position.y,
+        },
+        data: {},
+        selectable: false,
+        draggable: false,
+      };
+    });
+
+    return [...nodes, ...placeholders];
+  }, [nodes, edges]);
+
   return (
     <ReactFlow
-      nodes={nodes}
+      nodes={nodesWithPlaceholders}
       edges={edges}
       nodeTypes={nodeTypes}
       onNodesChange={onNodesChange}

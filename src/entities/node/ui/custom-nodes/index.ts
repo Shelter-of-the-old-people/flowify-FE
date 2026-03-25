@@ -9,6 +9,7 @@ export * from "./LoopNode";
 export * from "./MultiOutputNode";
 export * from "./NotificationNode";
 export * from "./OutputFormatNode";
+export * from "./PlaceholderNode";
 export * from "./SpreadsheetNode";
 export * from "./StorageNode";
 export * from "./TriggerNode";
