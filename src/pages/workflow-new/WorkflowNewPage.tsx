@@ -1,3 +1,5 @@
+import { CreationGuide } from "@/features/create-workflow";
+
 export default function WorkflowNewPage() {
-  return <div>WorkflowNewPage</div>;
+  return <CreationGuide />;
 }
