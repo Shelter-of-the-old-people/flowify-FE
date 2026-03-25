@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 import {
   Background,
@@ -6,6 +6,7 @@ import {
   Controls,
   MiniMap,
   type Node,
+  type NodeChange,
   type NodeTypes,
   ReactFlow,
 } from "@xyflow/react";
@@ -59,6 +60,16 @@ export const Canvas = () => {
   const onEdgesChange = useWorkflowStore((s) => s.onEdgesChange);
   const onConnect = useWorkflowStore((s) => s.onConnect);
 
+  const handleNodesChange = useCallback(
+    (changes: NodeChange[]) => {
+      const filtered = changes.filter(
+        (change) => !("id" in change && change.id.startsWith("placeholder-")),
+      );
+      onNodesChange(filtered);
+    },
+    [onNodesChange],
+  );
+
   const nodesWithPlaceholders = useMemo(() => {
     if (nodes.length === 0) return nodes;
 
@@ -75,6 +86,8 @@ export const Canvas = () => {
           y: leafNode.position.y,
         },
         data: {},
+        initialWidth: 100,
+        initialHeight: 134,
         selectable: false,
         draggable: false,
       };
@@ -88,7 +101,7 @@ export const Canvas = () => {
       nodes={nodesWithPlaceholders}
       edges={edges}
       nodeTypes={nodeTypes}
-      onNodesChange={onNodesChange}
+      onNodesChange={handleNodesChange}
       onEdgesChange={onEdgesChange}
       onConnect={onConnect}
       fitView
