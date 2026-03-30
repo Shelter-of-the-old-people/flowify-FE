@@ -27,6 +27,8 @@ interface WorkflowEditorState {
   startNodeId: string | null;
   /** 도착 노드 ID (null이면 미설정) */
   endNodeId: string | null;
+  /** 생성 방식 (null이면 미결정) */
+  creationMethod: "manual" | null;
   /** 현재 클릭된 placeholder 정보 (null이면 선택 패널 닫힘) */
   activePlaceholder: {
     id: string;
@@ -85,6 +87,9 @@ interface WorkflowEditorActions {
   /** 도착 노드 ID 설정 */
   setEndNodeId: (id: string | null) => void;
 
+  /** 생성 방식 설정 */
+  setCreationMethod: (method: "manual" | null) => void;
+
   /** 활성 placeholder 설정 (서비스 선택 패널 열기/닫기) */
   setActivePlaceholder: (
     placeholder: { id: string; position: { x: number; y: number } } | null,
@@ -101,6 +106,7 @@ const initialState: WorkflowEditorState = {
   activePanelNodeId: null,
   startNodeId: null,
   endNodeId: null,
+  creationMethod: null,
   activePlaceholder: null,
   workflowId: "",
   workflowName: "",
@@ -157,10 +163,12 @@ export const useWorkflowStore = create<
 
         if (state.startNodeId && removeTargets.has(state.startNodeId)) {
           state.startNodeId = null;
+          state.creationMethod = null;
         }
 
         if (state.endNodeId && removeTargets.has(state.endNodeId)) {
           state.endNodeId = null;
+          state.creationMethod = null;
         }
       }),
 
@@ -195,6 +203,11 @@ export const useWorkflowStore = create<
     setEndNodeId: (id) =>
       set((state) => {
         state.endNodeId = id;
+      }),
+
+    setCreationMethod: (method) =>
+      set((state) => {
+        state.creationMethod = method;
       }),
 
     setActivePlaceholder: (placeholder) =>

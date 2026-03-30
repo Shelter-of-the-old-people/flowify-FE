@@ -59,11 +59,8 @@ export const BaseNode = ({ id, data, selected, children }: BaseNodeProps) => {
       minW="172px"
       px={4}
       py={3}
-      border="2px solid"
-      borderColor={selected ? "border.selected" : "border.default"}
       borderRadius="xl"
-      bg="bg.surface"
-      boxShadow={selected ? "md" : "sm"}
+      bg="transform"
       transition="border-color 150ms ease, box-shadow 150ms ease"
       cursor="pointer"
       onClick={handleOpenPanel}
