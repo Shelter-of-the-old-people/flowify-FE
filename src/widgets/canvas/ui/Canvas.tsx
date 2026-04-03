@@ -16,6 +16,7 @@ import {
   CalendarNode,
   CommunicationNode,
   ConditionNode,
+  CreationMethodNode,
   DataProcessNode,
   EarlyExitNode,
   FilterNode,
@@ -30,9 +31,30 @@ import {
   TriggerNode,
   WebScrapingNode,
 } from "@/entities/node";
-import { useWorkflowStore } from "@/shared";
+import { getLeafNodeIds, useWorkflowStore } from "@/shared";
 
-const PLACEHOLDER_OFFSET_X = 280;
+const NODE_GAP_X = 96;
+const DEFAULT_ROW_CENTER_Y = 320;
+const DEFAULT_FLOW_NODE_WIDTH = 172;
+const DEFAULT_FLOW_NODE_HEIGHT = 176;
+const PLACEHOLDER_NODE_WIDTH = 100;
+const PLACEHOLDER_NODE_HEIGHT = 134;
+const CREATION_METHOD_NODE_WIDTH = 244;
+const CREATION_METHOD_NODE_HEIGHT = 112;
+
+const getTopYFromCenter = (centerY: number, height: number) =>
+  centerY - height / 2;
+
+const getCenterYFromTop = (topY: number, height: number) => topY + height / 2;
+
+const getNodeWidth = (node: Node, fallbackWidth = DEFAULT_FLOW_NODE_WIDTH) =>
+  node.measured?.width ?? fallbackWidth;
+
+const getNodeCenterY = (
+  node: Node,
+  fallbackHeight = DEFAULT_FLOW_NODE_HEIGHT,
+) =>
+  getCenterYFromTop(node.position.y, node.measured?.height ?? fallbackHeight);
 
 const nodeTypes: NodeTypes = {
   communication: CommunicationNode,
@@ -51,6 +73,7 @@ const nodeTypes: NodeTypes = {
   notification: NotificationNode,
   llm: LLMNode,
   placeholder: PlaceholderNode,
+  "creation-method": CreationMethodNode,
 };
 
 export const Canvas = () => {
@@ -61,6 +84,8 @@ export const Canvas = () => {
   const onConnect = useWorkflowStore((s) => s.onConnect);
   const startNodeId = useWorkflowStore((s) => s.startNodeId);
   const endNodeId = useWorkflowStore((s) => s.endNodeId);
+  const creationMethod = useWorkflowStore((s) => s.creationMethod);
+  const setCreationMethod = useWorkflowStore((s) => s.setCreationMethod);
   const activePlaceholder = useWorkflowStore((s) => s.activePlaceholder);
   const setActivePlaceholder = useWorkflowStore((s) => s.setActivePlaceholder);
 
@@ -81,12 +106,19 @@ export const Canvas = () => {
   const handleNodeClick = useCallback(
     (_event: MouseEvent, node: Node) => {
       if (node.id.startsWith("placeholder-")) {
-        setActivePlaceholder({ id: node.id, position: node.position });
+        const nodeHeight = node.measured?.height ?? PLACEHOLDER_NODE_HEIGHT;
+        const centerY = node.position.y + nodeHeight / 2;
+
+        setActivePlaceholder({
+          id: node.id,
+          position: {
+            x: node.position.x,
+            y: getTopYFromCenter(centerY, DEFAULT_FLOW_NODE_HEIGHT),
+          },
+        });
 
         const viewportWidth = window.innerWidth;
         const offsetX = viewportWidth * 0.2;
-        const nodeHeight = node.measured?.height ?? 134;
-        const centerY = node.position.y + nodeHeight / 2;
 
         setCenter(node.position.x + offsetX, centerY, {
           zoom: 1,
@@ -103,44 +135,157 @@ export const Canvas = () => {
     setActivePlaceholder(null);
   }, [setActivePlaceholder]);
 
+  const handleSelectManual = useCallback(() => {
+    setCreationMethod("manual");
+  }, [setCreationMethod]);
+
   const nodesWithPlaceholders = useMemo(() => {
     const result: Node[] = [...nodes];
 
+    // 분기 1: 시작/도착 미설정 → placeholder 표시
     if (!startNodeId) {
       result.push({
         id: "placeholder-start",
         type: "placeholder",
-        position: { x: 0, y: 0 },
+        position: {
+          x: 0,
+          y: getTopYFromCenter(DEFAULT_ROW_CENTER_Y, PLACEHOLDER_NODE_HEIGHT),
+        },
         data: { label: "시작" },
-        initialWidth: 100,
-        initialHeight: 134,
+        initialWidth: PLACEHOLDER_NODE_WIDTH,
+        initialHeight: PLACEHOLDER_NODE_HEIGHT,
         selectable: false,
         draggable: false,
       });
     }
 
     if (!endNodeId) {
-      const anchorX = startNodeId
-        ? (nodes.find((n) => n.id === startNodeId)?.position.x ?? 0) +
-          PLACEHOLDER_OFFSET_X
-        : PLACEHOLDER_OFFSET_X;
+      const startNode = nodes.find((n) => n.id === startNodeId);
+      const anchorX = startNode
+        ? startNode.position.x + getNodeWidth(startNode) + NODE_GAP_X
+        : PLACEHOLDER_NODE_WIDTH + NODE_GAP_X;
+      const anchorCenterY = startNode
+        ? getNodeCenterY(startNode)
+        : DEFAULT_ROW_CENTER_Y;
 
       result.push({
         id: "placeholder-end",
         type: "placeholder",
-        position: { x: anchorX, y: 0 },
+        position: {
+          x: anchorX,
+          y: getTopYFromCenter(anchorCenterY, PLACEHOLDER_NODE_HEIGHT),
+        },
         data: { label: "도착" },
-        initialWidth: 100,
-        initialHeight: 134,
+        initialWidth: PLACEHOLDER_NODE_WIDTH,
+        initialHeight: PLACEHOLDER_NODE_HEIGHT,
         selectable: false,
         draggable: false,
       });
     }
 
-    return result;
-  }, [nodes, startNodeId, endNodeId]);
+    // 분기 2, 3: 둘 다 설정됨
+    if (startNodeId && endNodeId) {
+      const startNode = nodes.find((n) => n.id === startNodeId);
+      const startX = startNode?.position.x ?? 0;
+      const startWidth = startNode
+        ? getNodeWidth(startNode)
+        : DEFAULT_FLOW_NODE_WIDTH;
+      const startCenterY = startNode
+        ? getNodeCenterY(startNode)
+        : DEFAULT_ROW_CENTER_Y;
 
-  const isPanelOpen = activePlaceholder !== null;
+      if (!creationMethod) {
+        // 분기 2: 생성 방식 미결정 → CreationMethodNode 표시
+        // 도착 노드를 오른쪽으로 밀어 겹침 방지
+        const endNodeIndex = result.findIndex((n) => n.id === endNodeId);
+        if (endNodeIndex !== -1) {
+          result[endNodeIndex] = {
+            ...result[endNodeIndex],
+            position: {
+              x:
+                startX +
+                startWidth +
+                NODE_GAP_X +
+                CREATION_METHOD_NODE_WIDTH +
+                NODE_GAP_X,
+              y: result[endNodeIndex].position.y,
+            },
+          };
+        }
+
+        result.push({
+          id: "placeholder-creation-method",
+          type: "creation-method",
+          position: {
+            x: startX + startWidth + NODE_GAP_X,
+            y: getTopYFromCenter(startCenterY, CREATION_METHOD_NODE_HEIGHT),
+          },
+          data: { onSelectManual: handleSelectManual },
+          initialWidth: CREATION_METHOD_NODE_WIDTH,
+          initialHeight: CREATION_METHOD_NODE_HEIGHT,
+          selectable: false,
+          draggable: false,
+        });
+      } else if (creationMethod === "manual") {
+        // 분기 3: 수동 생성 → endNode 제외 leaf 뒤에 "다음" placeholder
+        const nodeIds = nodes.map((n) => n.id).filter((id) => id !== endNodeId);
+        const leafIds = getLeafNodeIds(nodeIds, edges);
+
+        let maxPlaceholderX = 0;
+
+        for (const leafId of leafIds) {
+          const leafNode = nodes.find((n) => n.id === leafId);
+          if (!leafNode) continue;
+
+          const placeholderX =
+            leafNode.position.x + getNodeWidth(leafNode) + NODE_GAP_X;
+          if (placeholderX > maxPlaceholderX) {
+            maxPlaceholderX = placeholderX;
+          }
+
+          result.push({
+            id: `placeholder-${leafId}`,
+            type: "placeholder",
+            position: {
+              x: placeholderX,
+              y: getTopYFromCenter(
+                getNodeCenterY(leafNode),
+                PLACEHOLDER_NODE_HEIGHT,
+              ),
+            },
+            data: { label: "다음" },
+            initialWidth: PLACEHOLDER_NODE_WIDTH,
+            initialHeight: PLACEHOLDER_NODE_HEIGHT,
+            selectable: false,
+            draggable: false,
+          });
+        }
+
+        // 도착 노드를 "다음" placeholder 뒤로 밀기
+        const endNodeIndex = result.findIndex((n) => n.id === endNodeId);
+        if (endNodeIndex !== -1) {
+          result[endNodeIndex] = {
+            ...result[endNodeIndex],
+            position: {
+              x: maxPlaceholderX + PLACEHOLDER_NODE_WIDTH + NODE_GAP_X,
+              y: result[endNodeIndex].position.y,
+            },
+          };
+        }
+      }
+    }
+
+    return result;
+  }, [
+    nodes,
+    edges,
+    startNodeId,
+    endNodeId,
+    creationMethod,
+    handleSelectManual,
+  ]);
+
+  const isCanvasLocked = activePlaceholder !== null;
 
   return (
     <ReactFlow
@@ -152,10 +297,12 @@ export const Canvas = () => {
       onConnect={onConnect}
       onNodeClick={handleNodeClick}
       onPaneClick={handlePaneClick}
-      panOnDrag={!isPanelOpen}
-      zoomOnScroll={!isPanelOpen}
-      zoomOnPinch={!isPanelOpen}
-      zoomOnDoubleClick={!isPanelOpen}
+      panOnDrag={!isCanvasLocked}
+      panOnScroll={false}
+      nodesDraggable={!isCanvasLocked}
+      zoomOnScroll={!isCanvasLocked}
+      zoomOnPinch={!isCanvasLocked}
+      zoomOnDoubleClick={!isCanvasLocked}
       fitView
     >
       <Background variant={BackgroundVariant.Dots} gap={16} size={1} />

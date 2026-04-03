@@ -11,11 +11,22 @@ import { useAddNode } from "../model/useAddNode";
 
 const allNodeEntries = Object.values(NODE_REGISTRY);
 
+const parseSourceNodeId = (placeholderId: string): string | undefined => {
+  if (
+    placeholderId === "placeholder-start" ||
+    placeholderId === "placeholder-end"
+  ) {
+    return undefined;
+  }
+  return placeholderId.replace("placeholder-", "");
+};
+
 export const ServiceSelectionPanel = () => {
   const activePlaceholder = useWorkflowStore((s) => s.activePlaceholder);
   const setActivePlaceholder = useWorkflowStore((s) => s.setActivePlaceholder);
   const setStartNodeId = useWorkflowStore((s) => s.setStartNodeId);
   const setEndNodeId = useWorkflowStore((s) => s.setEndNodeId);
+  const onConnect = useWorkflowStore((s) => s.onConnect);
   const { addNode } = useAddNode();
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -28,11 +39,21 @@ export const ServiceSelectionPanel = () => {
 
   const handleSelect = (type: NodeType) => {
     const nodeId = addNode(type, { position: activePlaceholder.position });
+    const sourceNodeId = parseSourceNodeId(activePlaceholder.id);
 
     if (activePlaceholder.id === "placeholder-start") {
       setStartNodeId(nodeId);
     } else if (activePlaceholder.id === "placeholder-end") {
       setEndNodeId(nodeId);
+    }
+
+    if (sourceNodeId) {
+      onConnect({
+        source: sourceNodeId,
+        target: nodeId,
+        sourceHandle: null,
+        targetHandle: null,
+      });
     }
 
     setActivePlaceholder(null);

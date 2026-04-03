@@ -1,5 +1,6 @@
 export * from "./CalendarNode";
 export * from "./CommunicationNode";
+export * from "./CreationMethodNode";
 export * from "./ConditionNode";
 export * from "./DataProcessNode";
 export * from "./EarlyExitNode";
