@@ -4,7 +4,6 @@ import type { ApiResponse } from "../types";
 
 import { apiClient } from "./client";
 
-// ─── API 전용 타입 ──────────────────────────────────────────
 export interface CreateWorkflowRequest {
   name: string;
 }
@@ -20,30 +19,145 @@ export interface ExecuteWorkflowResponse {
   status: "pending" | "running";
 }
 
-// ─── API ────────────────────────────────────────────────
+export type NodeDefinitionRole = "start" | "end" | "middle";
+
+export interface NodeDefinitionResponse {
+  id: string;
+  type: string;
+  label: string;
+  role: NodeDefinitionRole;
+  position: { x: number; y: number };
+  config: Record<string, unknown>;
+  dataType: string | null;
+  outputDataType: string | null;
+  authWarning?: boolean;
+}
+
+export interface NodeAddRequest {
+  type: string;
+  label: string;
+  position: { x: number; y: number };
+  config: Record<string, unknown>;
+  prevNodeId: string;
+}
+
+export interface NodeUpdateRequest {
+  config: Record<string, unknown>;
+}
+
+export interface NodeChoiceSelectRequest {
+  actionId: string;
+  processingMethod?: string;
+  options?: Record<string, unknown>;
+}
+
+export interface ShareRequest {
+  userIds: string[];
+}
+
+export interface WorkflowGenerateRequest {
+  prompt: string;
+}
+
+export interface ChoiceOption {
+  id: string;
+  label: string;
+}
+
+export interface ChoiceFollowUp {
+  question: string;
+  options: ChoiceOption[];
+}
+
+export interface ChoiceBranchConfig {
+  type: string;
+  options: ChoiceOption[];
+}
+
+export interface ChoiceAction {
+  id: string;
+  label: string;
+  nodeType: string;
+  outputDataType: string;
+  priority: number;
+  followUp?: ChoiceFollowUp;
+  branchConfig?: ChoiceBranchConfig;
+}
+
+export interface ProcessingMethod {
+  id: string;
+  label: string;
+}
+
+export interface ChoiceResponse {
+  dataType: string;
+  requiresProcessingMethod: boolean;
+  processingMethods?: ProcessingMethod[];
+  actions: ChoiceAction[];
+}
+
+export interface NodeSelectionResult {
+  nodeType: string;
+  label: string;
+  outputDataType: string;
+  config: Record<string, unknown>;
+}
+
 export const workflowApi = {
-  /** 워크플로우 목록 조회 */
   getList: () => apiClient.get<ApiResponse<WorkflowSummary[]>>("/workflows"),
 
-  /** 워크플로우 상세 조회 */
   getById: (id: string) =>
     apiClient.get<ApiResponse<Workflow>>(`/workflows/${id}`),
 
-  /** 워크플로우 생성 */
   create: (body: CreateWorkflowRequest) =>
     apiClient.post<ApiResponse<Workflow>>("/workflows", body),
 
-  /** 워크플로우 수정 (노드/엣지 저장 포함) */
   update: (id: string, body: UpdateWorkflowRequest) =>
     apiClient.put<ApiResponse<Workflow>>(`/workflows/${id}`, body),
 
-  /** 워크플로우 삭제 */
   delete: (id: string) =>
     apiClient.delete<ApiResponse<void>>(`/workflows/${id}`),
 
-  /** 워크플로우 실행 */
   execute: (id: string) =>
     apiClient.post<ApiResponse<ExecuteWorkflowResponse>>(
       `/workflows/${id}/execute`,
     ),
+
+  addNode: (workflowId: string, body: NodeAddRequest) =>
+    apiClient.post<ApiResponse<NodeDefinitionResponse>>(
+      `/workflows/${workflowId}/nodes`,
+      body,
+    ),
+
+  updateNode: (workflowId: string, nodeId: string, body: NodeUpdateRequest) =>
+    apiClient.put<ApiResponse<NodeDefinitionResponse>>(
+      `/workflows/${workflowId}/nodes/${nodeId}`,
+      body,
+    ),
+
+  deleteNode: (workflowId: string, nodeId: string) =>
+    apiClient.delete<ApiResponse<void>>(
+      `/workflows/${workflowId}/nodes/${nodeId}`,
+    ),
+
+  getChoices: (workflowId: string, prevNodeId: string) =>
+    apiClient.get<ApiResponse<ChoiceResponse>>(
+      `/workflows/${workflowId}/choices/${prevNodeId}`,
+    ),
+
+  selectChoice: (
+    workflowId: string,
+    prevNodeId: string,
+    body: NodeChoiceSelectRequest,
+  ) =>
+    apiClient.post<ApiResponse<NodeSelectionResult>>(
+      `/workflows/${workflowId}/choices/${prevNodeId}/select`,
+      body,
+    ),
+
+  share: (workflowId: string, body: ShareRequest) =>
+    apiClient.post<ApiResponse<void>>(`/workflows/${workflowId}/share`, body),
+
+  generate: (body: WorkflowGenerateRequest) =>
+    apiClient.post<ApiResponse<Workflow>>("/workflows/generate", body),
 };
