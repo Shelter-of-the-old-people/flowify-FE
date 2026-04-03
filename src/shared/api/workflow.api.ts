@@ -1,4 +1,8 @@
-import type { Workflow, WorkflowSummary } from "@/entities/workflow";
+import type {
+  TriggerConfig,
+  WorkflowStatus,
+  WorkflowSummary,
+} from "@/entities/workflow";
 
 import type { ApiResponse } from "../types";
 
@@ -10,8 +14,8 @@ export interface CreateWorkflowRequest {
 
 export interface UpdateWorkflowRequest {
   name?: string;
-  nodes?: Workflow["nodes"];
-  edges?: Workflow["edges"];
+  nodes?: NodeDefinitionResponse[];
+  edges?: EdgeDefinitionResponse[];
 }
 
 export interface ExecuteWorkflowResponse {
@@ -31,6 +35,31 @@ export interface NodeDefinitionResponse {
   dataType: string | null;
   outputDataType: string | null;
   authWarning?: boolean;
+}
+
+export interface EdgeDefinitionResponse {
+  id: string;
+  source: string;
+  target: string;
+  sourceHandle: string | null;
+  targetHandle: string | null;
+}
+
+export interface WorkflowResponse {
+  id: string;
+  name: string;
+  description: string;
+  status: WorkflowStatus;
+  nodes: NodeDefinitionResponse[];
+  edges: EdgeDefinitionResponse[];
+  userId: string;
+  sharedWith: string[];
+  isTemplate: boolean;
+  templateId: string | null;
+  trigger: TriggerConfig | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface NodeAddRequest {
@@ -107,13 +136,13 @@ export const workflowApi = {
   getList: () => apiClient.get<ApiResponse<WorkflowSummary[]>>("/workflows"),
 
   getById: (id: string) =>
-    apiClient.get<ApiResponse<Workflow>>(`/workflows/${id}`),
+    apiClient.get<ApiResponse<WorkflowResponse>>(`/workflows/${id}`),
 
   create: (body: CreateWorkflowRequest) =>
-    apiClient.post<ApiResponse<Workflow>>("/workflows", body),
+    apiClient.post<ApiResponse<WorkflowResponse>>("/workflows", body),
 
   update: (id: string, body: UpdateWorkflowRequest) =>
-    apiClient.put<ApiResponse<Workflow>>(`/workflows/${id}`, body),
+    apiClient.put<ApiResponse<WorkflowResponse>>(`/workflows/${id}`, body),
 
   delete: (id: string) =>
     apiClient.delete<ApiResponse<void>>(`/workflows/${id}`),
@@ -159,5 +188,5 @@ export const workflowApi = {
     apiClient.post<ApiResponse<void>>(`/workflows/${workflowId}/share`, body),
 
   generate: (body: WorkflowGenerateRequest) =>
-    apiClient.post<ApiResponse<Workflow>>("/workflows/generate", body),
+    apiClient.post<ApiResponse<WorkflowResponse>>("/workflows/generate", body),
 };
