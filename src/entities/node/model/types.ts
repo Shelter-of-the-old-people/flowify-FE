@@ -167,6 +167,31 @@ export type NodeConfig =
   | NotificationNodeConfig
   | LLMNodeConfig;
 
+export type NodeConfigMap = {
+  communication: CommunicationNodeConfig;
+  storage: StorageNodeConfig;
+  spreadsheet: SpreadsheetNodeConfig;
+  "web-scraping": WebScrapingNodeConfig;
+  calendar: CalendarNodeConfig;
+  trigger: TriggerNodeConfig;
+  filter: FilterNodeConfig;
+  loop: LoopNodeConfig;
+  condition: ConditionNodeConfig;
+  "multi-output": MultiOutputNodeConfig;
+  "data-process": DataProcessNodeConfig;
+  "output-format": OutputFormatNodeConfig;
+  "early-exit": EarlyExitNodeConfig;
+  notification: NotificationNodeConfig;
+  llm: LLMNodeConfig;
+};
+
+export const getTypedConfig = <T extends NodeType>(
+  _type: T,
+  config: NodeConfig,
+): NodeConfigMap[T] => {
+  return config as NodeConfigMap[T];
+};
+
 // ─── React Flow Node data 필드 타입 ─────────────────────────
 export interface FlowNodeData extends Record<string, unknown> {
   type: NodeType;
@@ -176,4 +201,5 @@ export interface FlowNodeData extends Record<string, unknown> {
   inputTypes: import("./dataType").DataType[];
   /** 이 노드가 내보내는 데이터 타입 목록 */
   outputTypes: import("./dataType").DataType[];
+  authWarning?: boolean;
 }

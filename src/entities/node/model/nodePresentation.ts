@@ -2,6 +2,7 @@ import type { IconType } from "react-icons";
 import { MdApps } from "react-icons/md";
 
 import { NODE_REGISTRY } from "./nodeRegistry";
+import { getTypedConfig } from "./types";
 import type {
   CommunicationNodeConfig,
   FlowNodeData,
@@ -75,12 +76,14 @@ const getRoleLabel = (role: NodeRole): string => {
 const getConfiguredTitle = (data: FlowNodeData): string | null => {
   switch (data.type) {
     case "storage": {
-      const service = (data.config as StorageNodeConfig).service;
-      return service ? STORAGE_SERVICE_TITLE[service] : null;
+      const config = getTypedConfig("storage", data.config);
+      return config.service ? STORAGE_SERVICE_TITLE[config.service] : null;
     }
     case "communication": {
-      const service = (data.config as CommunicationNodeConfig).service;
-      return service ? COMMUNICATION_SERVICE_TITLE[service] : null;
+      const config = getTypedConfig("communication", data.config);
+      return config.service
+        ? COMMUNICATION_SERVICE_TITLE[config.service]
+        : null;
     }
     default:
       return null;

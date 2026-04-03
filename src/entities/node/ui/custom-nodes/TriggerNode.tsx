@@ -1,7 +1,8 @@
 import { Text } from "@chakra-ui/react";
 import type { NodeProps } from "@xyflow/react";
 
-import type { FlowNodeData, TriggerNodeConfig } from "../../model/types";
+import { getTypedConfig } from "../../model";
+import type { FlowNodeData } from "../../model/types";
 import { BaseNode } from "../BaseNode";
 
 export const TriggerNode = ({
@@ -9,7 +10,7 @@ export const TriggerNode = ({
   data,
   selected,
 }: NodeProps & { data: FlowNodeData }) => {
-  const config = data.config as TriggerNodeConfig;
+  const config = getTypedConfig("trigger", data.config);
   return (
     <BaseNode id={id} data={data} selected={selected}>
       <Text>{config.triggerType ?? "시작 조건 미설정"}</Text>

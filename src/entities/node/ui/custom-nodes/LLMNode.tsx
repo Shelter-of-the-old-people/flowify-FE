@@ -1,7 +1,8 @@
 import { Text } from "@chakra-ui/react";
 import type { NodeProps } from "@xyflow/react";
 
-import type { FlowNodeData, LLMNodeConfig } from "../../model/types";
+import { getTypedConfig } from "../../model";
+import type { FlowNodeData } from "../../model/types";
 import { BaseNode } from "../BaseNode";
 
 export const LLMNode = ({
@@ -9,7 +10,7 @@ export const LLMNode = ({
   data,
   selected,
 }: NodeProps & { data: FlowNodeData }) => {
-  const config = data.config as LLMNodeConfig;
+  const config = getTypedConfig("llm", data.config);
   return (
     <BaseNode id={id} data={data} selected={selected}>
       <Text>{config.model ?? "모델 미설정"}</Text>

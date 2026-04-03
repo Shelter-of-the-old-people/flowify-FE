@@ -1,7 +1,8 @@
 import { Text } from "@chakra-ui/react";
 import type { NodeProps } from "@xyflow/react";
 
-import type { FlowNodeData, NotificationNodeConfig } from "../../model/types";
+import { getTypedConfig } from "../../model";
+import type { FlowNodeData } from "../../model/types";
 import { BaseNode } from "../BaseNode";
 
 export const NotificationNode = ({
@@ -9,7 +10,7 @@ export const NotificationNode = ({
   data,
   selected,
 }: NodeProps & { data: FlowNodeData }) => {
-  const config = data.config as NotificationNodeConfig;
+  const config = getTypedConfig("notification", data.config);
   return (
     <BaseNode id={id} data={data} selected={selected}>
       <Text>{config.channel ?? "채널 미설정"}</Text>

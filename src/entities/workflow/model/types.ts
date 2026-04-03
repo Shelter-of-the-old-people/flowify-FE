@@ -2,24 +2,41 @@ import type { Edge, Node } from "@xyflow/react";
 
 import type { FlowNodeData } from "@/entities/node";
 
-// ─── 워크플로우 상태 ─────────────────────────────────────────
 export type WorkflowStatus = "active" | "inactive";
 
 export type ExecutionStatus = "idle" | "running" | "success" | "failed";
 
-// ─── 워크플로우 엔티티 ───────────────────────────────────────
+export interface TriggerConfig {
+  type: "manual" | "schedule" | "event";
+  schedule?: string;
+  eventService?: string;
+  eventType?: string;
+}
+
 export interface Workflow {
   id: string;
   name: string;
+  description: string;
   status: WorkflowStatus;
   nodes: Node<FlowNodeData>[];
   edges: Edge[];
+  userId: string;
+  sharedWith: string[];
+  isTemplate: boolean;
+  templateId: string | null;
+  trigger: TriggerConfig | null;
+  isActive: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
-/** 목록 화면용 요약 타입 */
 export type WorkflowSummary = Pick<
   Workflow,
-  "id" | "name" | "status" | "createdAt" | "updatedAt"
+  | "id"
+  | "name"
+  | "description"
+  | "status"
+  | "isActive"
+  | "createdAt"
+  | "updatedAt"
 >;

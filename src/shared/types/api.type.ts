@@ -1,7 +1,14 @@
 export type ApiResponse<T> = {
+  success: boolean;
   data: T;
-  status: string;
-  serverDateTime: string;
+  message: string | null;
   errorCode: string | null;
-  errorMessage: string | null;
+};
+
+export type PageResponse<T> = {
+  content: T[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
 };
