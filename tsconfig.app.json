@@ -25,7 +25,6 @@
     "noUncheckedSideEffectImports": true,
 
     /* alias */
-    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
     }
