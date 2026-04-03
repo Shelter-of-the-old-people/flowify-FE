@@ -201,4 +201,5 @@ export interface FlowNodeData extends Record<string, unknown> {
   inputTypes: import("./dataType").DataType[];
   /** 이 노드가 내보내는 데이터 타입 목록 */
   outputTypes: import("./dataType").DataType[];
+  authWarning?: boolean;
 }
