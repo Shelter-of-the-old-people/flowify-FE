@@ -3,7 +3,7 @@ import { useRef } from "react";
 import type { Node } from "@xyflow/react";
 
 import { NODE_REGISTRY } from "@/entities/node";
-import type { NodeType } from "@/entities/node";
+import type { FlowNodeData, NodeType } from "@/entities/node";
 import { useWorkflowStore } from "@/shared";
 
 const BASE_POSITION = { x: 250, y: 250 };
@@ -32,7 +32,7 @@ export const useAddNode = () => {
       };
     }
 
-    const node: Node = {
+    const node: Node<FlowNodeData> = {
       id: crypto.randomUUID(),
       type,
       position,

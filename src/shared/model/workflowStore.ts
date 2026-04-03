@@ -10,6 +10,8 @@ import { current } from "immer";
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
 
+import type { FlowNodeData } from "@/entities/node";
+
 import { collectDescendantIds } from "../libs/graph";
 
 // ─── 실행 상태 타입 ──────────────────────────────────────────
@@ -18,7 +20,7 @@ export type ExecutionStatus = "idle" | "running" | "success" | "failed";
 // ─── State ───────────────────────────────────────────────────
 interface WorkflowEditorState {
   /** React Flow 노드 목록 */
-  nodes: Node[];
+  nodes: Node<FlowNodeData>[];
   /** React Flow 엣지 목록 */
   edges: Edge[];
   /** 현재 설정 패널이 열린 노드 ID (null이면 패널 닫힘) */
@@ -54,7 +56,7 @@ interface WorkflowEditorActions {
    * — add-node feature에서 NODE_REGISTRY로 완성한 Node 객체를 전달합니다.
    * — 스토어는 도메인 타입을 알 필요 없이 상태만 관리합니다.
    */
-  addNode: (node: Node) => void;
+  addNode: (node: Node<FlowNodeData>) => void;
 
   /** 노드 삭제 (후속 노드 및 관련 엣지도 함께 제거) */
   removeNode: (id: string) => void;
@@ -64,7 +66,7 @@ interface WorkflowEditorActions {
    * — configure-node feature에서 타입별 config를 전달합니다.
    * — isConfigured: true를 자동으로 주입합니다.
    */
-  updateNodeConfig: (id: string, config: Record<string, unknown>) => void;
+  updateNodeConfig: (id: string, config: FlowNodeData["config"]) => void;
 
   /** 설정 패널 열기 */
   openPanel: (nodeId: string) => void;
@@ -124,7 +126,10 @@ export const useWorkflowStore = create<
     // immer draft를 React Flow 유틸에 넘기기 전 current()로 plain 객체 변환
     onNodesChange: (changes) =>
       set((state) => {
-        state.nodes = applyNodeChanges(changes, current(state.nodes));
+        state.nodes = applyNodeChanges<Node<FlowNodeData>>(
+          changes as NodeChange<Node<FlowNodeData>>[],
+          current(state.nodes),
+        );
       }),
 
     onEdgesChange: (changes) =>
