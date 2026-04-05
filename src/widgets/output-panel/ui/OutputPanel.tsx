@@ -146,6 +146,12 @@ export const OutputPanel = () => {
     }
   };
 
+  const finishWizard = () => {
+    setWizardConfigPreset(null);
+    setWizardStep(null);
+    setWizardSourcePlaceholder(null);
+  };
+
   const handleRequirementSelect = (req: ServiceRequirement) => {
     if (!activePanelNodeId || !activeNode) return;
 
@@ -160,7 +166,7 @@ export const OutputPanel = () => {
       ...activeNode.data.config,
       ...req.configPreset,
     });
-    setWizardStep(null);
+    finishWizard();
   };
 
   const handleAuth = () => {
@@ -174,8 +180,7 @@ export const OutputPanel = () => {
       });
     }
 
-    setWizardConfigPreset(null);
-    setWizardStep(null);
+    finishWizard();
   };
 
   const handleBackToService = () => {
