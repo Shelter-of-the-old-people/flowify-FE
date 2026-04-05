@@ -173,7 +173,6 @@ export const useWorkflowStore = create<
 
         if (state.endNodeId && removeTargets.has(state.endNodeId)) {
           state.endNodeId = null;
-          state.creationMethod = null;
         }
       }),
 

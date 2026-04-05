@@ -184,7 +184,8 @@ export const Canvas = () => {
       });
     }
 
-    if (!endNodeId) {
+    if (!endNodeId && !creationMethod) {
+      // 도착 노드 미설정 & 수동 모드 아님 → 시작 노드 옆에 도착 placeholder
       const startNode = nodes.find((n) => n.id === startNodeId);
       const anchorX = startNode
         ? startNode.position.x + getNodeWidth(startNode) + NODE_GAP_X
@@ -208,8 +209,8 @@ export const Canvas = () => {
       });
     }
 
-    // 분기 2, 3: 둘 다 설정됨
-    if (startNodeId && endNodeId) {
+    // 분기 2: 둘 다 설정됨 + 생성 방식 미결정
+    if (startNodeId && endNodeId && !creationMethod) {
       const startNode = nodes.find((n) => n.id === startNodeId);
       const startX = startNode?.position.x ?? 0;
       const startWidth = startNode
@@ -219,73 +220,75 @@ export const Canvas = () => {
         ? getNodeCenterY(startNode)
         : DEFAULT_ROW_CENTER_Y;
 
-      if (!creationMethod) {
-        // 분기 2: 생성 방식 미결정 → CreationMethodNode 표시
-        // 도착 노드를 오른쪽으로 밀어 겹침 방지
-        const endNodeIndex = result.findIndex((n) => n.id === endNodeId);
-        if (endNodeIndex !== -1) {
-          result[endNodeIndex] = {
-            ...result[endNodeIndex],
-            position: {
-              x:
-                startX +
-                startWidth +
-                NODE_GAP_X +
-                CREATION_METHOD_NODE_WIDTH +
-                NODE_GAP_X,
-              y: result[endNodeIndex].position.y,
-            },
-          };
+      // 도착 노드를 오른쪽으로 밀어 겹침 방지
+      const endNodeIndex = result.findIndex((n) => n.id === endNodeId);
+      if (endNodeIndex !== -1) {
+        result[endNodeIndex] = {
+          ...result[endNodeIndex],
+          position: {
+            x:
+              startX +
+              startWidth +
+              NODE_GAP_X +
+              CREATION_METHOD_NODE_WIDTH +
+              NODE_GAP_X,
+            y: result[endNodeIndex].position.y,
+          },
+        };
+      }
+
+      result.push({
+        id: "placeholder-creation-method",
+        type: "creation-method",
+        position: {
+          x: startX + startWidth + NODE_GAP_X,
+          y: getTopYFromCenter(startCenterY, CREATION_METHOD_NODE_HEIGHT),
+        },
+        data: { onSelectManual: handleSelectManual },
+        initialWidth: CREATION_METHOD_NODE_WIDTH,
+        initialHeight: CREATION_METHOD_NODE_HEIGHT,
+        selectable: false,
+        draggable: false,
+      });
+    }
+
+    // 분기 3: 수동 생성 모드
+    if (startNodeId && creationMethod === "manual") {
+      // endNode가 있으면 제외하고 leaf 계산
+      const nodeIds = nodes.map((n) => n.id).filter((id) => id !== endNodeId);
+      const leafIds = getLeafNodeIds(nodeIds, edges);
+
+      let maxPlaceholderX = 0;
+
+      for (const leafId of leafIds) {
+        const leafNode = nodes.find((n) => n.id === leafId);
+        if (!leafNode) continue;
+
+        const placeholderX =
+          leafNode.position.x + getNodeWidth(leafNode) + NODE_GAP_X;
+        if (placeholderX > maxPlaceholderX) {
+          maxPlaceholderX = placeholderX;
         }
 
         result.push({
-          id: "placeholder-creation-method",
-          type: "creation-method",
+          id: `placeholder-${leafId}`,
+          type: "placeholder",
           position: {
-            x: startX + startWidth + NODE_GAP_X,
-            y: getTopYFromCenter(startCenterY, CREATION_METHOD_NODE_HEIGHT),
+            x: placeholderX,
+            y: getTopYFromCenter(
+              getNodeCenterY(leafNode),
+              PLACEHOLDER_NODE_HEIGHT,
+            ),
           },
-          data: { onSelectManual: handleSelectManual },
-          initialWidth: CREATION_METHOD_NODE_WIDTH,
-          initialHeight: CREATION_METHOD_NODE_HEIGHT,
+          data: { label: "다음" },
+          initialWidth: PLACEHOLDER_NODE_WIDTH,
+          initialHeight: PLACEHOLDER_NODE_HEIGHT,
           selectable: false,
           draggable: false,
         });
-      } else if (creationMethod === "manual") {
-        // 분기 3: 수동 생성 → endNode 제외 leaf 뒤에 "다음" placeholder
-        const nodeIds = nodes.map((n) => n.id).filter((id) => id !== endNodeId);
-        const leafIds = getLeafNodeIds(nodeIds, edges);
+      }
 
-        let maxPlaceholderX = 0;
-
-        for (const leafId of leafIds) {
-          const leafNode = nodes.find((n) => n.id === leafId);
-          if (!leafNode) continue;
-
-          const placeholderX =
-            leafNode.position.x + getNodeWidth(leafNode) + NODE_GAP_X;
-          if (placeholderX > maxPlaceholderX) {
-            maxPlaceholderX = placeholderX;
-          }
-
-          result.push({
-            id: `placeholder-${leafId}`,
-            type: "placeholder",
-            position: {
-              x: placeholderX,
-              y: getTopYFromCenter(
-                getNodeCenterY(leafNode),
-                PLACEHOLDER_NODE_HEIGHT,
-              ),
-            },
-            data: { label: "다음" },
-            initialWidth: PLACEHOLDER_NODE_WIDTH,
-            initialHeight: PLACEHOLDER_NODE_HEIGHT,
-            selectable: false,
-            draggable: false,
-          });
-        }
-
+      if (endNodeId) {
         // 도착 노드를 "다음" placeholder 뒤로 밀기
         const endNodeIndex = result.findIndex((n) => n.id === endNodeId);
         if (endNodeIndex !== -1) {
@@ -297,6 +300,32 @@ export const Canvas = () => {
             },
           };
         }
+      } else {
+        // 도착 노드 삭제됨 → 체인 끝에 도착 placeholder 표시
+        const lastLeaf =
+          leafIds.length > 0 ? nodes.find((n) => n.id === leafIds[0]) : null;
+        const placeholderEndX =
+          maxPlaceholderX + PLACEHOLDER_NODE_WIDTH + NODE_GAP_X;
+        const placeholderEndCenterY = lastLeaf
+          ? getNodeCenterY(lastLeaf)
+          : DEFAULT_ROW_CENTER_Y;
+
+        result.push({
+          id: "placeholder-end",
+          type: "placeholder",
+          position: {
+            x: placeholderEndX,
+            y: getTopYFromCenter(
+              placeholderEndCenterY,
+              PLACEHOLDER_NODE_HEIGHT,
+            ),
+          },
+          data: { label: "도착" },
+          initialWidth: PLACEHOLDER_NODE_WIDTH,
+          initialHeight: PLACEHOLDER_NODE_HEIGHT,
+          selectable: false,
+          draggable: false,
+        });
       }
     }
 
