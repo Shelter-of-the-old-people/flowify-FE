@@ -16,6 +16,12 @@ import { collectDescendantIds } from "../libs/graph";
 
 // ─── 실행 상태 타입 ──────────────────────────────────────────
 export type ExecutionStatus = "idle" | "running" | "success" | "failed";
+export type WizardStep = "requirement" | "auth" | null;
+
+type PlaceholderInfo = {
+  id: string;
+  position: { x: number; y: number };
+};
 
 // ─── State ───────────────────────────────────────────────────
 interface WorkflowEditorState {
@@ -32,10 +38,13 @@ interface WorkflowEditorState {
   /** 생성 방식 (null이면 미결정) */
   creationMethod: "manual" | null;
   /** 현재 클릭된 placeholder 정보 (null이면 선택 패널 닫힘) */
-  activePlaceholder: {
-    id: string;
-    position: { x: number; y: number };
-  } | null;
+  activePlaceholder: PlaceholderInfo | null;
+  /** 시작/도착 노드 위자드 단계 */
+  wizardStep: WizardStep;
+  /** 위자드에서 고른 요구사항 preset 임시 저장 */
+  wizardConfigPreset: Record<string, unknown> | null;
+  /** 위자드 시작 시점 placeholder 정보 보존 */
+  wizardSourcePlaceholder: PlaceholderInfo | null;
   /** 현재 편집 중인 워크플로우 ID */
   workflowId: string;
   /** 워크플로우 이름 */
@@ -93,9 +102,13 @@ interface WorkflowEditorActions {
   setCreationMethod: (method: "manual" | null) => void;
 
   /** 활성 placeholder 설정 (서비스 선택 패널 열기/닫기) */
-  setActivePlaceholder: (
-    placeholder: { id: string; position: { x: number; y: number } } | null,
-  ) => void;
+  setActivePlaceholder: (placeholder: PlaceholderInfo | null) => void;
+  /** 위자드 단계 설정 */
+  setWizardStep: (step: WizardStep) => void;
+  /** 위자드 config preset 임시 저장 */
+  setWizardConfigPreset: (preset: Record<string, unknown> | null) => void;
+  /** 위자드 시작 시점 placeholder 정보 저장 */
+  setWizardSourcePlaceholder: (placeholder: PlaceholderInfo | null) => void;
 
   /** 에디터 상태 초기화 (페이지 이탈 시 호출) */
   resetEditor: () => void;
@@ -110,6 +123,9 @@ const initialState: WorkflowEditorState = {
   endNodeId: null,
   creationMethod: null,
   activePlaceholder: null,
+  wizardStep: null,
+  wizardConfigPreset: null,
+  wizardSourcePlaceholder: null,
   workflowId: "",
   workflowName: "",
   executionStatus: "idle",
@@ -164,6 +180,12 @@ export const useWorkflowStore = create<
           removeTargets.has(state.activePanelNodeId)
         ) {
           state.activePanelNodeId = null;
+
+          if (state.wizardStep !== null) {
+            state.wizardStep = null;
+            state.wizardConfigPreset = null;
+            state.wizardSourcePlaceholder = null;
+          }
         }
 
         if (state.startNodeId && removeTargets.has(state.startNodeId)) {
@@ -190,6 +212,11 @@ export const useWorkflowStore = create<
     // ── 패널 조작 ─────────────────────────────────────────
     openPanel: (nodeId) =>
       set((state) => {
+        if (state.wizardStep !== null && state.activePanelNodeId !== nodeId) {
+          state.wizardStep = null;
+          state.wizardConfigPreset = null;
+          state.wizardSourcePlaceholder = null;
+        }
         state.activePanelNodeId = nodeId;
       }),
 
@@ -217,6 +244,21 @@ export const useWorkflowStore = create<
     setActivePlaceholder: (placeholder) =>
       set((state) => {
         state.activePlaceholder = placeholder;
+      }),
+
+    setWizardStep: (step) =>
+      set((state) => {
+        state.wizardStep = step;
+      }),
+
+    setWizardConfigPreset: (preset) =>
+      set((state) => {
+        state.wizardConfigPreset = preset;
+      }),
+
+    setWizardSourcePlaceholder: (placeholder) =>
+      set((state) => {
+        state.wizardSourcePlaceholder = placeholder;
       }),
 
     // ── 메타 / 실행 상태 ──────────────────────────────────
