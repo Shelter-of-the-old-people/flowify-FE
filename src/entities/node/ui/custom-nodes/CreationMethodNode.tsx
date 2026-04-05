@@ -1,7 +1,6 @@
 import { MdAdd, MdAutoAwesome } from "react-icons/md";
 
 import { Box, HStack, Icon, Text, VStack } from "@chakra-ui/react";
-import { Handle, Position } from "@xyflow/react";
 import type { Node, NodeProps } from "@xyflow/react";
 
 type CreationMethodNodeData = {
@@ -13,8 +12,6 @@ export const CreationMethodNode = ({
 }: NodeProps<Node<CreationMethodNodeData>>) => {
   return (
     <Box position="relative">
-      <Handle type="target" position={Position.Left} />
-
       <Text
         position="absolute"
         top="-32px"
@@ -78,8 +75,6 @@ export const CreationMethodNode = ({
           </Text>
         </VStack>
       </HStack>
-
-      <Handle type="source" position={Position.Right} />
     </Box>
   );
 };

@@ -1,7 +1,6 @@
 import { MdAdd } from "react-icons/md";
 
 import { Box, Icon, Text, VStack } from "@chakra-ui/react";
-import { Handle, Position } from "@xyflow/react";
 import type { Node, NodeProps } from "@xyflow/react";
 
 type PlaceholderNodeData = {
@@ -13,8 +12,6 @@ export const PlaceholderNode = ({
 }: NodeProps<Node<PlaceholderNodeData>>) => {
   return (
     <VStack gap="10px" cursor="pointer">
-      <Handle type="target" position={Position.Left} />
-
       <Box
         w="100px"
         h="100px"

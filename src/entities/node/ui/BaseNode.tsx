@@ -4,6 +4,8 @@ import { MdClose } from "react-icons/md";
 import { Box, Icon, IconButton, Text } from "@chakra-ui/react";
 import { Handle, Position } from "@xyflow/react";
 
+// source Handle만 사용 — 사용자가 직접 노드를 연결하지 않으므로 target Handle 제거
+
 import { useWorkflowStore } from "@/shared";
 
 import { getNodePresentation } from "../model";
@@ -65,8 +67,6 @@ export const BaseNode = ({ id, data, selected, children }: BaseNodeProps) => {
       cursor="pointer"
       onClick={handleOpenPanel}
     >
-      <Handle type="target" position={Position.Left} />
-
       <Text fontSize="xs" fontWeight="medium" color="text.secondary">
         {presentation.roleLabel}
       </Text>
