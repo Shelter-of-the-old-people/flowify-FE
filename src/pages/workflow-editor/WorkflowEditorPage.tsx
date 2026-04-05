@@ -5,7 +5,7 @@ import { useNavigate, useParams } from "react-router";
 import { Box, Button, Icon, Spinner, Text } from "@chakra-ui/react";
 import { ReactFlowProvider } from "@xyflow/react";
 
-import { AddNodeButton, ServiceSelectionPanel } from "@/features/add-node";
+import { ServiceSelectionPanel } from "@/features/add-node";
 import { ROUTE_PATHS, useWorkflowStore } from "@/shared";
 import { Canvas, EditorToolbar, InputPanel, OutputPanel } from "@/widgets";
 
@@ -89,9 +89,6 @@ const WorkflowEditorInner = () => {
         <ServiceSelectionPanel />
         <InputPanel />
         <OutputPanel />
-        <Box position="absolute" bottom={4} left={4} zIndex={10}>
-          <AddNodeButton />
-        </Box>
       </Box>
     </Box>
   );
