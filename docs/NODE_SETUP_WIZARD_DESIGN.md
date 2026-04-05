@@ -161,6 +161,15 @@ interface WorkflowEditorState {
    * 인증 완료 후 노드 config에 반영된다.
    */
   wizardConfigPreset: Record<string, unknown> | null;
+
+  /**
+   * 위자드 시작 시의 placeholder 정보 보존.
+   * 요구사항 → 서비스 선택 뒤로가기 시 ServiceSelectionPanel 복원에 사용된다.
+   */
+  wizardSourcePlaceholder: {
+    id: string;
+    position: { x: number; y: number };
+  } | null;
 }
 ```
 
@@ -176,6 +185,11 @@ interface WorkflowEditorActions {
 
   /** 위자드 configPreset 임시 저장 */
   setWizardConfigPreset: (preset: Record<string, unknown> | null) => void;
+
+  /** 위자드 시작 시 placeholder 정보 보존 */
+  setWizardSourcePlaceholder: (
+    placeholder: { id: string; position: { x: number; y: number } } | null,
+  ) => void;
 }
 ```
 
@@ -186,6 +200,7 @@ const initialState: WorkflowEditorState = {
   // ... 기존 ...
   wizardStep: null,
   wizardConfigPreset: null,
+  wizardSourcePlaceholder: null,
 };
 ```
 
@@ -200,6 +215,11 @@ setWizardStep: (step) =>
 setWizardConfigPreset: (preset) =>
   set((state) => {
     state.wizardConfigPreset = preset;
+  }),
+
+setWizardSourcePlaceholder: (placeholder) =>
+  set((state) => {
+    state.wizardSourcePlaceholder = placeholder;
   }),
 ```
 
@@ -311,6 +331,8 @@ const handleServiceSelect = (service: ServiceOption) => {
 
   const reqGroup = SERVICE_REQUIREMENTS[selectedMeta.type];
   if (reqGroup) {
+    // 뒤로가기 복원용 placeholder 저장
+    setWizardSourcePlaceholder(activePlaceholder);
     // OutputPanel에서 요구사항 선택을 진행
     openPanel(nodeId);
     setWizardStep("requirement");
