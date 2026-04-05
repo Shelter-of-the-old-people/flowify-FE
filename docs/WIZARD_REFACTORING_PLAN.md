@@ -133,6 +133,8 @@ import type { ServiceRequirement } from "@/features/add-node";
 | D | 6.4 WizardAuthContent | `{ onAuth }` props | `{ onAuth, onBack }` | `onBack` prop 추가 |
 | E | 6.5 handleRequirementSelect | 인증 불필요 시 `setWizardStep(null)` 단독 호출 | `finishWizard()` 헬퍼로 3필드 일괄 정리 | `finishWizard` 패턴 반영 |
 | F | 6.5 handleAuth | 개별 `setWizardConfigPreset(null)` + `setWizardStep(null)` | `finishWizard()` 호출 | 동일하게 `finishWizard` 반영 |
+| G | 4.5 resetEditor | `wizardStep`, `wizardConfigPreset`만 언급 | 3필드 모두 `initialState`로 초기화 | `wizardSourcePlaceholder` 추가 |
+| H | 7.1 상태 전이 다이어그램 | 인증 완료/불필요 시 개별 set 호출 표기 | `finishWizard()` 호출 | 다이어그램 내 종료 흐름을 `finishWizard()`로 통일 |
 
 ### 2.2 각 항목 상세
 

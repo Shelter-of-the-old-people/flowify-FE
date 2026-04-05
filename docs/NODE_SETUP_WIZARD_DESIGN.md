@@ -225,7 +225,7 @@ setWizardSourcePlaceholder: (placeholder) =>
 
 ### 4.5 resetEditor 변경
 
-`resetEditor`는 이미 `initialState`를 스프레드하므로, 초기 상태에 `wizardStep: null`, `wizardConfigPreset: null`이 포함되면 자동으로 초기화된다. 추가 변경 불필요.
+`resetEditor`는 이미 `initialState`를 스프레드하므로, 초기 상태에 `wizardStep: null`, `wizardConfigPreset: null`, `wizardSourcePlaceholder: null`이 포함되면 자동으로 초기화된다. 추가 변경 불필요.
 
 ---
 
@@ -633,8 +633,7 @@ const requirementGroup = activeNode
         │       │
         │       │ 인증 완료
         │       │ → updateNodeConfig(nodeId, merged config)
-        │       │ → setWizardConfigPreset(null)
-        │       │ → setWizardStep(null)
+        │       │ → finishWizard()  // wizardStep, wizardConfigPreset, wizardSourcePlaceholder → null
         │       ▼
         │   ┌──────────────────────────────────────────────────────┐
         │   │ 일반 패널 모드 (OutputPanel — PanelRenderer)          │
@@ -644,7 +643,7 @@ const requirementGroup = activeNode
         │
         └── 인증 불필요
             → updateNodeConfig(nodeId, req.configPreset)
-            → setWizardStep(null)
+            → finishWizard()
             ▼
           ┌────────────────────────────────────────────────────────┐
           │ 일반 패널 모드 (OutputPanel — PanelRenderer)            │
