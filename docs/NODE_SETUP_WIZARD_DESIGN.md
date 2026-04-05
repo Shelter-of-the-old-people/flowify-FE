@@ -78,10 +78,15 @@
 ┌─────────────────────────────────────────────────┐
 │  Step 1: 카테고리 선택 (ServiceSelectionPanel)  │
 │  - 캔버스 중앙 오버레이                          │
-│  - 서비스 개념 없는 노드 → 바로 배치 후 종료      │
-│  - 서비스 있는 카테고리 → Step 2로               │
+│  - 분기:                                        │
+│    A) 서비스 있는 카테고리 → Step 2로             │
+│    B) 서비스 없음 + 요구사항 있음 (web-scraping)  │
+│       → 바로 배치 → Step 3 (OutputPanel)         │
+│    C) 서비스 없음 + 요구사항 없음 (processing 등) │
+│       → 바로 배치 후 종료                        │
 └─────────────────────────────────────────────────┘
     │
+    ├── A) 서비스 있는 카테고리
     ▼
 ┌─────────────────────────────────────────────────┐
 │  Step 2: 서비스 선택 (ServiceSelectionPanel)     │
@@ -111,11 +116,25 @@
 └─────────────────────────────────────────────────┘
 ```
 
-### 3.2 중간 노드 설정 흐름 (참고)
+### 3.2 위자드 중 InputPanel 숨김
+
+`InputPanel`과 `OutputPanel`은 둘 다 `activePanelNodeId`를 보고 열린다. 위자드에서 `openPanel(nodeId)`를 호출하면 `InputPanel`도 함께 열리는 문제가 발생한다.
+
+시작/도착 노드 위자드에서 "들어오는 데이터"는 의미가 없으므로, `InputPanel`은 **위자드 비활성 상태에서만 표시**한다.
+
+```typescript
+// InputPanel 내부
+const wizardStep = useWorkflowStore((s) => s.wizardStep);
+const isOpen = Boolean(activePanelNodeId) && wizardStep === null;
+```
+
+이 조건으로 위자드 진행 중에는 OutputPanel만 열리고, 위자드 완료(`wizardStep === null`) 후 중간 노드 클릭 시에는 양쪽 패널이 정상적으로 동시에 열린다.
+
+### 3.3 중간 노드 설정 흐름 (참고)
 
 중간 노드 클릭 시에는 위자드가 아닌 기존 흐름을 따른다:
-- 왼쪽: `InputPanel` ("들어오는 데이터")
-- 오른쪽: `OutputPanel` ("설정" — `PanelRenderer`)
+- 왼쪽: `InputPanel` ("들어오는 데이터") — `wizardStep === null`이므로 표시됨
+- 오른쪽: `OutputPanel` ("설정" — `PanelRenderer`) — `wizardStep === null`이므로 기존 동작
 - `wizardStep`은 `null`이므로 기존 동작에 영향 없음
 
 ---
@@ -225,7 +244,49 @@ type WizardStep = "category" | "service" | "requirement" | "auth";
 type WizardStep = "category" | "service";
 ```
 
-### 5.4 handleServiceSelect 변경
+### 5.4 handleCategorySelect 변경 — 서비스 없는 노드의 요구사항 분기
+
+현재 구현은 서비스가 없는 노드를 무조건 "바로 배치 후 종료"로 처리하지만, `web-scraping`처럼 서비스는 없으면서 요구사항은 있는 노드가 존재한다. "서비스 없음"과 "요구사항 없음"을 분리해야 한다.
+
+```typescript
+// 변경 후: 서비스 없는 노드도 요구사항 유무를 확인
+const handleCategorySelect = (meta: NodeMeta) => {
+  const serviceGroup = CATEGORY_SERVICE_MAP[meta.type];
+
+  if (serviceGroup && serviceGroup.services.length > 0) {
+    // A) 서비스 있는 카테고리 → Step 2 (서비스 선택)
+    setSelectedMeta(meta);
+    setStep("service");
+    return;
+  }
+
+  // 서비스 없는 노드 → 바로 배치
+  if (!activePlaceholder) return;
+  const nodeId = addNode(meta.type, { position: activePlaceholder.position });
+
+  const sourceNodeId = parseSourceNodeId(activePlaceholder.id);
+  if (activePlaceholder.id === "placeholder-start") setStartNodeId(nodeId);
+  else if (activePlaceholder.id === "placeholder-end") setEndNodeId(nodeId);
+  if (sourceNodeId) {
+    onConnect({ source: sourceNodeId, target: nodeId, sourceHandle: null, targetHandle: null });
+  }
+
+  // 요구사항 확인: 서비스 없어도 요구사항이 있을 수 있음 (예: web-scraping)
+  const reqGroup = SERVICE_REQUIREMENTS[meta.type];
+  if (reqGroup) {
+    // B) 서비스 없음 + 요구사항 있음 → OutputPanel로 전환
+    setWizardSourcePlaceholder(activePlaceholder);
+    openPanel(nodeId);
+    setWizardStep("requirement");
+    setActivePlaceholder(null);
+  } else {
+    // C) 서비스 없음 + 요구사항 없음 → 종료
+    resetWizard();
+  }
+};
+```
+
+### 5.5 handleServiceSelect 변경
 
 ```typescript
 // 변경 전: 서비스 선택 후 자체적으로 requirement 단계로 전환
@@ -438,9 +499,10 @@ const handleAuth = () => {
 ```typescript
 const handleClose = () => {
   if (wizardStep !== null) {
-    // 위자드 진행 중 닫기 → 위자드 상태 초기화
+    // 위자드 진행 중 닫기 → 위자드 상태 전체 초기화
     setWizardStep(null);
     setWizardConfigPreset(null);
+    setWizardSourcePlaceholder(null);
   }
   closePanel();
 };
@@ -674,7 +736,7 @@ openPanel: (nodeId) =>
 | 트리거 | 조건 | 정리 대상 |
 |--------|------|-----------|
 | `removeNode(id)` | 삭제 대상이 `activePanelNodeId`이고 `wizardStep !== null` | `wizardStep`, `wizardConfigPreset`, `wizardSourcePlaceholder` → `null` |
-| `closePanel()` (OutputPanel 닫기 버튼) | `wizardStep !== null` | `wizardStep`, `wizardConfigPreset` → `null` (handleClose에서 처리) |
+| `closePanel()` (OutputPanel 닫기 버튼) | `wizardStep !== null` | `wizardStep`, `wizardConfigPreset`, `wizardSourcePlaceholder` → `null` (handleClose에서 처리) |
 | `openPanel(nodeId)` | `wizardStep !== null`이고 `nodeId !== activePanelNodeId` | `wizardStep`, `wizardConfigPreset`, `wizardSourcePlaceholder` → `null` |
 | `resetEditor()` | 항상 | `initialState` 스프레드로 자동 정리 |
 
@@ -701,9 +763,17 @@ openPanel: (nodeId) =>
 | 제거 | `finalizeConfig` 콜백 |
 | 변경 | `WizardStep` 타입 → `"category" \| "service"` |
 | 변경 | `handleServiceSelect` → `openPanel` + `setWizardStep` 호출 후 `resetWizard` |
+| 변경 | `handleCategorySelect` → 서비스 없는 노드에서도 요구사항 유무 분기 추가 |
 | 추가 | `openPanel`, `setWizardStep`, `setWizardSourcePlaceholder` store 구독 |
 
-### 9.3 `src/widgets/output-panel/ui/OutputPanel.tsx`
+### 9.3 `src/widgets/input-panel/ui/InputPanel.tsx`
+
+| 변경 | 내용 |
+|------|------|
+| 추가 | `wizardStep` store 구독 |
+| 변경 | `isOpen` 조건에 `wizardStep === null` 추가 — 위자드 중 숨김 |
+
+### 9.4 `src/widgets/output-panel/ui/OutputPanel.tsx`
 
 | 변경 | 내용 |
 |------|------|
@@ -716,20 +786,19 @@ openPanel: (nodeId) =>
 | 추가 | `handleRequirementSelect`, `handleAuth`, `handleBackToService`, `handleBackToRequirement` 핸들러 |
 | 추가 | `CATEGORY_SERVICE_MAP`, `SERVICE_REQUIREMENTS` import |
 
-### 9.4 `src/features/add-node/ui/index.ts`
+### 9.5 `src/features/add-node/ui/index.ts`
 
 변경 없음.
 
-### 9.5 `src/features/add-node/model/index.ts`
+### 9.6 `src/features/add-node/model/index.ts`
 
 변경 없음. `serviceMap`, `serviceRequirements`는 이미 export되어 있다.
 
-### 9.6 변경하지 않는 파일
+### 9.7 변경하지 않는 파일
 
 | 파일 | 이유 |
 |------|------|
 | `Canvas.tsx` | placeholder 로직 변경 없음 |
-| `InputPanel.tsx` | 중간 노드 전용, 위자드와 무관 |
 | `PanelRenderer.tsx` | 기존 동작 유지 |
 | `WorkflowEditorPage.tsx` | 레이아웃 구조 변경 없음 |
 | `serviceMap.ts` | 데이터 변경 없음 |
