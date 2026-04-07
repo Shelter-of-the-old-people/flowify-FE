@@ -1,17 +1,11 @@
-import { useState } from "react";
 import { MdCancel } from "react-icons/md";
 
 import { Box, Icon, Text } from "@chakra-ui/react";
 
-import {
-  CATEGORY_SERVICE_MAP,
-  SERVICE_REQUIREMENTS,
-} from "@/features/add-node";
+import { SERVICE_REQUIREMENTS } from "@/features/add-node";
 import type { ServiceRequirement } from "@/features/add-node";
 import { PanelRenderer } from "@/features/configure-node";
 import { useWorkflowStore } from "@/shared";
-
-type PanelStep = "requirement" | "auth" | null;
 
 const RequirementSelector = ({
   requirements,
@@ -48,50 +42,6 @@ const RequirementSelector = ({
   </Box>
 );
 
-const AuthPrompt = ({
-  onAuth,
-  onBack,
-}: {
-  onAuth: () => void;
-  onBack: () => void;
-}) => (
-  <Box p={6}>
-    <Box
-      mb={4}
-      cursor="pointer"
-      display="inline-flex"
-      alignItems="center"
-      onClick={onBack}
-    >
-      <Text fontSize="sm" color="text.secondary">
-        뒤로
-      </Text>
-    </Box>
-
-    <Text fontSize="md" mb={6}>
-      인증은 처음 한 번만 진행하면 됩니다.
-    </Text>
-
-    <Box
-      border="1px solid"
-      borderColor="gray.200"
-      display="flex"
-      alignItems="center"
-      justifyContent="center"
-      px={16}
-      py={3}
-      cursor="pointer"
-      _hover={{ bg: "gray.50" }}
-      transition="background 150ms ease"
-      onClick={onAuth}
-    >
-      <Text fontSize="md" fontWeight="semibold">
-        계정 인증하기
-      </Text>
-    </Box>
-  </Box>
-);
-
 export const OutputPanel = () => {
   const activePanelNodeId = useWorkflowStore(
     (state) => state.activePanelNodeId,
@@ -103,63 +53,24 @@ export const OutputPanel = () => {
   const closePanel = useWorkflowStore((state) => state.closePanel);
   const updateNodeConfig = useWorkflowStore((state) => state.updateNodeConfig);
 
-  const [pendingAuth, setPendingAuth] = useState<{
-    nodeId: string;
-    preset: Record<string, unknown>;
-  } | null>(null);
-
   const isOpen = Boolean(activePanelNodeId);
   const requirementGroup = activeNode
     ? SERVICE_REQUIREMENTS[activeNode.data.type]
     : undefined;
-  const panelStep: PanelStep =
-    pendingAuth?.nodeId === activePanelNodeId
-      ? "auth"
-      : activeNode && !activeNode.data.config.isConfigured && requirementGroup
-        ? "requirement"
-        : null;
+  const isConfigured = activeNode?.data.config.isConfigured ?? false;
 
   const getHeaderTitle = () => {
-    switch (panelStep) {
-      case "requirement":
-        return requirementGroup?.title ?? "설정";
-      case "auth":
-        return "인증";
-      default:
-        return "설정";
+    if (!isConfigured && requirementGroup) {
+      return requirementGroup.title;
     }
-  };
 
-  const resetLocalWizard = () => {
-    setPendingAuth(null);
+    return "설정";
   };
 
   const handleRequirementSelect = (requirement: ServiceRequirement) => {
-    if (!activePanelNodeId || !activeNode) return;
-
-    const serviceGroup = CATEGORY_SERVICE_MAP[activeNode.data.type];
-    if (serviceGroup?.requiresAuth) {
-      setPendingAuth({
-        nodeId: activePanelNodeId,
-        preset: requirement.configPreset,
-      });
-      return;
-    }
+    if (!activePanelNodeId) return;
 
     updateNodeConfig(activePanelNodeId, requirement.configPreset);
-    resetLocalWizard();
-  };
-
-  const handleAuth = () => {
-    if (!activePanelNodeId || pendingAuth?.nodeId !== activePanelNodeId) return;
-
-    updateNodeConfig(activePanelNodeId, pendingAuth.preset);
-    resetLocalWizard();
-  };
-
-  const handleClose = () => {
-    resetLocalWizard();
-    closePanel();
   };
 
   return (
@@ -195,24 +106,20 @@ export const OutputPanel = () => {
         <Text fontSize="xl" fontWeight="medium" letterSpacing="-0.4px">
           {getHeaderTitle()}
         </Text>
-        <Box cursor="pointer" onClick={handleClose}>
+        <Box cursor="pointer" onClick={closePanel}>
           <Icon as={MdCancel} boxSize={6} color="gray.600" />
         </Box>
       </Box>
 
       <Box flex={1} overflow="auto">
-        {panelStep === "requirement" && requirementGroup ? (
+        {!isConfigured && requirementGroup ? (
           <RequirementSelector
             requirements={requirementGroup.requirements}
             onSelect={handleRequirementSelect}
           />
-        ) : null}
-
-        {panelStep === "auth" ? (
-          <AuthPrompt onAuth={handleAuth} onBack={resetLocalWizard} />
-        ) : null}
-
-        {panelStep === null ? <PanelRenderer /> : null}
+        ) : (
+          <PanelRenderer />
+        )}
       </Box>
     </Box>
   );

@@ -13,6 +13,7 @@ export const InputPanel = () => {
   const activePlaceholder = useWorkflowStore(
     (state) => state.activePlaceholder,
   );
+  const startNodeId = useWorkflowStore((state) => state.startNodeId);
   const nodes = useWorkflowStore((state) => state.nodes);
   const edges = useWorkflowStore((state) => state.edges);
   const closePanel = useWorkflowStore((state) => state.closePanel);
@@ -29,6 +30,7 @@ export const InputPanel = () => {
   const sourceNode = sourceNodes[0] ?? null;
   const sourceData: FlowNodeData | null = sourceNode?.data ?? null;
   const sourceMeta = sourceData ? NODE_REGISTRY[sourceData.type] : null;
+  const isStartNode = activePanelNodeId === startNodeId;
 
   return (
     <Box
@@ -98,6 +100,15 @@ export const InputPanel = () => {
                 데이터 미리보기는 백엔드 연동 후 제공될 예정입니다.
               </Text>
             </Box>
+          </Box>
+        ) : isStartNode ? (
+          <Box>
+            <Text fontSize="md" fontWeight="medium">
+              시작점
+            </Text>
+            <Text fontSize="sm" color="text.secondary" mt={2}>
+              워크플로우의 입력 데이터가 이 지점에서 들어옵니다.
+            </Text>
           </Box>
         ) : (
           <Text fontSize="sm" color="text.secondary">
