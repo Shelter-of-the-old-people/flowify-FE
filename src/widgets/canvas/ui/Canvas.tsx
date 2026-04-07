@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import type { MouseEvent } from "react";
 
 import {
@@ -9,7 +9,12 @@ import {
   ReactFlow,
   useReactFlow,
 } from "@xyflow/react";
-import type { Node, NodeChange, NodeTypes } from "@xyflow/react";
+import type {
+  DefaultEdgeOptions,
+  Node,
+  NodeChange,
+  NodeTypes,
+} from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
 import {
@@ -80,18 +85,38 @@ const nodeTypes = {
   "creation-method": CreationMethodNode,
 } satisfies Record<CanvasNodeType, NodeTypes[string]>;
 
+const defaultEdgeOptions: DefaultEdgeOptions = {
+  type: "smoothstep",
+  animated: false,
+  style: {
+    stroke: "#94a3b8",
+    strokeWidth: 2,
+  },
+};
+
 export const Canvas = () => {
-  const nodes = useWorkflowStore((s) => s.nodes);
-  const edges = useWorkflowStore((s) => s.edges);
-  const onNodesChange = useWorkflowStore((s) => s.onNodesChange);
-  const onEdgesChange = useWorkflowStore((s) => s.onEdgesChange);
-  const onConnect = useWorkflowStore((s) => s.onConnect);
-  const startNodeId = useWorkflowStore((s) => s.startNodeId);
-  const endNodeId = useWorkflowStore((s) => s.endNodeId);
-  const creationMethod = useWorkflowStore((s) => s.creationMethod);
-  const setCreationMethod = useWorkflowStore((s) => s.setCreationMethod);
-  const activePlaceholder = useWorkflowStore((s) => s.activePlaceholder);
-  const setActivePlaceholder = useWorkflowStore((s) => s.setActivePlaceholder);
+  const nodes = useWorkflowStore((state) => state.nodes);
+  const edges = useWorkflowStore((state) => state.edges);
+  const onNodesChange = useWorkflowStore((state) => state.onNodesChange);
+  const onEdgesChange = useWorkflowStore((state) => state.onEdgesChange);
+  const onConnect = useWorkflowStore((state) => state.onConnect);
+  const startNodeId = useWorkflowStore((state) => state.startNodeId);
+  const endNodeId = useWorkflowStore((state) => state.endNodeId);
+  const creationMethod = useWorkflowStore((state) => state.creationMethod);
+  const setCreationMethod = useWorkflowStore(
+    (state) => state.setCreationMethod,
+  );
+  const activePlaceholder = useWorkflowStore(
+    (state) => state.activePlaceholder,
+  );
+  const activePanelNodeId = useWorkflowStore(
+    (state) => state.activePanelNodeId,
+  );
+  const setActivePlaceholder = useWorkflowStore(
+    (state) => state.setActivePlaceholder,
+  );
+  const openPanel = useWorkflowStore((state) => state.openPanel);
+  const closePanel = useWorkflowStore((state) => state.closePanel);
 
   const handleNodesChange = useCallback(
     (changes: NodeChange[]) => {
@@ -105,14 +130,19 @@ export const Canvas = () => {
     [onNodesChange],
   );
 
-  const { setCenter } = useReactFlow();
+  const { getZoom, setCenter } = useReactFlow();
 
   const handleNodeClick = useCallback(
     (_event: MouseEvent, node: Node) => {
-      if (node.id.startsWith("placeholder-")) {
+      if (node.type === "creation-method") {
+        return;
+      }
+
+      if (node.type === "placeholder") {
         const nodeHeight = node.measured?.height ?? PLACEHOLDER_NODE_HEIGHT;
         const centerY = node.position.y + nodeHeight / 2;
 
+        closePanel();
         setActivePlaceholder({
           id: node.id,
           position: {
@@ -130,14 +160,33 @@ export const Canvas = () => {
         });
       } else {
         setActivePlaceholder(null);
+        openPanel(node.id);
+
+        const nodeWidth = node.measured?.width ?? DEFAULT_FLOW_NODE_WIDTH;
+        const nodeHeight = node.measured?.height ?? DEFAULT_FLOW_NODE_HEIGHT;
+
+        setCenter(
+          node.position.x + nodeWidth / 2,
+          node.position.y + nodeHeight / 2,
+          {
+            duration: 300,
+            zoom: getZoom(),
+          },
+        );
       }
     },
-    [setActivePlaceholder, setCenter],
+    [closePanel, getZoom, openPanel, setActivePlaceholder, setCenter],
   );
 
   const handlePaneClick = useCallback(() => {
-    setActivePlaceholder(null);
-  }, [setActivePlaceholder]);
+    if (activePlaceholder) {
+      setActivePlaceholder(null);
+    }
+
+    if (activePanelNodeId) {
+      closePanel();
+    }
+  }, [activePanelNodeId, activePlaceholder, closePanel, setActivePlaceholder]);
 
   const handleSelectManual = useCallback(() => {
     setCreationMethod("manual");
@@ -163,6 +212,24 @@ export const Canvas = () => {
     },
     [nodes, onConnect],
   );
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+
+      if (activePlaceholder) {
+        setActivePlaceholder(null);
+        return;
+      }
+
+      if (activePanelNodeId) {
+        closePanel();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [activePanelNodeId, activePlaceholder, closePanel, setActivePlaceholder]);
 
   const nodesWithPlaceholders = useMemo(() => {
     const result: Node[] = [...nodes];
@@ -339,12 +406,23 @@ export const Canvas = () => {
     handleSelectManual,
   ]);
 
+  const nodesWithDragControl = useMemo(
+    () =>
+      nodesWithPlaceholders.map((node) => ({
+        ...node,
+        draggable:
+          node.draggable === false ? false : node.id !== activePanelNodeId,
+      })),
+    [activePanelNodeId, nodesWithPlaceholders],
+  );
+
   const isCanvasLocked = activePlaceholder !== null;
 
   return (
     <ReactFlow
-      nodes={nodesWithPlaceholders}
+      nodes={nodesWithDragControl}
       edges={edges}
+      defaultEdgeOptions={defaultEdgeOptions}
       nodeTypes={nodeTypes}
       onNodesChange={handleNodesChange}
       onEdgesChange={onEdgesChange}
