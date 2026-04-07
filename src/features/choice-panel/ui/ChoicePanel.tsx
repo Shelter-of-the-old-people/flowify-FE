@@ -311,7 +311,12 @@ export const ChoicePanel = () => {
     : null;
   const parentOutputType = parentNode?.data.outputTypes[0] ?? null;
 
-  if (!isMiddlePlaceholder || !activePlaceholder || !parentOutputType) {
+  if (
+    !isMiddlePlaceholder ||
+    !activePlaceholder ||
+    !parentNodeId ||
+    !parentOutputType
+  ) {
     return null;
   }
 
