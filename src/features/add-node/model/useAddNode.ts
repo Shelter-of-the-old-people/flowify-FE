@@ -3,6 +3,7 @@ import { useRef } from "react";
 import type { Node } from "@xyflow/react";
 
 import { NODE_REGISTRY } from "@/entities/node";
+import type { DataType } from "@/entities/node";
 import type { FlowNodeData, NodeType } from "@/entities/node";
 import { useWorkflowStore } from "@/shared";
 
@@ -12,6 +13,9 @@ const OFFSET_STEP = 30;
 interface AddNodeOptions {
   position?: { x: number; y: number };
   config?: Partial<FlowNodeData["config"]>;
+  inputTypes?: DataType[];
+  outputTypes?: DataType[];
+  label?: string;
 }
 
 export const useAddNode = () => {
@@ -39,13 +43,17 @@ export const useAddNode = () => {
       position,
       data: {
         type,
-        label: meta.label,
+        label: options?.label ?? meta.label,
         config: {
           ...meta.defaultConfig,
           ...options?.config,
         } as FlowNodeData["config"],
-        inputTypes: [...meta.defaultInputTypes],
-        outputTypes: [...meta.defaultOutputTypes],
+        inputTypes: options?.inputTypes
+          ? [...options.inputTypes]
+          : [...meta.defaultInputTypes],
+        outputTypes: options?.outputTypes
+          ? [...options.outputTypes]
+          : [...meta.defaultOutputTypes],
       },
     };
 
