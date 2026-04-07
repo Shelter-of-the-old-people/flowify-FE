@@ -1,242 +1,76 @@
 # 위자드 구현 리팩토링 설계
 
 > **작성일:** 2026-04-06
+> **최종 수정:** 2026-04-07 (v2 설계 반영)
 > **이슈:** #62
 > **선행:** #60 (feat#60-wizard-ui-flow), [NODE_SETUP_WIZARD_DESIGN.md](./NODE_SETUP_WIZARD_DESIGN.md)
-> **목적:** #60 구현 후 발견된 데이터 중복, 컨벤션 위반을 수정하고, 설계 문서를 실제 구현과 동기화한다.
+> **목적:** #60 구현(v1) 이후 발견된 문제를 수정하고, v2 설계 구조로 전환한다.
 
 ---
 
 ## 목차
 
-1. [코드 리팩토링](#1-코드-리팩토링)
-2. [설계 문서 동기화](#2-설계-문서-동기화)
+1. [완료된 리팩토링 (v1 → v1.1)](#1-완료된-리팩토링-v1--v11)
+2. [v2 구조 전환 (예정)](#2-v2-구조-전환-예정)
 
 ---
 
-## 1. 코드 리팩토링
+## 1. 완료된 리팩토링 (v1 → v1.1)
+
+> 이 섹션의 변경은 이미 `refector#62wizard-sync-docs` 브랜치에서 구현·머지 완료되었다.
 
 ### 1.1 `requiresAuth` 중복 제거
 
-#### 현상
-
-`requiresAuth`가 두 곳에 정의되어 있다:
-
-| 파일 | 인터페이스 | 실제 사용 여부 |
-|------|-----------|---------------|
-| `serviceMap.ts` | `CategoryServiceGroup.requiresAuth` | ✅ `OutputPanel`에서 인증 분기에 사용 |
-| `serviceRequirements.ts` | `ServiceRequirementGroup.requiresAuth` | ❌ 미사용 |
-
-`OutputPanel`의 `handleRequirementSelect`는 `CATEGORY_SERVICE_MAP[type].requiresAuth`만 참조한다. `SERVICE_REQUIREMENTS`의 `requiresAuth`는 어디서도 읽지 않는다.
-
-#### 변경
-
-**`serviceRequirements.ts`:**
-
-```typescript
-// 변경 전
-export interface ServiceRequirementGroup {
-  title: string;
-  requiresAuth: boolean;  // ← 제거
-  requirements: ServiceRequirement[];
-}
-
-// 변경 후
-export interface ServiceRequirementGroup {
-  title: string;
-  requirements: ServiceRequirement[];
-}
-```
-
-각 항목에서 `requiresAuth` 값 제거:
-
-```typescript
-// 변경 전
-storage: {
-  title: "어떻게 사용하시겠어요?",
-  requiresAuth: true,  // ← 제거
-  requirements: [ ... ],
-},
-
-// 변경 후
-storage: {
-  title: "어떻게 사용하시겠어요?",
-  requirements: [ ... ],
-},
-```
-
-**`serviceMap.ts`:**
-
-`CategoryServiceGroup.requiresAuth`에 단일 출처임을 명시하는 주석 추가:
-
-```typescript
-export interface CategoryServiceGroup {
-  categoryIcon: IconType;
-  categoryLabel: string;
-  services: ServiceOption[];
-  /**
-   * OAuth 인증 필요 여부.
-   * 인증 분기의 유일한 출처 — OutputPanel에서 이 값을 참조한다.
-   */
-  requiresAuth: boolean;
-}
-```
-
-#### 영향 범위
-
-- `serviceRequirements.ts` — 인터페이스 + 5개 항목에서 `requiresAuth` 제거
-- `serviceMap.ts` — 주석만 추가, 구조 변경 없음
-- 다른 파일 영향 없음 (기존에도 `SERVICE_REQUIREMENTS.requiresAuth`를 읽는 코드 없음)
-
----
+`serviceRequirements.ts`의 `ServiceRequirementGroup.requiresAuth`를 제거하고, `serviceMap.ts`의 `CategoryServiceGroup.requiresAuth`를 단일 출처로 확정했다.
 
 ### 1.2 `import type` 컨벤션 수정
 
-#### 현상
-
-`OutputPanel.tsx`에서 value import와 type import가 한 문장에 혼합되어 있다:
-
-```typescript
-import {
-  CATEGORY_SERVICE_MAP,
-  SERVICE_REQUIREMENTS,
-  type ServiceRequirement,
-} from "@/features/add-node";
-```
-
-프로젝트 컨벤션: `import type`은 value import와 **반드시 분리**한다.
-
-#### 변경
-
-```typescript
-import { CATEGORY_SERVICE_MAP, SERVICE_REQUIREMENTS } from "@/features/add-node";
-import type { ServiceRequirement } from "@/features/add-node";
-```
-
-#### 영향 범위
-
-- `OutputPanel.tsx` — import 문 1줄 → 2줄 분리. 동작 변경 없음.
+`OutputPanel.tsx`에서 value import와 type import를 분리했다.
 
 ---
 
-## 2. 설계 문서 동기화
+## 2. v2 구조 전환 (예정)
 
-`NODE_SETUP_WIZARD_DESIGN.md`의 코드 예시와 설명을 실제 구현에 맞춰 수정한다.
+> 수동 테스트 피드백을 반영한 v2 설계([NODE_SETUP_WIZARD_DESIGN.md](./NODE_SETUP_WIZARD_DESIGN.md))에 따라 다음 변경을 수행한다.
 
-### 2.1 변경 항목 목록
+### 2.1 변경 개요
 
-| # | 문서 위치 | 설계 (현재) | 실제 구현 | 수정 방향 |
-|---|-----------|-------------|-----------|-----------|
-| A | 5.2 유지 대상 | `placeNode(meta, service)` 필수 인자 전제 | `placeNode(meta, service?)` — service optional | `placeNode` 시그니처를 optional로 수정, 설명 추가 |
-| B | 5.4 handleCategorySelect | `addNode` 직접 호출 + 수동 관계 설정 | `placeNode(meta)` 재사용 | 코드 예시를 `placeNode` 재사용으로 교체 |
-| C | 6.3 WizardRequirementContent | `{ requirements, onSelect }` props | `{ requirements, onSelect, onBack }` | `onBack` prop 추가 |
-| D | 6.4 WizardAuthContent | `{ onAuth }` props | `{ onAuth, onBack }` | `onBack` prop 추가 |
-| E | 6.5 handleRequirementSelect | 인증 불필요 시 `setWizardStep(null)` 단독 호출 | `finishWizard()` 헬퍼로 3필드 일괄 정리 | `finishWizard` 패턴 반영 |
-| F | 6.5 handleAuth | 개별 `setWizardConfigPreset(null)` + `setWizardStep(null)` | `finishWizard()` 호출 | 동일하게 `finishWizard` 반영 |
-| G | 4.5 resetEditor | `wizardStep`, `wizardConfigPreset`만 언급 | 3필드 모두 `initialState`로 초기화 | `wizardSourcePlaceholder` 추가 |
-| H | 7.1 상태 전이 다이어그램 | 인증 완료/불필요 시 개별 set 호출 표기 | `finishWizard()` 호출 | 다이어그램 내 종료 흐름을 `finishWizard()`로 통일 |
+| 영역 | v1 (현재 구현) | v2 (목표) |
+|------|---------------|-----------|
+| 시작/도착 위자드 | SSP(카테고리·서비스) → OutputPanel(요구사항·인증) | SSP 내부에서 전체 완료 |
+| 위자드 상태 소유권 | `workflowStore` (`wizardStep`, `wizardConfigPreset`, `wizardSourcePlaceholder`) | SSP 로컬 상태 |
+| 중간 노드 entry | SSP에서 전체 위자드 동일 흐름 | SSP 카테고리 only → 듀얼 패널 |
+| OutputPanel 역할 | 위자드 UI + 설정 UI | 설정 UI 전용 (중간 노드 요구사항 포함) |
+| isConfigured 판정 | 서비스 선택 시 `updateNodeConfig()` 호출 (조기 설정) | 위자드 최종 완료 시에만 `updateNodeConfig()` 호출 |
+| updateNodeConfig 방식 | replace (`{ ...전달config, isConfigured: true }`) | merge (`{ ...기존config, ...전달config, isConfigured: true }`) |
+| 패널 닫기 | X 버튼만 | X + 캔버스 빈 영역 클릭 + ESC |
+| 삭제 버튼 | 노드 선택(selected) 시 | 노드 hover 시 |
+| Handle | 소스 Handle 표시 | 전체 숨김 (DOM 유지, opacity: 0) |
+| Edge | 미표시 | smoothstep Edge 렌더링 |
+| 노드 선택 시 | — | 화면 중앙 고정 + 드래그 비활성화 |
 
-### 2.2 각 항목 상세
+### 2.2 파일별 변경 상세
 
-#### A. `placeNode` 시그니처 변경 (5.2절)
+[NODE_SETUP_WIZARD_DESIGN.md 12장](./NODE_SETUP_WIZARD_DESIGN.md#12-파일별-변경-요약) 참조.
 
-유지 대상 테이블에서 `placeNode` 설명 수정:
+| 파일 | 주요 변경 |
+|------|-----------|
+| `workflowStore.ts` | wizard 필드 제거 + `updateNodeConfig` replace→merge 방식으로 변경 |
+| `ServiceSelectionPanel.tsx` | 요구사항·인증 단계 추가, 중간 노드 모드 분기, X 버튼·ESC 리스너 |
+| `OutputPanel.tsx` | 위자드 UI 제거, 중간 노드용 `RequirementSelector` 추가 |
+| `InputPanel.tsx` | 표시 조건 변경 (`wizardStep` → `activePlaceholder`), 시작 노드 안내 |
+| `Canvas.tsx` | `onPaneClick` 패널 닫기, ESC 전역 리스너, `setCenter`, 드래그 제어, Edge 설정 |
+| `BaseNode.tsx` | hover 삭제 버튼, Handle 숨김 |
+
+### 2.3 구현 순서 (권장)
 
 ```
-// 변경 전
-| `placeNode()` | 노드 배치 + 관계 설정 |
-
-// 변경 후
-| `placeNode(meta, service?)` | 노드 배치 + 관계 설정 (service optional — 서비스 없는 노드도 재사용) |
+1. workflowStore.ts — wizard 필드 제거 + updateNodeConfig 호출 시점 정리
+2. ServiceSelectionPanel.tsx — 4단계 위자드 + 중간 노드 모드
+3. OutputPanel.tsx — 위자드 UI 제거 + RequirementSelector
+4. InputPanel.tsx — 표시 조건 + 시작 노드 안내
+5. Canvas.tsx — onPaneClick, ESC, setCenter, draggable, Edge
+6. BaseNode.tsx — hover 삭제 + Handle 숨김
 ```
 
-#### B. `handleCategorySelect` 코드 예시 교체 (5.4절)
-
-설계 문서의 코드를 실제 구현과 일치시킨다:
-
-```typescript
-// 변경 전 (설계)
-if (!activePlaceholder) return;
-const nodeId = addNode(meta.type, { position: activePlaceholder.position });
-const sourceNodeId = parseSourceNodeId(activePlaceholder.id);
-if (activePlaceholder.id === "placeholder-start") setStartNodeId(nodeId);
-else if (activePlaceholder.id === "placeholder-end") setEndNodeId(nodeId);
-if (sourceNodeId) {
-  onConnect({ source: sourceNodeId, target: nodeId, sourceHandle: null, targetHandle: null });
-}
-
-// 변경 후 (구현과 일치)
-const nodeId = placeNode(meta);
-if (!nodeId) return;
-```
-
-#### C. `WizardRequirementContent` props 추가 (6.3절)
-
-```typescript
-// 변경 전
-const WizardRequirementContent = ({
-  requirements,
-  onSelect,
-}: {
-  requirements: ServiceRequirement[];
-  onSelect: (req: ServiceRequirement) => void;
-}) => (
-
-// 변경 후
-const WizardRequirementContent = ({
-  requirements,
-  onSelect,
-  onBack,
-}: {
-  requirements: ServiceRequirement[];
-  onSelect: (req: ServiceRequirement) => void;
-  onBack: () => void;
-}) => (
-```
-
-컴포넌트 내부에 뒤로가기 버튼 렌더링 코드도 추가한다.
-
-#### D. `WizardAuthContent` props 추가 (6.4절)
-
-```typescript
-// 변경 전
-const WizardAuthContent = ({
-  onAuth,
-}: {
-  onAuth: () => void;
-}) => (
-
-// 변경 후
-const WizardAuthContent = ({
-  onAuth,
-  onBack,
-}: {
-  onAuth: () => void;
-  onBack: () => void;
-}) => (
-```
-
-#### E, F. `finishWizard` 헬퍼 추가 (6.5절)
-
-위자드 종료 시 3필드를 일괄 정리하는 `finishWizard` 헬퍼를 문서에 반영한다:
-
-```typescript
-// 신규 추가 — 위자드 종료 헬퍼
-const finishWizard = () => {
-  setWizardConfigPreset(null);
-  setWizardStep(null);
-  setWizardSourcePlaceholder(null);
-};
-```
-
-`handleRequirementSelect`, `handleAuth`의 종료 부분을 `finishWizard()` 호출로 교체:
-
-```typescript
-// handleRequirementSelect — 인증 불필요 시
-updateNodeConfig(activePanelNodeId, { ...activeNode.data.config, ...req.configPreset });
-finishWizard();  // ← setWizardStep(null) 대신
-
-// handleAuth
-updateNodeConfig(activePanelNodeId, { ...currentNode.data.config, ...wizardConfigPreset });
-finishWizard();  // ← 개별 set 호출 대신
-```
+> 순서 근거: store를 먼저 정리해야 컴포넌트에서 제거된 필드를 참조하지 않는다. SSP → OutputPanel → InputPanel은 의존 방향 순서. Canvas와 BaseNode는 독립적이므로 마지막.
