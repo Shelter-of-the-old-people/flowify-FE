@@ -1,8 +1,15 @@
-import { useCallback, useEffect, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import type { ElementType, ReactNode } from "react";
 import { MdArrowBack, MdCancel, MdSearch } from "react-icons/md";
 
 import { Box, Grid, Icon, Input, Text, VStack } from "@chakra-ui/react";
+import { useReactFlow, useViewport } from "@xyflow/react";
 
 import { NODE_REGISTRY } from "@/entities/node";
 import type { FlowNodeData, NodeMeta } from "@/entities/node";
@@ -20,6 +27,10 @@ type WizardStep = "category" | "service" | "requirement" | "auth";
 
 const allNodeEntries = Object.values(NODE_REGISTRY);
 const WIZARD_CARD_BORDER = "#f2f2f2";
+const START_END_PANEL_GAP = 48;
+const PLACEHOLDER_NODE_WIDTH = 100;
+const START_END_NODE_WIDTH = 172;
+const START_END_NODE_HEIGHT = 176;
 
 const parseSourceNodeId = (placeholderId: string): string | undefined => {
   if (
@@ -320,6 +331,8 @@ const AuthPrompt = ({
 );
 
 export const ServiceSelectionPanel = () => {
+  const overlayRef = useRef<HTMLDivElement | null>(null);
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
   const activePlaceholder = useWorkflowStore(
     (state) => state.activePlaceholder,
   );
@@ -332,6 +345,8 @@ export const ServiceSelectionPanel = () => {
   const removeNode = useWorkflowStore((state) => state.removeNode);
   const updateNodeConfig = useWorkflowStore((state) => state.updateNodeConfig);
   const { addNode } = useAddNode();
+  const { flowToScreenPosition } = useReactFlow();
+  const viewport = useViewport();
 
   const [step, setStep] = useState<WizardStep>("category");
   const [searchQuery, setSearchQuery] = useState("");
@@ -369,6 +384,52 @@ export const ServiceSelectionPanel = () => {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [activePlaceholder, handleOverlayClose]);
+
+  useLayoutEffect(() => {
+    const wrapperElement = wrapperRef.current;
+
+    if (!activePlaceholder) {
+      if (wrapperElement) {
+        wrapperElement.style.visibility = "hidden";
+      }
+      return;
+    }
+
+    const overlayElement = overlayRef.current;
+    if (!overlayElement || !wrapperElement) return;
+
+    const overlayRect = overlayElement.getBoundingClientRect();
+    const wrapperRect = wrapperElement.getBoundingClientRect();
+    const anchorWidth = placedNodeId
+      ? START_END_NODE_WIDTH
+      : PLACEHOLDER_NODE_WIDTH;
+    const anchorCenterY =
+      activePlaceholder.position.y + START_END_NODE_HEIGHT / 2;
+    const anchorScreenPosition = flowToScreenPosition({
+      x: activePlaceholder.position.x + anchorWidth,
+      y: anchorCenterY,
+    });
+
+    const centeredLeft =
+      anchorScreenPosition.x - overlayRect.left + START_END_PANEL_GAP;
+    const maxLeft = Math.max(24, overlayRect.width - wrapperRect.width - 24);
+    const left = Math.min(Math.max(24, centeredLeft), maxLeft);
+    const centeredTop =
+      anchorScreenPosition.y - overlayRect.top - wrapperRect.height / 2;
+    const maxTop = Math.max(24, overlayRect.height - wrapperRect.height - 24);
+    const top = Math.min(Math.max(24, centeredTop), maxTop);
+
+    wrapperElement.style.left = `${left}px`;
+    wrapperElement.style.top = `${top}px`;
+    wrapperElement.style.visibility = "visible";
+  }, [
+    activePlaceholder,
+    flowToScreenPosition,
+    placedNodeId,
+    viewport.x,
+    viewport.y,
+    viewport.zoom,
+  ]);
 
   const placeNode = useCallback(
     (meta: NodeMeta, service?: ServiceOption) => {
@@ -532,13 +593,20 @@ export const ServiceSelectionPanel = () => {
       : null;
 
   return (
-    <Box position="absolute" inset={0} zIndex={20} onClick={handleOverlayClose}>
+    <Box
+      ref={overlayRef}
+      position="absolute"
+      inset={0}
+      zIndex={20}
+      onClick={handleOverlayClose}
+    >
       <Box
         position="absolute"
-        left="50%"
-        top="50%"
-        transform="translate(-50%, -50%)"
+        ref={wrapperRef}
+        left={0}
+        top={0}
         onClick={(event) => event.stopPropagation()}
+        visibility="hidden"
       >
         <Text
           fontSize="24px"
