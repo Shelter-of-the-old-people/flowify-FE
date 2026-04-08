@@ -16,6 +16,7 @@ import {
   toMappingKey,
 } from "@/features/choice-panel";
 import type {
+  MappingAction,
   MappingDataTypeKey,
   ProcessingMethodOption,
 } from "@/features/choice-panel";
@@ -108,9 +109,7 @@ export const OutputPanel = () => {
   const isEndNode = activeNode?.id === endNodeId;
   const isMiddleNode = Boolean(activeNode) && !isStartNode && !isEndNode;
   const isWizardMode =
-    Boolean(activeNode) &&
-    isMiddleNode &&
-    activeNode.data.config.isConfigured === false;
+    isMiddleNode && activeNode?.data.config.isConfigured === false;
   const isDetailMode = activeNode?.data.config.isConfigured === true;
 
   const currentDataType =
