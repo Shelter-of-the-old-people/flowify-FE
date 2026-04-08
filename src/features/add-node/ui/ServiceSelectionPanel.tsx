@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { ElementType, ReactNode } from "react";
-import { MdAdd, MdArrowBack, MdCancel, MdSearch } from "react-icons/md";
+import { MdArrowBack, MdCancel, MdSearch } from "react-icons/md";
 
 import { Box, Grid, Icon, Input, Text, VStack } from "@chakra-ui/react";
 
@@ -53,28 +53,6 @@ const WizardCard = ({
     overflow="hidden"
   >
     {children}
-  </Box>
-);
-
-const PlaceholderPreview = ({ label }: { label: string }) => (
-  <Box width="100px" textAlign="center">
-    <Box
-      w="100px"
-      h="100px"
-      border="2px dashed"
-      borderColor="gray.400"
-      borderRadius="lg"
-      display="flex"
-      alignItems="center"
-      justifyContent="center"
-      mb={3}
-      mx="auto"
-    >
-      <Icon as={MdAdd} boxSize={8} color="gray.400" />
-    </Box>
-    <Text fontSize="16px" fontWeight="bold" lineHeight="short">
-      {label}
-    </Text>
   </Box>
 );
 
@@ -539,9 +517,6 @@ export const ServiceSelectionPanel = () => {
     }
   };
 
-  const placeholderLabel =
-    activePlaceholder.id === "placeholder-start" ? "시작" : "도착";
-
   const previewMeta = selectedService
     ? {
         iconComponent: selectedService.iconComponent,
@@ -588,17 +563,13 @@ export const ServiceSelectionPanel = () => {
           </Box>
 
           <Box display="flex" gap="48px" alignItems="center">
-            {step === "category" || step === "service" ? (
-              <PlaceholderPreview label={placeholderLabel} />
-            ) : previewMeta ? (
+            {previewMeta ? (
               <SelectedNodePreview
                 iconComponent={previewMeta.iconComponent}
                 color={previewMeta.color}
                 label={previewMeta.label}
               />
-            ) : (
-              <PlaceholderPreview label={placeholderLabel} />
-            )}
+            ) : null}
 
             {step === "category" ? (
               <CategoryGrid
