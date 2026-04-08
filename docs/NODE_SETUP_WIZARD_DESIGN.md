@@ -1,14 +1,15 @@
 # 노드 설정 위자드 상세 설계
 
 > **작성일:** 2026-04-05
-> **최종 수정:** 2026-04-08 (v4.1 — 시작/도착 SSP 앵커 방식 재정의, 중간 노드 위자드 OutputPanel 내장 유지)
+> **최종 수정:** 2026-04-08 (v4.2 — 반응형 듀얼 패널 레이아웃 및 캔버스 기준 중앙 정렬 설계 추가)
 > **선행 문서:** [FRONTEND_DESIGN_DOCUMENT.md](./FRONTEND_DESIGN_DOCUMENT.md), [FOUNDATION_IMPLEMENTATION_PLAN.md](./FOUNDATION_IMPLEMENTATION_PLAN.md)
 > **목적:** 시작/도착 노드 및 중간 노드의 설정 위자드 흐름을 설계한다.
 >
-> **v4.1 변경 요약:**
+> **v4.2 변경 요약:**
 > - 시작/도착 노드 위자드: **실제 캔버스 placeholder/node 기준**으로 SSP 카드가 오른쪽 `48px`에 anchor됨 (`[실제 캔버스 placeholder 또는 노드] —48px— [위자드 카드]`)
 > - 중간 노드 위자드: 별도 오버레이(ChoicePanel) → **오른쪽 패널(OutputPanel) 내장**으로 전환
-> - 듀얼 패널 레이아웃 규격: 각 690px, 전체 1676px 중앙, 사이 296px gap에 노드 체인
+> - 듀얼 패널 레이아웃: **고정 px 배치가 아니라 캔버스 영역 기준 반응형 컨테이너**로 계산
+> - 패널/노드 체인 정렬 기준: viewport가 아니라 **캔버스 rect 중심**
 > - 설정 중 노드 위 불필요한 서비스 아이콘 완전 제거
 > - "생성 방식을 결정하세요" → 모든 위자드 단계 완료 후에만 표시
 > - 패널 사이에 설정 중인 노드 체인만 표시 (다른 노드 숨김)
@@ -77,29 +78,77 @@
 
 ### 1.3 중간 노드 — 듀얼 패널 내장 위자드
 
-중간 노드는 이전 노드의 출력 데이터를 왼쪽에서 확인하면서, 오른쪽 패널에서 위자드를 진행한다.
+중간 노드는 이전 노드의 출력 데이터를 왼쪽에서 확인하면서, 오른쪽 패널에서 위자드를 진행한다. 단, 듀얼 패널의 위치와 크기는 `top: 140px`, `left: calc(50% ...)` 같은 **고정 px**로 박지 않고, **실제 캔버스 영역(rect)** 을 기준으로 계산한다.
 
-**피그마 레이아웃 규격:**
+#### 1.3.1 기본 데스크톱 스펙
 
 ```
-                     전체 1676px, 화면 중앙
+                     기본 스펙(충분한 화면에서)
 ┌─────────────┐                                ┌─────────────┐
 │ 왼쪽 패널    │  [노드A] → [현재 노드] → [노드B] │ 오른쪽 패널   │
 │ 690px       │       296px gap                │ 690px       │
 │ height:800px │     노드 체인 중앙 배치          │ height:800px │
-│             │                                │             │
-│ 들어오는     │                                │ 설정 (위자드) │
-│ 데이터       │                                │ 또는         │
-│             │                                │ 나가는 데이터  │
 └─────────────┘                                └─────────────┘
 ```
 
-- **패널 너비:** 각 690px (min-width, max-width 모두 690px)
-- **패널 높이:** 800px
-- **패널 스타일:** 흰 배경, border `#f2f2f2`, `border-radius: 20px`, `box-shadow: 0 4px 4px rgba(0,0,0,0.25)`, padding 24px (12px horizontal, 24px vertical)
-- **전체 컨테이너:** 1676px, 화면 중앙 (top 140px 기준)
-- **패널 사이 gap:** 296px — 이 공간에 **설정 중인 노드 체인만** 표시
-- **다른 노드 숨김:** 패널이 열려 있을 때 관련 없는 노드는 보이지 않음
+- **기본 패널 너비:** 690px
+- **기본 패널 높이:** 800px
+- **기본 gap:** 296px
+- **기본 전체 너비:** 1676px
+
+#### 1.3.2 반응형 모드
+
+| 모드 | 조건 | 레이아웃 |
+|------|------|----------|
+| `wide` | `canvasWidth >= 1760` and `canvasHeight >= 864` | 기본 스펙 690 / 296 / 690 / 800 유지 |
+| `compact` | `canvasWidth >= 1280` and `canvasHeight >= 720` | 기본 스펙을 **비율 축소**해 듀얼 패널 유지 |
+| `stacked` | `canvasWidth < 1280` or `canvasHeight < 720` | 좌/우 패널을 세로 스택 또는 탭형 focus mode로 전환 |
+
+> `stacked`는 정보 구조를 바꾸지 않기 위한 예외 모드다. 입력 정보, 위자드/출력 정보, 닫기 규칙은 동일하게 유지하되 동시 2열 배치만 해제한다.
+
+#### 1.3.3 레이아웃 계산 규칙
+
+```typescript
+const SAFE_PADDING_X = 24;
+const SAFE_PADDING_Y = 24;
+const BASE_PANEL_WIDTH = 690;
+const BASE_PANEL_HEIGHT = 800;
+const BASE_GAP = 296;
+const BASE_TOTAL_WIDTH = BASE_PANEL_WIDTH * 2 + BASE_GAP; // 1676
+
+const availableWidth = canvasRect.width - SAFE_PADDING_X * 2;
+const availableHeight = canvasRect.height - SAFE_PADDING_Y * 2;
+
+const scale = Math.min(
+  availableWidth / BASE_TOTAL_WIDTH,
+  availableHeight / BASE_PANEL_HEIGHT,
+  1,
+);
+```
+
+- `wide`: `scale = 1`
+- `compact`:
+  - `panelWidth = clamp(round(690 * scale), 520, 690)`
+  - `panelHeight = clamp(round(800 * scale), 640, 800)`
+  - `gapWidth = clamp(round(296 * scale), 160, 296)`
+- `stacked`:
+  - `panelWidth = min(availableWidth, 720)`
+  - `panelHeight = min(availableHeight - 16, 720)`
+  - 한 번에 하나의 패널 그룹만 전면 표시하거나, 위/아래 스택으로 배치
+
+#### 1.3.4 중앙 정렬 원칙
+
+- 듀얼 패널 컨테이너의 **중심점 = 캔버스 rect의 중심점**
+- `wide`/`compact` 모드에서는 패널이 좌우 대칭이므로, **패널 사이 gap의 중심 = 캔버스 중심**
+- 노드 체인은 **active node 하나가 아니라 [이전 노드, 현재 노드, 다음 노드/placeholder] 바운딩 박스 중심**을 기준으로 `setCenter()` 한다
+- 따라서 체인 전체가 패널 사이 정중앙에 보인다
+
+#### 1.3.5 프로젝트 컨벤션 적용 원칙
+
+- 레이아웃 수치(`panelWidth`, `panelHeight`, `gapWidth`, `mode`)는 **workflowStore에 넣지 않는다**
+- 레이아웃은 `shared/lib` 또는 `widgets/editor-layout/model`의 **파생 계산 훅/유틸**에서 만든다
+- `Canvas`, `InputPanel`, `OutputPanel`은 같은 계산 결과를 소비하되, 각자 store에 복사 저장하지 않는다
+- 스타일은 Chakra props로 적용하고 `style={{ ... }}` 같은 inline style은 사용하지 않는다
 
 ### 1.4 패널 독점 규칙
 
@@ -351,6 +400,27 @@ updateNodeConfig: (nodeId, config) =>
 ### 3.6 resetEditor
 
 `initialState` 스프레드로 전체 상태가 초기화된다. SSP 및 OutputPanel 위자드 로컬 상태는 컴포넌트 unmount 시 자동 소멸.
+
+### 3.7 레이아웃 상태 — store에 넣지 않음
+
+반응형 듀얼 패널 레이아웃은 **에디터 도메인 상태가 아니라 파생 UI 상태**이므로 `workflowStore`에 저장하지 않는다.
+
+| 항목 | 소유 위치 | 이유 |
+|------|-----------|------|
+| `panelWidth`, `panelHeight`, `gapWidth` | layout 계산 훅/유틸 | viewport/canvas 크기에 따라 매 렌더 파생 가능 |
+| `layoutMode` (`wide` / `compact` / `stacked`) | layout 계산 훅/유틸 | 브라우저 크기 의존, persistence 불필요 |
+| `canvasRect` | 측정 훅 (`ResizeObserver`) | DOM 측정값이므로 store 부적합 |
+
+**권장 구현 위치:**
+- `src/shared/lib/layout/get-dual-panel-layout.ts` — 순수 계산 함수
+- `src/shared/lib/layout/use-dual-panel-layout.ts` — canvas rect + viewport를 받아 계산 결과 반환
+
+`workflowStore`는 계속해서 **의미 상태**만 유지한다:
+- `activePlaceholder`
+- `activePanelNodeId`
+- `startNodeId`
+- `endNodeId`
+- `creationMethod`
 
 ---
 
@@ -1317,14 +1387,14 @@ useEffect(() => {
 듀얼 패널(InputPanel + OutputPanel)이 열릴 때, 캔버스 전체 레이아웃:
 
 ```
+캔버스 rect 중심
 ┌─────────────────────────────────────────────────────────────────────┐
-│                        전체 1676px, 화면 중앙                        │
+│                   [dual panel container centered]                   │
 │                                                                     │
 │  ┌──────────┐                                      ┌──────────┐     │
 │  │ 왼쪽 패널  │  [이전노드] → [현재노드] → [다음노드]  │ 오른쪽 패널 │     │
-│  │ 690px    │          296px gap                   │ 690px    │     │
-│  │ 800px    │       노드 체인 중앙 배치              │ 800px    │     │
-│  │          │                                      │          │     │
+│  │ 690→520  │         296→160 gap                 │ 690→520  │     │
+│  │ 800→640  │        체인 bounds 중앙 정렬          │ 800→640  │     │
 │  └──────────┘                                      └──────────┘     │
 │                                                                     │
 └─────────────────────────────────────────────────────────────────────┘
@@ -1333,67 +1403,42 @@ useEffect(() => {
 **구현 방식:**
 
 ```typescript
-// 듀얼 패널 컨테이너
+const layout = useDualPanelLayout(canvasRect);
+
 <Box
   position="absolute"
-  left="50%"
-  top="140px"
-  transform="translateX(-50%)"
-  width="1676px"
-  height="800px"
+  left={`${layout.containerLeft}px`}
+  top={`${layout.containerTop}px`}
+  width={`${layout.containerWidth}px`}
+  height={`${layout.containerHeight}px`}
 >
-  {/* 왼쪽 패널 */}
   <Box
     position="absolute"
     left="0"
-    top="50%"
-    transform="translateY(-50%)"
-    width="690px"
-    minWidth="690px"
-    maxWidth="690px"
-    height="800px"
-    bg="white"
-    border="1px solid #f2f2f2"
-    borderRadius="20px"
-    boxShadow="0 4px 4px rgba(0,0,0,0.25)"
-    px="12px" py="24px"
-    overflow="hidden"
+    top="0"
+    width={`${layout.panelWidth}px`}
+    height={`${layout.panelHeight}px`}
   >
     <InputPanel />
   </Box>
 
-  {/* 가운데 노드 체인 (296px gap 영역) */}
   <Box
     position="absolute"
-    left="50%"
-    top="50%"
-    transform="translate(-50%, -50%)"
-    /* 약간 오른쪽 오프셋: left="calc(50% + 38px)" */
-  >
-    <NodeChain />
-  </Box>
-
-  {/* 오른쪽 패널 */}
-  <Box
-    position="absolute"
-    left="986px"
-    top="50%"
-    transform="translateY(-50%)"
-    width="690px"
-    minWidth="690px"
-    maxWidth="690px"
-    height="800px"
-    bg="white"
-    border="1px solid #f2f2f2"
-    borderRadius="20px"
-    boxShadow="0 4px 4px rgba(0,0,0,0.25)"
-    px="12px" py="24px"
-    overflow="hidden"
+    left={`${layout.panelWidth + layout.gapWidth}px`}
+    top="0"
+    width={`${layout.panelWidth}px`}
+    height={`${layout.panelHeight}px`}
   >
     <OutputPanel />
   </Box>
 </Box>
 ```
+
+**추가 규칙:**
+- `top: 140px` 같은 고정 세로 위치를 사용하지 않는다
+- `left="calc(50% ...)"` 같은 고정 가로 위치를 사용하지 않는다
+- 듀얼 패널 컨테이너는 항상 **캔버스 rect 중심** 기준으로 계산된다
+- `stacked` 모드에서는 두 패널을 세로 스택 또는 탭형 focus mode로 전환한다
 
 ### 9.2 패널 사이 노드 체인 표시 규칙
 
@@ -1457,13 +1502,22 @@ const [isHovered, setIsHovered] = useState(false);
 const handleNodeClick = (_: React.MouseEvent, node: Node) => {
   openPanel(node.id);
 
-  const { x, y } = node.position;
-  reactFlowInstance.setCenter(x + nodeWidth / 2, y + nodeHeight / 2, {
+  const chainBounds = getChainBounds({
+    previousNode,
+    activeNode: node,
+    nextNodeOrPlaceholder,
+  });
+
+  reactFlowInstance.setCenter(chainBounds.centerX, chainBounds.centerY, {
     duration: 300,
     zoom: reactFlowInstance.getZoom(),
   });
 };
 ```
+
+전제:
+- 듀얼 패널 컨테이너 자체가 캔버스 rect 중심에 놓여 있어야 한다
+- 따라서 `setCenter(chainBounds.centerX, chainBounds.centerY)`만으로 패널 사이 gap 중심 정렬이 성립한다
 
 ### 9.5 선택 노드 드래그 비활성화
 
@@ -1757,7 +1811,7 @@ removeNode: (id) =>
 | **추가** | 상세 모드 (isConfigured === true) — "나가는 데이터" 표시 + "테스트 해보기" 버튼 |
 | **추가** | 위자드 로컬 상태 (wizardStep, currentDataTypeKey, selectedAction 등) |
 | **추가** | ProcessingMethodStep, ActionStep, FollowUpStep 서브 컴포넌트 (또는 import) |
-| **변경** | 레이아웃 → 690px × 800px 고정, 피그마 규격 적용 |
+| **변경** | 레이아웃 → `wide/compact/stacked` 반응형 모드, canvas rect 기준 중앙 정렬 |
 | **변경** | 헤더 → 위자드 모드: "설정", 상세 모드: 아이콘 + "나가는 데이터" |
 
 ### 13.4 `src/widgets/input-panel/ui/InputPanel.tsx`
@@ -1765,14 +1819,14 @@ removeNode: (id) =>
 | 변경 | 내용 |
 |------|------|
 | **추가** | 설정 완료 시 "데이터 처리 방식" + 선택 옵션 목록 + 직접 입력 필드 |
-| **변경** | 레이아웃 → 690px × 800px 고정, 피그마 규격 적용 |
+| **변경** | 레이아웃 → `wide/compact/stacked` 반응형 모드, canvas rect 기준 중앙 정렬 |
 | 유지 | 시작 노드 "시작점" 안내 |
 
 ### 13.5 `src/widgets/canvas/ui/Canvas.tsx`
 
 | 변경 | 내용 |
 |------|------|
-| **추가** | 듀얼 패널 레이아웃 컨테이너 (1676px 중앙, 690px 패널 × 2) |
+| **추가** | 듀얼 패널 레이아웃 컨테이너 (`useDualPanelLayout(canvasRect)` 기반, `wide/compact/stacked`) |
 | **추가** | 패널 열림 시 관련 노드만 표시 (나머지 hidden) |
 | **추가** | 노드 체인 표시 (이전→현재→다음, 화살표) |
 | **변경** | 중간 placeholder 클릭 → `activePlaceholder` 대신 `openPanel()` 사용 |
