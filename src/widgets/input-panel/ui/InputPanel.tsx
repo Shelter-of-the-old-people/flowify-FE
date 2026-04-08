@@ -12,6 +12,8 @@ import {
 } from "@/features/choice-panel";
 import { useDualPanelLayout, useWorkflowStore } from "@/shared";
 
+const PANEL_TRANSITION_MS = 240;
+
 export const InputPanel = () => {
   const activePanelNodeId = useWorkflowStore(
     (state) => state.activePanelNodeId,
@@ -25,7 +27,6 @@ export const InputPanel = () => {
   const edges = useWorkflowStore((state) => state.edges);
   const closePanel = useWorkflowStore((state) => state.closePanel);
   const layout = useDualPanelLayout();
-
   const isOpen = Boolean(activePanelNodeId) && activePlaceholder === null;
   const activeNode = activePanelNodeId
     ? (nodes.find((node) => node.id === activePanelNodeId) ?? null)
@@ -54,6 +55,13 @@ export const InputPanel = () => {
   const customInputs = readCustomInputs(
     activeNode?.data.config.choiceSelections ?? null,
   );
+  const closedTransform =
+    layout.mode === "stacked"
+      ? `translate3d(0, -${layout.inputPanelTop + layout.panelHeight + 24}px, 0)`
+      : `translate3d(-${layout.inputPanelLeft + layout.panelWidth + 24}px, 0, 0)`;
+  const transition = isOpen
+    ? `transform ${PANEL_TRANSITION_MS}ms ease, opacity ${PANEL_TRANSITION_MS}ms ease, visibility 0ms linear 0ms`
+    : `transform ${PANEL_TRANSITION_MS}ms ease, opacity ${PANEL_TRANSITION_MS}ms ease, visibility 0ms linear ${PANEL_TRANSITION_MS}ms`;
 
   return (
     <Box
@@ -71,10 +79,12 @@ export const InputPanel = () => {
       px={3}
       py={6}
       zIndex={5}
-      transition="opacity 200ms ease"
+      transform={isOpen ? "translate3d(0, 0, 0)" : closedTransform}
+      transition={transition}
       opacity={isOpen ? 1 : 0}
       visibility={isOpen ? "visible" : "hidden"}
       pointerEvents={isOpen ? "auto" : "none"}
+      willChange="transform, opacity"
       display="flex"
       flexDirection="column"
       gap={3}

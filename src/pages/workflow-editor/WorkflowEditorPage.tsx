@@ -9,7 +9,6 @@ import { ServiceSelectionPanel } from "@/features/add-node";
 import { EDITOR_CANVAS_AREA_ID, ROUTE_PATHS, useWorkflowStore } from "@/shared";
 import { Canvas, EditorToolbar, InputPanel, OutputPanel } from "@/widgets";
 
-// ─── 로딩 상태 ───────────────────────────────────────────────
 const EditorLoadingView = () => (
   <Box
     display="flex"
@@ -25,7 +24,6 @@ const EditorLoadingView = () => (
   </Box>
 );
 
-// ─── 에러 상태 ───────────────────────────────────────────────
 const EditorErrorView = () => {
   const navigate = useNavigate();
 
@@ -52,15 +50,12 @@ const EditorErrorView = () => {
   );
 };
 
-// ─── 에디터 내부 ─────────────────────────────────────────────
 const WorkflowEditorInner = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const setWorkflowMeta = useWorkflowStore((state) => state.setWorkflowMeta);
+  const resetEditor = useWorkflowStore((state) => state.resetEditor);
 
-  const setWorkflowMeta = useWorkflowStore((s) => s.setWorkflowMeta);
-  const resetEditor = useWorkflowStore((s) => s.resetEditor);
-
-  // TODO: workflowApi.getById(id) 연동 후 React Query로 교체
   const isLoading = false;
   const isError = false;
 
@@ -77,29 +72,30 @@ const WorkflowEditorInner = () => {
     };
   }, [id, navigate, setWorkflowMeta, resetEditor]);
 
-  if (isLoading) return <EditorLoadingView />;
-  if (isError) return <EditorErrorView />;
+  if (isLoading) {
+    return <EditorLoadingView />;
+  }
+
+  if (isError) {
+    return <EditorErrorView />;
+  }
 
   return (
-    <Box display="flex" flexDirection="column" height="100%">
-      <EditorToolbar />
-      {/* Canvas 영역 — 패널·버튼·빈 상태가 absolute로 올라탐 */}
-      <Box
-        id={EDITOR_CANVAS_AREA_ID}
-        flex={1}
-        position="relative"
-        overflow="hidden"
-      >
-        <Canvas />
-        <ServiceSelectionPanel />
-        <InputPanel />
-        <OutputPanel />
-      </Box>
+    <Box
+      id={EDITOR_CANVAS_AREA_ID}
+      position="relative"
+      overflow="hidden"
+      height="100%"
+    >
+      <EditorToolbar variant="overlay" />
+      <Canvas />
+      <ServiceSelectionPanel />
+      <InputPanel />
+      <OutputPanel />
     </Box>
   );
 };
 
-// ─── WorkflowEditorPage ───────────────────────────────────────
 export default function WorkflowEditorPage() {
   return (
     <ReactFlowProvider>

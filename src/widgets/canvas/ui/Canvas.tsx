@@ -11,12 +11,14 @@ import {
 } from "@xyflow/react";
 import type {
   DefaultEdgeOptions,
+  EdgeTypes,
   Node,
   NodeChange,
   NodeTypes,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
+import { FlowArrowEdge } from "@/entities/connection";
 import {
   CalendarNode,
   CommunicationNode,
@@ -104,6 +106,25 @@ const getNodesBoundsCenter = (chainNodes: Node[]) => {
   };
 };
 
+const createVirtualPlaceholderNode = (
+  id: string,
+  x: number,
+  centerY: number,
+): Node => ({
+  id,
+  type: "placeholder",
+  position: {
+    x,
+    y: getTopYFromCenter(centerY, PLACEHOLDER_NODE_HEIGHT),
+  },
+  data: { label: "" },
+  initialWidth: PLACEHOLDER_NODE_WIDTH,
+  initialHeight: PLACEHOLDER_NODE_HEIGHT,
+  selectable: false,
+  draggable: false,
+  hidden: true,
+});
+
 type CanvasNodeType = NodeType | "placeholder" | "creation-method";
 
 const nodeTypes = {
@@ -126,12 +147,15 @@ const nodeTypes = {
   "creation-method": CreationMethodNode,
 } satisfies Record<CanvasNodeType, NodeTypes[string]>;
 
+const edgeTypes = {
+  "flow-arrow": FlowArrowEdge,
+} satisfies EdgeTypes;
+
 const defaultEdgeOptions: DefaultEdgeOptions = {
-  type: "smoothstep",
+  type: "flow-arrow",
   animated: false,
-  style: {
-    stroke: "#94a3b8",
-    strokeWidth: 2,
+  data: {
+    variant: "flow-arrow",
   },
 };
 
@@ -548,6 +572,10 @@ export const Canvas = () => {
       const chainNodes: Node[] = [activeNode];
       const incomingEdge = edges.find((edge) => edge.target === nodeId);
       const outgoingEdge = edges.find((edge) => edge.source === nodeId);
+      const activeNodeCenterY = getNodeCenterY(
+        activeNode,
+        getNodeFallbackHeight(activeNode),
+      );
 
       if (incomingEdge) {
         const previousNode = nodesWithDragControl.find(
@@ -557,6 +585,14 @@ export const Canvas = () => {
         if (previousNode) {
           chainNodes.unshift(previousNode);
         }
+      } else {
+        chainNodes.unshift(
+          createVirtualPlaceholderNode(
+            `virtual-placeholder-before-${nodeId}`,
+            activeNode.position.x - NODE_GAP_X - PLACEHOLDER_NODE_WIDTH,
+            activeNodeCenterY,
+          ),
+        );
       }
 
       if (outgoingEdge) {
@@ -577,6 +613,16 @@ export const Canvas = () => {
 
         if (nextPlaceholder) {
           chainNodes.push(nextPlaceholder);
+        } else {
+          chainNodes.push(
+            createVirtualPlaceholderNode(
+              `virtual-placeholder-after-${nodeId}`,
+              activeNode.position.x +
+                getNodeWidth(activeNode, getNodeFallbackWidth(activeNode)) +
+                NODE_GAP_X,
+              activeNodeCenterY,
+            ),
+          );
         }
       }
 
@@ -606,6 +652,7 @@ export const Canvas = () => {
       nodes={visibleNodes}
       edges={visibleEdges}
       defaultEdgeOptions={defaultEdgeOptions}
+      edgeTypes={edgeTypes}
       nodeTypes={nodeTypes}
       onNodesChange={handleNodesChange}
       onEdgesChange={onEdgesChange}

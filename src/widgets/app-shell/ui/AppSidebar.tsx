@@ -7,7 +7,6 @@ import { useLocation, useNavigate } from "react-router";
 
 import { Flex } from "@chakra-ui/react";
 
-import { useCreateWorkflowShortcut } from "@/features/create-workflow";
 import { sidebarLayoutSpec } from "@/shared/styles";
 
 import {
@@ -36,8 +35,6 @@ export const AppSidebar = ({
 }: AppSidebarProps) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { createWorkflow, isPending: isCreateWorkflowPending } =
-    useCreateWorkflowShortcut();
   const toggleIcon = isExpanded
     ? MdKeyboardDoubleArrowLeft
     : MdKeyboardDoubleArrowRight;
@@ -54,13 +51,8 @@ export const AppSidebar = ({
     );
   }, [location.pathname]);
 
-  const handlePrimaryItemClick = async (itemId: string, path?: string) => {
+  const handleRouteClick = (path?: string) => {
     onCloseLogoutMenu();
-
-    if (itemId === "create-workflow") {
-      await createWorkflow();
-      return;
-    }
 
     if (path) {
       navigate(path);
@@ -99,10 +91,7 @@ export const AppSidebar = ({
               label={item.label}
               isExpanded={isExpanded}
               isActive={activeRouteIds.has(item.id)}
-              isDisabled={
-                item.id === "create-workflow" && isCreateWorkflowPending
-              }
-              onClick={() => void handlePrimaryItemClick(item.id, item.path)}
+              onClick={() => handleRouteClick(item.path)}
             />
           ))}
         </Flex>
@@ -115,7 +104,7 @@ export const AppSidebar = ({
               label={item.label}
               isExpanded={isExpanded}
               isActive={activeRouteIds.has(item.id)}
-              onClick={() => void handlePrimaryItemClick(item.id, item.path)}
+              onClick={() => handleRouteClick(item.path)}
             />
           ))}
         </Flex>

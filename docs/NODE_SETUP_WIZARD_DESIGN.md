@@ -1,15 +1,17 @@
 # 노드 설정 위자드 상세 설계
 
 > **작성일:** 2026-04-05
-> **최종 수정:** 2026-04-08 (v4.2 — 반응형 듀얼 패널 레이아웃 및 캔버스 기준 중앙 정렬 설계 추가)
+> **최종 수정:** 2026-04-08 (v4.3 — 반응형 듀얼 패널 유지 + 화살표형 custom edge 설계 추가)
 > **선행 문서:** [FRONTEND_DESIGN_DOCUMENT.md](./FRONTEND_DESIGN_DOCUMENT.md), [FOUNDATION_IMPLEMENTATION_PLAN.md](./FOUNDATION_IMPLEMENTATION_PLAN.md)
 > **목적:** 시작/도착 노드 및 중간 노드의 설정 위자드 흐름을 설계한다.
 >
-> **v4.2 변경 요약:**
+> **v4.3 변경 요약:**
 > - 시작/도착 노드 위자드: **실제 캔버스 placeholder/node 기준**으로 SSP 카드가 오른쪽 `48px`에 anchor됨 (`[실제 캔버스 placeholder 또는 노드] —48px— [위자드 카드]`)
 > - 중간 노드 위자드: 별도 오버레이(ChoicePanel) → **오른쪽 패널(OutputPanel) 내장**으로 전환
 > - 듀얼 패널 레이아웃: **고정 px 배치가 아니라 캔버스 영역 기준 반응형 컨테이너**로 계산
 > - 패널/노드 체인 정렬 기준: viewport가 아니라 **캔버스 rect 중심**
+> - Edge 렌더링: `smoothstep` 선 중심 표현에서 **화살표형 custom edge**로 전환
+> - 일반 직렬 연결과 분기 연결 모두 **EdgeLabelRenderer 기반 방향 표시** 사용
 > - 설정 중 노드 위 불필요한 서비스 아이콘 완전 제거
 > - "생성 방식을 결정하세요" → 모든 위자드 단계 완료 후에만 표시
 > - 패널 사이에 설정 중인 노드 체인만 표시 (다른 노드 숨김)
@@ -412,8 +414,7 @@ updateNodeConfig: (nodeId, config) =>
 | `canvasRect` | 측정 훅 (`ResizeObserver`) | DOM 측정값이므로 store 부적합 |
 
 **권장 구현 위치:**
-- `src/shared/lib/layout/get-dual-panel-layout.ts` — 순수 계산 함수
-- `src/shared/lib/layout/use-dual-panel-layout.ts` — canvas rect + viewport를 받아 계산 결과 반환
+- `src/shared/libs/dual-panel-layout.ts` — `getDualPanelLayout`, `useDualPanelLayout` 제공
 
 `workflowStore`는 계속해서 **의미 상태**만 유지한다:
 - `activePlaceholder`
@@ -1581,24 +1582,83 @@ if (showCreationMethod) {
 
 ### 10.1 연결선 표시
 
-노드 간 연결을 시각적으로 표시하는 Edge를 렌더링한다.
+노드 간 연결은 더 이상 단순 `smoothstep` 선만으로 표현하지 않고, **방향 화살표 중심의 custom edge**로 렌더링한다.
+
+구현 방식은 React Flow의 공식 확장 패턴을 따른다:
+
+```typescript
+const edgeTypes = {
+  "flow-arrow": FlowArrowEdge,
+};
+```
+
+- 기본 path: `BaseEdge`
+- path 계산: `getSmoothStepPath()` 또는 `getBezierPath()`
+- 화살표/라벨 UI: `EdgeLabelRenderer`
+
+> 핵심 원칙: **연결 관계는 edge로 유지하고, 시각 표현만 custom edge로 교체**한다.
 
 ### 10.2 Edge 스타일
 
 ```typescript
 const defaultEdgeOptions: DefaultEdgeOptions = {
-  type: "smoothstep",
+  type: "flow-arrow",
   animated: false,
-  style: {
-    stroke: "#94a3b8",  // gray.400
-    strokeWidth: 2,
+  data: {
+    variant: "flow-arrow",
   },
 };
 ```
 
+#### 10.2.1 일반 직렬 연결
+
+- 기준 시안: Figma `1917:1680`
+- 시각 중심은 **중간 화살표 아이콘 1개**
+- 실제 path는 hit area/정렬 계산용으로 유지하되, 시각적으로는 매우 옅게 처리하거나 거의 보이지 않게 처리
+- 화살표는 **source → target 방향**으로 회전한다
+
+```text
+[노드 A]   →   [노드 B]
+```
+
+#### 10.2.2 분기 연결
+
+- 기준 시안: Figma `1744:3715`
+- 상향/하향 분기에서도 같은 화살표 자산을 **회전**해서 사용한다
+- `edge.data.label`이 있으면 화살표 근처에 branch label을 함께 표시한다
+
+```text
+          ↗ PDF
+[분기 노드]
+          ↘ 이미지
+```
+
+#### 10.2.3 시각 규칙
+
+- 화살표 색상: 현재 gray 계열과 맞춘 중간 회색 톤 사용
+- 라벨 텍스트: `16px`, semibold, gray 계열
+- custom edge는 **방향 표시가 목적**이므로 굵은 실선보다 화살표 자체의 가독성을 우선한다
+- path hit area는 남기되, 사용자에게는 선보다 화살표가 먼저 읽혀야 한다
+
 ### 10.3 자동 연결
 
 노드 배치 시 `placeNode()` 내부에서 `onConnect()`를 호출하여 Edge를 자동 생성한다.
+
+`onConnect()` 계약은 유지하되, 렌더링 타입은 전역 기본값으로 `flow-arrow`를 사용한다.
+
+추가 데이터가 필요한 경우는 `edge.data`로 확장한다:
+
+```typescript
+interface FlowEdgeData {
+  label?: string;
+  variant?: "flow-arrow";
+}
+```
+
+- 일반 edge: `label` 없음
+- 분기 edge: `label`에 `"PDF"`, `"이미지"`, `"true"`, `"false"` 등 표시 텍스트 저장 가능
+
+> 현재 프로젝트 컨벤션 기준으로 edge 확장 타입은 `src/entities/connection/model/types.ts`에서 관리한다.
 
 ### 10.4 노드 체인 화살표 (패널 사이)
 
@@ -1608,7 +1668,20 @@ const defaultEdgeOptions: DefaultEdgeOptions = {
 [이전 노드] ─→─ [현재 노드] ─→─ [다음 노드]
 ```
 
-화살표는 36px gap, smoothstep edge 또는 SVG 화살표 아이콘으로 구현.
+화살표는 일반 edge에서 사용하는 것과 **같은 시각 언어**를 사용한다.
+
+- 패널 사이 체인 화살표와 실제 edge 화살표는 동일한 자산/스타일 계열을 사용
+- 사용자는 캔버스 전체와 패널 사이 보조 체인에서 **같은 방향 언어**를 경험해야 한다
+
+### 10.5 파일 구조
+
+| 파일 | 역할 |
+|------|------|
+| `src/entities/connection/model/types.ts` | `FlowEdgeData` 확장 타입 관리 |
+| `src/entities/connection/ui/FlowArrowEdge.tsx` | custom edge 본체 (`BaseEdge + EdgeLabelRenderer`) |
+| `src/entities/connection/index.ts` | edge export |
+| `src/widgets/canvas/ui/Canvas.tsx` | `edgeTypes`, `defaultEdgeOptions`, edge 표시 규칙 연결 |
+| `src/shared/libs/workflow-adapter.ts` | 필요 시 edge label hydrate/serialize 확장 |
 
 ---
 
@@ -1829,19 +1902,29 @@ removeNode: (id) =>
 | **추가** | 듀얼 패널 레이아웃 컨테이너 (`useDualPanelLayout(canvasRect)` 기반, `wide/compact/stacked`) |
 | **추가** | 패널 열림 시 관련 노드만 표시 (나머지 hidden) |
 | **추가** | 노드 체인 표시 (이전→현재→다음, 화살표) |
+| **변경** | edge 렌더링 → `smoothstep` 대신 `flow-arrow` custom edge 적용 |
 | **변경** | 중간 placeholder 클릭 → `activePlaceholder` 대신 `openPanel()` 사용 |
 | **변경** | CreationMethodNode 표시 조건 → 도착 노드 `isConfigured: true` 이후에만 |
 | **변경** | 설정 중 서비스 아이콘 미표시 |
 | 유지 | `onPaneClick`, ESC 키 리스너, 노드 중앙 고정, 드래그 비활성화 |
 
-### 13.6 `src/entities/node/ui/BaseNode.tsx`
+### 13.6 `src/entities/connection/ui/FlowArrowEdge.tsx`
+
+| 변경 | 내용 |
+|------|------|
+| **추가** | `BaseEdge + EdgeLabelRenderer` 기반 custom edge 컴포넌트 |
+| **추가** | source → target 방향에 따라 화살표 회전 |
+| **추가** | `edge.data.label` 기반 분기 라벨 표시 |
+| **유지** | 실제 연결 관계는 React Flow edge 데이터로 유지 |
+
+### 13.7 `src/entities/node/ui/BaseNode.tsx`
 
 | 변경 | 내용 |
 |------|------|
 | **변경** | 서비스 아이콘 → `isConfigured === true`일 때만 표시 |
 | 유지 | 삭제 버튼 hover 표시, Handle 숨김 |
 
-### 13.7 `src/shared/model/workflowStore.ts`
+### 13.8 `src/shared/model/workflowStore.ts`
 
 | 변경 | 내용 |
 |------|------|

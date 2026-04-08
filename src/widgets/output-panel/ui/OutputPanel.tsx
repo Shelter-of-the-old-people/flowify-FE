@@ -10,8 +10,6 @@ import {
   MAPPING_NODE_TYPE_MAP,
   MAPPING_RULES,
   OUTPUT_DATA_LABELS,
-  findActionById,
-  readSelectionSummary,
   toDataType,
   toMappingKey,
 } from "@/features/choice-panel";
@@ -33,6 +31,7 @@ type WizardStep = "processing-method" | "action" | "follow-up";
 
 const DEFAULT_FLOW_NODE_WIDTH = 172;
 const NODE_GAP_X = 96;
+const PANEL_TRANSITION_MS = 240;
 
 const createTemporaryNodeLabel = (outputType: DataType | null) =>
   outputType ? `${OUTPUT_DATA_LABELS[outputType]} 설정` : "설정 중";
@@ -55,6 +54,7 @@ export const OutputPanel = () => {
   const closePanel = useWorkflowStore((state) => state.closePanel);
   const { addNode } = useAddNode();
   const layout = useDualPanelLayout();
+  const isOpen = Boolean(activePanelNodeId) && activePlaceholder === null;
 
   const [wizardStep, setWizardStep] = useState<WizardStep | null>(null);
   const [initialDataTypeKey, setInitialDataTypeKey] =
@@ -105,7 +105,6 @@ export const OutputPanel = () => {
     [incomingEdge, nodes],
   );
 
-  const isOpen = Boolean(activePanelNodeId) && activePlaceholder === null;
   const isStartNode = activeNode?.id === startNodeId;
   const isEndNode = activeNode?.id === endNodeId;
   const isMiddleNode = Boolean(activeNode) && !isStartNode && !isEndNode;
@@ -118,22 +117,17 @@ export const OutputPanel = () => {
       ? MAPPING_RULES.data_types[currentDataTypeKey]
       : null;
   const activeMeta = activeNode ? NODE_REGISTRY[activeNode.data.type] : null;
-  const detailAction = useMemo(
-    () => findActionById(activeNode?.data.config.choiceActionId),
-    [activeNode?.data.config.choiceActionId],
-  );
-  const detailSelections = useMemo(
-    () =>
-      readSelectionSummary(
-        detailAction,
-        activeNode?.data.config.choiceSelections ?? null,
-      ),
-    [activeNode?.data.config.choiceSelections, detailAction],
-  );
   const outputDataLabel =
     activeNode?.data.outputTypes[0] !== undefined
       ? OUTPUT_DATA_LABELS[activeNode.data.outputTypes[0]]
       : "출력 데이터";
+  const closedTransform =
+    layout.mode === "stacked"
+      ? `translate3d(0, ${layout.canvasHeight - layout.outputPanelTop + 24}px, 0)`
+      : `translate3d(${layout.canvasWidth - layout.outputPanelLeft + 24}px, 0, 0)`;
+  const transition = isOpen
+    ? `transform ${PANEL_TRANSITION_MS}ms ease, opacity ${PANEL_TRANSITION_MS}ms ease, visibility 0ms linear 0ms`
+    : `transform ${PANEL_TRANSITION_MS}ms ease, opacity ${PANEL_TRANSITION_MS}ms ease, visibility 0ms linear ${PANEL_TRANSITION_MS}ms`;
 
   const createNode = useCallback(
     ({
@@ -423,10 +417,12 @@ export const OutputPanel = () => {
       px={3}
       py={6}
       zIndex={5}
-      transition="opacity 200ms ease"
+      transform={isOpen ? "translate3d(0, 0, 0)" : closedTransform}
+      transition={transition}
       opacity={isOpen ? 1 : 0}
       visibility={isOpen ? "visible" : "hidden"}
       pointerEvents={isOpen ? "auto" : "none"}
+      willChange="transform, opacity"
       display="flex"
       flexDirection="column"
       gap={3}
@@ -510,36 +506,6 @@ export const OutputPanel = () => {
                 처리된 데이터 미리보기는 백엔드 연동 후 제공될 예정입니다.
               </Text>
             </Box>
-
-            {detailAction ? (
-              <Box>
-                <Text fontSize="sm" fontWeight="bold" mb={2}>
-                  선택한 처리
-                </Text>
-                <Text fontSize="md">{detailAction.label}</Text>
-              </Box>
-            ) : null}
-
-            {detailSelections.length > 0 ? (
-              <Box>
-                <Text fontSize="sm" fontWeight="bold" mb={2}>
-                  선택 옵션
-                </Text>
-                <VStack align="stretch" gap={2}>
-                  {detailSelections.map((selection, index) => (
-                    <Box
-                      key={`${selection}-${index}`}
-                      px={4}
-                      py={3}
-                      borderRadius="xl"
-                      bg="gray.50"
-                    >
-                      <Text fontSize="sm">{selection}</Text>
-                    </Box>
-                  ))}
-                </VStack>
-              </Box>
-            ) : null}
 
             <Button
               alignSelf="flex-start"

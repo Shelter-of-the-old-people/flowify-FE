@@ -10,6 +10,8 @@ type LayoutTargetSize = {
 export type DualPanelLayoutMode = "wide" | "compact" | "stacked";
 
 export type DualPanelLayout = {
+  canvasWidth: number;
+  canvasHeight: number;
   mode: DualPanelLayoutMode;
   panelWidth: number;
   panelHeight: number;
@@ -98,6 +100,8 @@ export const getDualPanelLayout = (
     );
 
     return {
+      canvasWidth,
+      canvasHeight,
       mode: "wide",
       panelWidth: basePanelWidth,
       panelHeight: basePanelHeight,
@@ -148,6 +152,8 @@ export const getDualPanelLayout = (
     );
 
     return {
+      canvasWidth,
+      canvasHeight,
       mode: "compact",
       panelWidth,
       panelHeight,
@@ -188,6 +194,8 @@ export const getDualPanelLayout = (
   );
 
   return {
+    canvasWidth,
+    canvasHeight,
     mode: "stacked",
     panelWidth,
     panelHeight,
