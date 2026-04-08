@@ -458,17 +458,17 @@ export const OutputPanel = () => {
   return (
     <Box
       position="absolute"
-      top={0}
-      right={0}
+      top="140px"
+      left="calc(50% + 148px)"
       width="690px"
       maxW="690px"
       minW="690px"
-      height="100%"
+      height="800px"
       bg="white"
       border="1px solid"
-      borderColor="gray.200"
-      borderRadius="2xl"
-      boxShadow="lg"
+      borderColor="#f2f2f2"
+      borderRadius="20px"
+      boxShadow="0 4px 4px rgba(0,0,0,0.25)"
       overflowY="auto"
       px={3}
       py={6}

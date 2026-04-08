@@ -38,6 +38,7 @@ import {
 } from "@/entities/node";
 import type { NodeType } from "@/entities/node";
 import { isDataTypeCompatible } from "@/entities/node";
+import { useAddNode } from "@/features/add-node";
 import { getLeafNodeIds, useWorkflowStore } from "@/shared";
 
 const NODE_GAP_X = 96;
@@ -117,6 +118,7 @@ export const Canvas = () => {
   );
   const openPanel = useWorkflowStore((state) => state.openPanel);
   const closePanel = useWorkflowStore((state) => state.closePanel);
+  const { addNode } = useAddNode();
 
   const handleNodesChange = useCallback(
     (changes: NodeChange[]) => {
@@ -141,23 +143,66 @@ export const Canvas = () => {
       if (node.type === "placeholder") {
         const nodeHeight = node.measured?.height ?? PLACEHOLDER_NODE_HEIGHT;
         const centerY = node.position.y + nodeHeight / 2;
+        const panelNodePosition = {
+          x: node.position.x,
+          y: getTopYFromCenter(centerY, DEFAULT_FLOW_NODE_HEIGHT),
+        };
+
+        const isStartOrEndPlaceholder =
+          node.id === "placeholder-start" || node.id === "placeholder-end";
 
         closePanel();
-        setActivePlaceholder({
-          id: node.id,
-          position: {
-            x: node.position.x,
-            y: getTopYFromCenter(centerY, DEFAULT_FLOW_NODE_HEIGHT),
-          },
-        });
+
+        if (isStartOrEndPlaceholder) {
+          setActivePlaceholder({
+            id: node.id,
+            position: panelNodePosition,
+          });
+        } else {
+          const sourceNodeId = node.id.replace("placeholder-", "");
+          const sourceNode = nodes.find(
+            (currentNode) => currentNode.id === sourceNodeId,
+          );
+          const sourceOutputType = sourceNode?.data.outputTypes[0] ?? null;
+
+          const tempNodeId = addNode("data-process", {
+            position: panelNodePosition,
+            inputTypes: sourceNode
+              ? [...sourceNode.data.outputTypes]
+              : undefined,
+            outputTypes: sourceOutputType ? [sourceOutputType] : undefined,
+            label: sourceOutputType ? "설정 중" : "가공",
+          });
+
+          onConnect({
+            source: sourceNodeId,
+            target: tempNodeId,
+            sourceHandle: null,
+            targetHandle: null,
+          });
+
+          setActivePlaceholder(null);
+          openPanel(tempNodeId);
+        }
 
         const viewportWidth = window.innerWidth;
         const offsetX = viewportWidth * 0.2;
 
-        setCenter(node.position.x + offsetX, centerY, {
-          zoom: 1,
-          duration: 300,
-        });
+        if (isStartOrEndPlaceholder) {
+          setCenter(node.position.x + offsetX, centerY, {
+            zoom: 1,
+            duration: 300,
+          });
+        } else {
+          setCenter(
+            panelNodePosition.x + DEFAULT_FLOW_NODE_WIDTH / 2,
+            centerY,
+            {
+              duration: 300,
+              zoom: getZoom(),
+            },
+          );
+        }
       } else {
         setActivePlaceholder(null);
         openPanel(node.id);
@@ -175,7 +220,16 @@ export const Canvas = () => {
         );
       }
     },
-    [closePanel, getZoom, openPanel, setActivePlaceholder, setCenter],
+    [
+      addNode,
+      closePanel,
+      getZoom,
+      nodes,
+      onConnect,
+      openPanel,
+      setActivePlaceholder,
+      setCenter,
+    ],
   );
 
   const handlePaneClick = useCallback(() => {
@@ -424,12 +478,54 @@ export const Canvas = () => {
     [activePanelNodeId, nodesWithPlaceholders],
   );
 
+  const visibleNodeIds = useMemo(() => {
+    if (!activePanelNodeId) return null;
+
+    const relatedIds = new Set<string>([activePanelNodeId]);
+    const incomingEdge = edges.find(
+      (edge) => edge.target === activePanelNodeId,
+    );
+    const outgoingEdge = edges.find(
+      (edge) => edge.source === activePanelNodeId,
+    );
+
+    if (incomingEdge) {
+      relatedIds.add(incomingEdge.source);
+    }
+
+    if (outgoingEdge) {
+      relatedIds.add(outgoingEdge.target);
+    } else {
+      relatedIds.add(`placeholder-${activePanelNodeId}`);
+    }
+
+    return relatedIds;
+  }, [activePanelNodeId, edges]);
+
+  const visibleNodes = useMemo(
+    () =>
+      nodesWithDragControl.map((node) => ({
+        ...node,
+        hidden: visibleNodeIds ? !visibleNodeIds.has(node.id) : false,
+      })),
+    [nodesWithDragControl, visibleNodeIds],
+  );
+
+  const visibleEdges = useMemo(() => {
+    if (!visibleNodeIds) return edges;
+
+    return edges.filter(
+      (edge) =>
+        visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target),
+    );
+  }, [edges, visibleNodeIds]);
+
   const isCanvasLocked = activePlaceholder !== null;
 
   return (
     <ReactFlow
-      nodes={nodesWithDragControl}
-      edges={edges}
+      nodes={visibleNodes}
+      edges={visibleEdges}
       defaultEdgeOptions={defaultEdgeOptions}
       nodeTypes={nodeTypes}
       onNodesChange={handleNodesChange}
