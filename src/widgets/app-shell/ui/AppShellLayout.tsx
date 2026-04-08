@@ -24,7 +24,14 @@ export const AppShellLayout = () => {
         onToggleLogoutMenu={toggleLogoutMenu}
         onCloseLogoutMenu={closeLogoutMenu}
       />
-      <Box as="main" flex={1} minW={0} overflow="auto">
+      <Box
+        as="main"
+        flex={1}
+        minW={0}
+        overflow="auto"
+        px={{ base: 6, md: 10 }}
+        py={{ base: 6, md: 8 }}
+      >
         <Outlet />
       </Box>
     </Flex>
