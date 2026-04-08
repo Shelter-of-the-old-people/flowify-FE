@@ -4,6 +4,12 @@ import { Box, Icon, Text } from "@chakra-ui/react";
 
 import { NODE_REGISTRY } from "@/entities/node";
 import type { FlowNodeData } from "@/entities/node";
+import {
+  OUTPUT_DATA_LABELS,
+  findActionById,
+  readCustomInputs,
+  readSelectionSummary,
+} from "@/features/choice-panel";
 import { useWorkflowStore } from "@/shared";
 
 export const InputPanel = () => {
@@ -14,11 +20,15 @@ export const InputPanel = () => {
     (state) => state.activePlaceholder,
   );
   const startNodeId = useWorkflowStore((state) => state.startNodeId);
+  const endNodeId = useWorkflowStore((state) => state.endNodeId);
   const nodes = useWorkflowStore((state) => state.nodes);
   const edges = useWorkflowStore((state) => state.edges);
   const closePanel = useWorkflowStore((state) => state.closePanel);
 
   const isOpen = Boolean(activePanelNodeId) && activePlaceholder === null;
+  const activeNode = activePanelNodeId
+    ? (nodes.find((node) => node.id === activePanelNodeId) ?? null)
+    : null;
 
   const sourceNodes = activePanelNodeId
     ? edges
@@ -31,6 +41,18 @@ export const InputPanel = () => {
   const sourceData: FlowNodeData | null = sourceNode?.data ?? null;
   const sourceMeta = sourceData ? NODE_REGISTRY[sourceData.type] : null;
   const isStartNode = activePanelNodeId === startNodeId;
+  const isEndNode = activePanelNodeId === endNodeId;
+  const isMiddleNode = Boolean(activeNode) && !isStartNode && !isEndNode;
+  const isConfiguredMiddleNode =
+    Boolean(activeNode?.data.config.isConfigured) && isMiddleNode;
+  const selectedAction = findActionById(activeNode?.data.config.choiceActionId);
+  const selectedOptions = readSelectionSummary(
+    selectedAction,
+    activeNode?.data.config.choiceSelections ?? null,
+  );
+  const customInputs = readCustomInputs(
+    activeNode?.data.config.choiceSelections ?? null,
+  );
 
   return (
     <Box
@@ -86,7 +108,10 @@ export const InputPanel = () => {
               {sourceMeta?.label ?? sourceData.label}
             </Text>
             <Text fontSize="sm" color="text.secondary">
-              출력 타입: {sourceData.outputTypes.join(", ") || "없음"}
+              출력 타입:{" "}
+              {sourceData.outputTypes[0]
+                ? OUTPUT_DATA_LABELS[sourceData.outputTypes[0]]
+                : "없음"}
             </Text>
             <Box
               mt={4}
@@ -100,6 +125,70 @@ export const InputPanel = () => {
                 데이터 미리보기는 백엔드 연동 후 제공될 예정입니다.
               </Text>
             </Box>
+
+            {isConfiguredMiddleNode && selectedAction ? (
+              <Box mt={8}>
+                <Text fontSize="md" fontWeight="bold" mb={3}>
+                  데이터 처리 방식
+                </Text>
+                <Box px={4} py={4} borderRadius="2xl" bg="gray.50">
+                  <Text fontSize="md" fontWeight="semibold">
+                    {selectedAction.label}
+                  </Text>
+                  {selectedAction.description ? (
+                    <Text mt={1} fontSize="sm" color="text.secondary">
+                      {selectedAction.description}
+                    </Text>
+                  ) : null}
+                </Box>
+              </Box>
+            ) : null}
+
+            {isConfiguredMiddleNode && selectedOptions.length > 0 ? (
+              <Box mt={8}>
+                <Text fontSize="md" fontWeight="bold" mb={3}>
+                  선택 옵션
+                </Text>
+                <Box display="flex" flexDirection="column" gap={3}>
+                  {selectedOptions.map((option, index) => (
+                    <Box
+                      key={`${option}-${index}`}
+                      px={4}
+                      py={4}
+                      borderRadius="2xl"
+                      bg="gray.50"
+                    >
+                      <Text fontSize="sm" fontWeight="medium">
+                        {option}
+                      </Text>
+                    </Box>
+                  ))}
+                </Box>
+              </Box>
+            ) : null}
+
+            {isConfiguredMiddleNode && customInputs.length > 0 ? (
+              <Box mt={8}>
+                <Text fontSize="md" fontWeight="bold" mb={3}>
+                  직접 입력
+                </Text>
+                <Box display="flex" flexDirection="column" gap={3}>
+                  {customInputs.map((input, index) => (
+                    <Box
+                      key={`${input}-${index}`}
+                      px={4}
+                      py={4}
+                      borderRadius="2xl"
+                      bg="gray.50"
+                    >
+                      <Text fontSize="sm" fontWeight="medium">
+                        {input}
+                      </Text>
+                    </Box>
+                  ))}
+                </Box>
+              </Box>
+            ) : null}
           </Box>
         ) : isStartNode ? (
           <Box>
