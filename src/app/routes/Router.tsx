@@ -10,16 +10,17 @@ import {
   WorkflowsPage,
 } from "@/pages";
 import { DYNAMIC_ROUTE_PATHS, ROUTE_PATHS } from "@/shared";
-import { EditorLayout, RootLayout } from "@/widgets";
+import { AppShellLayout, EditorLayout, LandingLayout } from "@/widgets";
 
 export const Router = () => {
   return (
     <BrowserRouter>
       <Routes>
-        {/* 기본 레이아웃 (Header + Footer) */}
-        <Route element={<RootLayout />}>
+        <Route element={<LandingLayout />}>
           <Route path={ROUTE_PATHS.MAIN} element={<MainPage />} />
-          <Route path={ROUTE_PATHS.LOGIN} element={<LoginPage />} />
+        </Route>
+
+        <Route element={<AppShellLayout />}>
           <Route path={ROUTE_PATHS.TEMPLATES} element={<TemplatesPage />} />
           <Route
             path={DYNAMIC_ROUTE_PATHS.TEMPLATE_DETAIL}
@@ -28,7 +29,8 @@ export const Router = () => {
           <Route path={ROUTE_PATHS.WORKFLOWS} element={<WorkflowsPage />} />
         </Route>
 
-        {/* 에디터 레이아웃 (풀스크린 캔버스) */}
+        <Route path={ROUTE_PATHS.LOGIN} element={<LoginPage />} />
+
         <Route element={<EditorLayout />}>
           <Route
             path={DYNAMIC_ROUTE_PATHS.WORKFLOW_EDITOR}

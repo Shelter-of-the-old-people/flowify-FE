@@ -6,7 +6,7 @@ import { Box, Button, Icon, Spinner, Text } from "@chakra-ui/react";
 import { ReactFlowProvider } from "@xyflow/react";
 
 import { ServiceSelectionPanel } from "@/features/add-node";
-import { ROUTE_PATHS, useWorkflowStore } from "@/shared";
+import { EDITOR_CANVAS_AREA_ID, ROUTE_PATHS, useWorkflowStore } from "@/shared";
 import { Canvas, EditorToolbar, InputPanel, OutputPanel } from "@/widgets";
 
 // ─── 로딩 상태 ───────────────────────────────────────────────
@@ -84,7 +84,12 @@ const WorkflowEditorInner = () => {
     <Box display="flex" flexDirection="column" height="100%">
       <EditorToolbar />
       {/* Canvas 영역 — 패널·버튼·빈 상태가 absolute로 올라탐 */}
-      <Box flex={1} position="relative" overflow="hidden">
+      <Box
+        id={EDITOR_CANVAS_AREA_ID}
+        flex={1}
+        position="relative"
+        overflow="hidden"
+      >
         <Canvas />
         <ServiceSelectionPanel />
         <InputPanel />

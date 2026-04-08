@@ -1,10 +1,9 @@
+import { useState } from "react";
 import type { MouseEvent, ReactNode } from "react";
-import { MdClose } from "react-icons/md";
+import { MdCancel } from "react-icons/md";
 
 import { Box, Icon, IconButton, Text } from "@chakra-ui/react";
 import { Handle, Position } from "@xyflow/react";
-
-// source Handle만 사용 — 사용자가 직접 노드를 연결하지 않으므로 target Handle 제거
 
 import { useWorkflowStore } from "@/shared";
 
@@ -18,6 +17,13 @@ interface BaseNodeProps {
   children?: ReactNode;
 }
 
+const HIDDEN_HANDLE_STYLE = {
+  opacity: 0,
+  width: 0,
+  height: 0,
+  pointerEvents: "none" as const,
+};
+
 const getSummaryContent = (
   helperText: string | null,
   children?: ReactNode,
@@ -29,11 +35,12 @@ const getSummaryContent = (
   return children ?? null;
 };
 
-export const BaseNode = ({ id, data, selected, children }: BaseNodeProps) => {
-  const removeNode = useWorkflowStore((s) => s.removeNode);
-  const openPanel = useWorkflowStore((s) => s.openPanel);
-  const startNodeId = useWorkflowStore((s) => s.startNodeId);
-  const endNodeId = useWorkflowStore((s) => s.endNodeId);
+export const BaseNode = ({ id, data, children }: BaseNodeProps) => {
+  const removeNode = useWorkflowStore((state) => state.removeNode);
+  const openPanel = useWorkflowStore((state) => state.openPanel);
+  const startNodeId = useWorkflowStore((state) => state.startNodeId);
+  const endNodeId = useWorkflowStore((state) => state.endNodeId);
+  const [isHovered, setIsHovered] = useState(false);
 
   const presentation = getNodePresentation(data, {
     nodeId: id,
@@ -41,6 +48,7 @@ export const BaseNode = ({ id, data, selected, children }: BaseNodeProps) => {
     endNodeId,
   });
   const summaryContent = getSummaryContent(presentation.helperText, children);
+  const showNodeIcon = data.config.isConfigured;
 
   const handleOpenPanel = () => {
     openPanel(id);
@@ -66,16 +74,22 @@ export const BaseNode = ({ id, data, selected, children }: BaseNodeProps) => {
       transition="border-color 150ms ease, box-shadow 150ms ease"
       cursor="pointer"
       onClick={handleOpenPanel}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
       <Text fontSize="xs" fontWeight="medium" color="text.secondary">
         {presentation.roleLabel}
       </Text>
 
-      <Icon
-        as={presentation.iconComponent}
-        boxSize={14}
-        color={data.config.isConfigured ? "text.primary" : "text.secondary"}
-      />
+      <Box h={14} display="flex" alignItems="center" justifyContent="center">
+        {showNodeIcon ? (
+          <Icon
+            as={presentation.iconComponent}
+            boxSize={14}
+            color="text.primary"
+          />
+        ) : null}
+      </Box>
 
       <Text
         fontSize="lg"
@@ -99,7 +113,7 @@ export const BaseNode = ({ id, data, selected, children }: BaseNodeProps) => {
         </Box>
       ) : null}
 
-      {selected ? (
+      {isHovered ? (
         <IconButton
           aria-label="노드 삭제"
           size="xs"
@@ -109,11 +123,20 @@ export const BaseNode = ({ id, data, selected, children }: BaseNodeProps) => {
           variant="ghost"
           onClick={handleRemoveNode}
         >
-          <MdClose />
+          <MdCancel />
         </IconButton>
       ) : null}
 
-      <Handle type="source" position={Position.Right} />
+      <Handle
+        type="target"
+        position={Position.Left}
+        style={HIDDEN_HANDLE_STYLE}
+      />
+      <Handle
+        type="source"
+        position={Position.Right}
+        style={HIDDEN_HANDLE_STYLE}
+      />
     </Box>
   );
 };

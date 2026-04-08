@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import type { MouseEvent } from "react";
 
 import {
@@ -9,7 +9,12 @@ import {
   ReactFlow,
   useReactFlow,
 } from "@xyflow/react";
-import type { Node, NodeChange, NodeTypes } from "@xyflow/react";
+import type {
+  DefaultEdgeOptions,
+  Node,
+  NodeChange,
+  NodeTypes,
+} from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
 import {
@@ -33,6 +38,7 @@ import {
 } from "@/entities/node";
 import type { NodeType } from "@/entities/node";
 import { isDataTypeCompatible } from "@/entities/node";
+import { useAddNode } from "@/features/add-node";
 import { getLeafNodeIds, useWorkflowStore } from "@/shared";
 
 const NODE_GAP_X = 96;
@@ -52,11 +58,51 @@ const getCenterYFromTop = (topY: number, height: number) => topY + height / 2;
 const getNodeWidth = (node: Node, fallbackWidth = DEFAULT_FLOW_NODE_WIDTH) =>
   node.measured?.width ?? fallbackWidth;
 
+const getNodeHeight = (node: Node, fallbackHeight = DEFAULT_FLOW_NODE_HEIGHT) =>
+  node.measured?.height ?? fallbackHeight;
+
+const getNodeFallbackWidth = (node: Node) => {
+  if (node.type === "placeholder") return PLACEHOLDER_NODE_WIDTH;
+  if (node.type === "creation-method") return CREATION_METHOD_NODE_WIDTH;
+  return DEFAULT_FLOW_NODE_WIDTH;
+};
+
+const getNodeFallbackHeight = (node: Node) => {
+  if (node.type === "placeholder") return PLACEHOLDER_NODE_HEIGHT;
+  if (node.type === "creation-method") return CREATION_METHOD_NODE_HEIGHT;
+  return DEFAULT_FLOW_NODE_HEIGHT;
+};
+
 const getNodeCenterY = (
   node: Node,
   fallbackHeight = DEFAULT_FLOW_NODE_HEIGHT,
 ) =>
   getCenterYFromTop(node.position.y, node.measured?.height ?? fallbackHeight);
+
+const getNodeBounds = (node: Node) => {
+  const width = getNodeWidth(node, getNodeFallbackWidth(node));
+  const height = getNodeHeight(node, getNodeFallbackHeight(node));
+
+  return {
+    minX: node.position.x,
+    maxX: node.position.x + width,
+    minY: node.position.y,
+    maxY: node.position.y + height,
+  };
+};
+
+const getNodesBoundsCenter = (chainNodes: Node[]) => {
+  const bounds = chainNodes.map((node) => getNodeBounds(node));
+  const minX = Math.min(...bounds.map((bound) => bound.minX));
+  const maxX = Math.max(...bounds.map((bound) => bound.maxX));
+  const minY = Math.min(...bounds.map((bound) => bound.minY));
+  const maxY = Math.max(...bounds.map((bound) => bound.maxY));
+
+  return {
+    centerX: (minX + maxX) / 2,
+    centerY: (minY + maxY) / 2,
+  };
+};
 
 type CanvasNodeType = NodeType | "placeholder" | "creation-method";
 
@@ -80,18 +126,39 @@ const nodeTypes = {
   "creation-method": CreationMethodNode,
 } satisfies Record<CanvasNodeType, NodeTypes[string]>;
 
+const defaultEdgeOptions: DefaultEdgeOptions = {
+  type: "smoothstep",
+  animated: false,
+  style: {
+    stroke: "#94a3b8",
+    strokeWidth: 2,
+  },
+};
+
 export const Canvas = () => {
-  const nodes = useWorkflowStore((s) => s.nodes);
-  const edges = useWorkflowStore((s) => s.edges);
-  const onNodesChange = useWorkflowStore((s) => s.onNodesChange);
-  const onEdgesChange = useWorkflowStore((s) => s.onEdgesChange);
-  const onConnect = useWorkflowStore((s) => s.onConnect);
-  const startNodeId = useWorkflowStore((s) => s.startNodeId);
-  const endNodeId = useWorkflowStore((s) => s.endNodeId);
-  const creationMethod = useWorkflowStore((s) => s.creationMethod);
-  const setCreationMethod = useWorkflowStore((s) => s.setCreationMethod);
-  const activePlaceholder = useWorkflowStore((s) => s.activePlaceholder);
-  const setActivePlaceholder = useWorkflowStore((s) => s.setActivePlaceholder);
+  const nodes = useWorkflowStore((state) => state.nodes);
+  const edges = useWorkflowStore((state) => state.edges);
+  const onNodesChange = useWorkflowStore((state) => state.onNodesChange);
+  const onEdgesChange = useWorkflowStore((state) => state.onEdgesChange);
+  const onConnect = useWorkflowStore((state) => state.onConnect);
+  const startNodeId = useWorkflowStore((state) => state.startNodeId);
+  const endNodeId = useWorkflowStore((state) => state.endNodeId);
+  const creationMethod = useWorkflowStore((state) => state.creationMethod);
+  const setCreationMethod = useWorkflowStore(
+    (state) => state.setCreationMethod,
+  );
+  const activePlaceholder = useWorkflowStore(
+    (state) => state.activePlaceholder,
+  );
+  const activePanelNodeId = useWorkflowStore(
+    (state) => state.activePanelNodeId,
+  );
+  const setActivePlaceholder = useWorkflowStore(
+    (state) => state.setActivePlaceholder,
+  );
+  const openPanel = useWorkflowStore((state) => state.openPanel);
+  const closePanel = useWorkflowStore((state) => state.closePanel);
+  const { addNode } = useAddNode();
 
   const handleNodesChange = useCallback(
     (changes: NodeChange[]) => {
@@ -105,39 +172,93 @@ export const Canvas = () => {
     [onNodesChange],
   );
 
-  const { setCenter } = useReactFlow();
+  const { getZoom, setCenter } = useReactFlow();
 
   const handleNodeClick = useCallback(
     (_event: MouseEvent, node: Node) => {
-      if (node.id.startsWith("placeholder-")) {
+      if (node.type === "creation-method") {
+        return;
+      }
+
+      if (node.type === "placeholder") {
         const nodeHeight = node.measured?.height ?? PLACEHOLDER_NODE_HEIGHT;
         const centerY = node.position.y + nodeHeight / 2;
+        const panelNodePosition = {
+          x: node.position.x,
+          y: getTopYFromCenter(centerY, DEFAULT_FLOW_NODE_HEIGHT),
+        };
 
-        setActivePlaceholder({
-          id: node.id,
-          position: {
-            x: node.position.x,
-            y: getTopYFromCenter(centerY, DEFAULT_FLOW_NODE_HEIGHT),
-          },
-        });
+        const isStartOrEndPlaceholder =
+          node.id === "placeholder-start" || node.id === "placeholder-end";
+
+        closePanel();
+
+        if (isStartOrEndPlaceholder) {
+          setActivePlaceholder({
+            id: node.id,
+            position: panelNodePosition,
+          });
+        } else {
+          const sourceNodeId = node.id.replace("placeholder-", "");
+          const sourceNode = nodes.find(
+            (currentNode) => currentNode.id === sourceNodeId,
+          );
+          const sourceOutputType = sourceNode?.data.outputTypes[0] ?? null;
+
+          const tempNodeId = addNode("data-process", {
+            position: panelNodePosition,
+            inputTypes: sourceNode
+              ? [...sourceNode.data.outputTypes]
+              : undefined,
+            outputTypes: sourceOutputType ? [sourceOutputType] : undefined,
+            label: sourceOutputType ? "설정 중" : "가공",
+          });
+
+          onConnect({
+            source: sourceNodeId,
+            target: tempNodeId,
+            sourceHandle: null,
+            targetHandle: null,
+          });
+
+          setActivePlaceholder(null);
+          openPanel(tempNodeId);
+        }
 
         const viewportWidth = window.innerWidth;
         const offsetX = viewportWidth * 0.2;
 
-        setCenter(node.position.x + offsetX, centerY, {
-          zoom: 1,
-          duration: 300,
-        });
+        if (isStartOrEndPlaceholder) {
+          setCenter(node.position.x + offsetX, centerY, {
+            zoom: 1,
+            duration: 300,
+          });
+        }
       } else {
         setActivePlaceholder(null);
+        openPanel(node.id);
       }
     },
-    [setActivePlaceholder, setCenter],
+    [
+      addNode,
+      closePanel,
+      nodes,
+      onConnect,
+      openPanel,
+      setActivePlaceholder,
+      setCenter,
+    ],
   );
 
   const handlePaneClick = useCallback(() => {
-    setActivePlaceholder(null);
-  }, [setActivePlaceholder]);
+    if (activePlaceholder) {
+      setActivePlaceholder(null);
+    }
+
+    if (activePanelNodeId) {
+      closePanel();
+    }
+  }, [activePanelNodeId, activePlaceholder, closePanel, setActivePlaceholder]);
 
   const handleSelectManual = useCallback(() => {
     setCreationMethod("manual");
@@ -164,8 +285,34 @@ export const Canvas = () => {
     [nodes, onConnect],
   );
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+
+      if (activePlaceholder) {
+        setActivePlaceholder(null);
+        return;
+      }
+
+      if (activePanelNodeId) {
+        closePanel();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [activePanelNodeId, activePlaceholder, closePanel, setActivePlaceholder]);
+
   const nodesWithPlaceholders = useMemo(() => {
     const result: Node[] = [...nodes];
+    const endNode = endNodeId
+      ? (nodes.find((node) => node.id === endNodeId) ?? null)
+      : null;
+    const showCreationMethod =
+      startNodeId !== null &&
+      endNodeId !== null &&
+      endNode?.data.config.isConfigured === true &&
+      !creationMethod;
 
     // 분기 1: 시작/도착 미설정 → placeholder 표시
     if (!startNodeId) {
@@ -210,7 +357,7 @@ export const Canvas = () => {
     }
 
     // 분기 2: 둘 다 설정됨 + 생성 방식 미결정
-    if (startNodeId && endNodeId && !creationMethod) {
+    if (showCreationMethod) {
       const startNode = nodes.find((n) => n.id === startNodeId);
       const startX = startNode?.position.x ?? 0;
       const startWidth = startNode
@@ -339,12 +486,126 @@ export const Canvas = () => {
     handleSelectManual,
   ]);
 
+  const nodesWithDragControl = useMemo(
+    () =>
+      nodesWithPlaceholders.map((node) => ({
+        ...node,
+        draggable:
+          node.draggable === false ? false : node.id !== activePanelNodeId,
+      })),
+    [activePanelNodeId, nodesWithPlaceholders],
+  );
+
+  const visibleNodeIds = useMemo(() => {
+    if (!activePanelNodeId) return null;
+
+    const relatedIds = new Set<string>([activePanelNodeId]);
+    const incomingEdge = edges.find(
+      (edge) => edge.target === activePanelNodeId,
+    );
+    const outgoingEdge = edges.find(
+      (edge) => edge.source === activePanelNodeId,
+    );
+
+    if (incomingEdge) {
+      relatedIds.add(incomingEdge.source);
+    }
+
+    if (outgoingEdge) {
+      relatedIds.add(outgoingEdge.target);
+    } else {
+      relatedIds.add(`placeholder-${activePanelNodeId}`);
+    }
+
+    return relatedIds;
+  }, [activePanelNodeId, edges]);
+
+  const visibleNodes = useMemo(
+    () =>
+      nodesWithDragControl.map((node) => ({
+        ...node,
+        hidden: visibleNodeIds ? !visibleNodeIds.has(node.id) : false,
+      })),
+    [nodesWithDragControl, visibleNodeIds],
+  );
+
+  const visibleEdges = useMemo(() => {
+    if (!visibleNodeIds) return edges;
+
+    return edges.filter(
+      (edge) =>
+        visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target),
+    );
+  }, [edges, visibleNodeIds]);
+
+  const getChainNodes = useCallback(
+    (nodeId: string) => {
+      const activeNode =
+        nodesWithDragControl.find((node) => node.id === nodeId) ?? null;
+
+      if (!activeNode) return [];
+
+      const chainNodes: Node[] = [activeNode];
+      const incomingEdge = edges.find((edge) => edge.target === nodeId);
+      const outgoingEdge = edges.find((edge) => edge.source === nodeId);
+
+      if (incomingEdge) {
+        const previousNode = nodesWithDragControl.find(
+          (node) => node.id === incomingEdge.source,
+        );
+
+        if (previousNode) {
+          chainNodes.unshift(previousNode);
+        }
+      }
+
+      if (outgoingEdge) {
+        const nextNode = nodesWithDragControl.find(
+          (node) => node.id === outgoingEdge.target,
+        );
+
+        if (nextNode) {
+          chainNodes.push(nextNode);
+        }
+      } else {
+        const nextPlaceholder =
+          nodesWithDragControl.find(
+            (node) => node.id === `placeholder-${nodeId}`,
+          ) ??
+          nodesWithDragControl.find((node) => node.id === "placeholder-end") ??
+          null;
+
+        if (nextPlaceholder) {
+          chainNodes.push(nextPlaceholder);
+        }
+      }
+
+      return chainNodes;
+    },
+    [edges, nodesWithDragControl],
+  );
+
+  useEffect(() => {
+    if (!activePanelNodeId) return;
+
+    const chainNodes = getChainNodes(activePanelNodeId);
+    if (chainNodes.length === 0) return;
+
+    const { centerX, centerY } = getNodesBoundsCenter(chainNodes);
+
+    setCenter(centerX, centerY, {
+      duration: 300,
+      zoom: getZoom(),
+    });
+  }, [activePanelNodeId, getChainNodes, getZoom, setCenter]);
+
   const isCanvasLocked = activePlaceholder !== null;
 
   return (
     <ReactFlow
-      nodes={nodesWithPlaceholders}
-      edges={edges}
+      nodes={visibleNodes}
+      edges={visibleEdges}
+      defaultEdgeOptions={defaultEdgeOptions}
       nodeTypes={nodeTypes}
       onNodesChange={handleNodesChange}
       onEdgesChange={onEdgesChange}

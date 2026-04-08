@@ -4,58 +4,81 @@ import { Box, Icon, Text } from "@chakra-ui/react";
 
 import { NODE_REGISTRY } from "@/entities/node";
 import type { FlowNodeData } from "@/entities/node";
-import { useWorkflowStore } from "@/shared";
+import {
+  OUTPUT_DATA_LABELS,
+  findActionById,
+  readCustomInputs,
+  readSelectionSummary,
+} from "@/features/choice-panel";
+import { useDualPanelLayout, useWorkflowStore } from "@/shared";
 
-/**
- * 중간 노드 클릭 시 왼쪽에 표시되는 "들어오는 데이터" 패널.
- * 이전 노드(source)의 출력 데이터 타입을 보여준다.
- */
 export const InputPanel = () => {
-  const activePanelNodeId = useWorkflowStore((s) => s.activePanelNodeId);
-  const wizardStep = useWorkflowStore((s) => s.wizardStep);
-  const nodes = useWorkflowStore((s) => s.nodes);
-  const edges = useWorkflowStore((s) => s.edges);
-  const closePanel = useWorkflowStore((s) => s.closePanel);
+  const activePanelNodeId = useWorkflowStore(
+    (state) => state.activePanelNodeId,
+  );
+  const activePlaceholder = useWorkflowStore(
+    (state) => state.activePlaceholder,
+  );
+  const startNodeId = useWorkflowStore((state) => state.startNodeId);
+  const endNodeId = useWorkflowStore((state) => state.endNodeId);
+  const nodes = useWorkflowStore((state) => state.nodes);
+  const edges = useWorkflowStore((state) => state.edges);
+  const closePanel = useWorkflowStore((state) => state.closePanel);
+  const layout = useDualPanelLayout();
 
-  const isOpen = Boolean(activePanelNodeId) && wizardStep === null;
+  const isOpen = Boolean(activePanelNodeId) && activePlaceholder === null;
+  const activeNode = activePanelNodeId
+    ? (nodes.find((node) => node.id === activePanelNodeId) ?? null)
+    : null;
 
-  // 이전 노드(들) 찾기 — 현재 노드로 들어오는 엣지의 source
   const sourceNodes = activePanelNodeId
     ? edges
-        .filter((e) => e.target === activePanelNodeId)
-        .map((e) => nodes.find((n) => n.id === e.source))
-        .filter((n): n is (typeof nodes)[number] => n != null)
+        .filter((edge) => edge.target === activePanelNodeId)
+        .map((edge) => nodes.find((node) => node.id === edge.source))
+        .filter((node): node is (typeof nodes)[number] => node != null)
     : [];
 
   const sourceNode = sourceNodes[0] ?? null;
   const sourceData: FlowNodeData | null = sourceNode?.data ?? null;
   const sourceMeta = sourceData ? NODE_REGISTRY[sourceData.type] : null;
+  const isStartNode = activePanelNodeId === startNodeId;
+  const isEndNode = activePanelNodeId === endNodeId;
+  const isMiddleNode = Boolean(activeNode) && !isStartNode && !isEndNode;
+  const isConfiguredMiddleNode =
+    Boolean(activeNode?.data.config.isConfigured) && isMiddleNode;
+  const selectedAction = findActionById(activeNode?.data.config.choiceActionId);
+  const selectedOptions = readSelectionSummary(
+    selectedAction,
+    activeNode?.data.config.choiceSelections ?? null,
+  );
+  const customInputs = readCustomInputs(
+    activeNode?.data.config.choiceSelections ?? null,
+  );
 
   return (
     <Box
       position="absolute"
-      top={0}
-      left={0}
-      width="690px"
-      maxW="690px"
-      minW="690px"
-      height="100%"
+      top={`${layout.inputPanelTop}px`}
+      left={`${layout.inputPanelLeft}px`}
+      width={`${layout.panelWidth}px`}
+      height={`${layout.panelHeight}px`}
       bg="white"
       border="1px solid"
-      borderColor="gray.200"
-      borderRadius="2xl"
-      boxShadow="lg"
+      borderColor="#f2f2f2"
+      borderRadius="20px"
+      boxShadow="0 4px 4px rgba(0,0,0,0.25)"
       overflowY="auto"
       px={3}
       py={6}
       zIndex={5}
-      transform={isOpen ? "translateX(0)" : "translateX(-100%)"}
-      transition="transform 200ms ease"
+      transition="opacity 200ms ease"
+      opacity={isOpen ? 1 : 0}
+      visibility={isOpen ? "visible" : "hidden"}
+      pointerEvents={isOpen ? "auto" : "none"}
       display="flex"
       flexDirection="column"
       gap={3}
     >
-      {/* 헤더 */}
       <Box
         display="flex"
         alignItems="center"
@@ -63,13 +86,13 @@ export const InputPanel = () => {
         px={3}
       >
         <Box display="flex" gap={2} alignItems="center">
-          {sourceMeta && (
+          {sourceMeta ? (
             <Icon
               as={sourceMeta.iconComponent}
               boxSize={6}
               color={sourceMeta.color}
             />
-          )}
+          ) : null}
           <Text fontSize="xl" fontWeight="medium" letterSpacing="-0.4px">
             들어오는 데이터
           </Text>
@@ -79,7 +102,6 @@ export const InputPanel = () => {
         </Box>
       </Box>
 
-      {/* 컨텐츠 */}
       <Box flex={1} overflow="auto" p={3}>
         {sourceData ? (
           <Box>
@@ -87,9 +109,11 @@ export const InputPanel = () => {
               {sourceMeta?.label ?? sourceData.label}
             </Text>
             <Text fontSize="sm" color="text.secondary">
-              출력 타입: {sourceData.outputTypes.join(", ") || "없음"}
+              출력 타입:{" "}
+              {sourceData.outputTypes[0]
+                ? OUTPUT_DATA_LABELS[sourceData.outputTypes[0]]
+                : "없음"}
             </Text>
-            {/* TODO: 실제 데이터 미리보기는 백엔드 연동 후 구현 */}
             <Box
               mt={4}
               p={6}
@@ -99,9 +123,82 @@ export const InputPanel = () => {
               gap={6}
             >
               <Text fontSize="sm" color="text.secondary" gridColumn="1 / -1">
-                데이터 미리보기는 백엔드 연동 후 사용 가능합니다.
+                데이터 미리보기는 백엔드 연동 후 제공될 예정입니다.
               </Text>
             </Box>
+
+            {isConfiguredMiddleNode && selectedAction ? (
+              <Box mt={8}>
+                <Text fontSize="md" fontWeight="bold" mb={3}>
+                  데이터 처리 방식
+                </Text>
+                <Box px={4} py={4} borderRadius="2xl" bg="gray.50">
+                  <Text fontSize="md" fontWeight="semibold">
+                    {selectedAction.label}
+                  </Text>
+                  {selectedAction.description ? (
+                    <Text mt={1} fontSize="sm" color="text.secondary">
+                      {selectedAction.description}
+                    </Text>
+                  ) : null}
+                </Box>
+              </Box>
+            ) : null}
+
+            {isConfiguredMiddleNode && selectedOptions.length > 0 ? (
+              <Box mt={8}>
+                <Text fontSize="md" fontWeight="bold" mb={3}>
+                  선택 옵션
+                </Text>
+                <Box display="flex" flexDirection="column" gap={3}>
+                  {selectedOptions.map((option, index) => (
+                    <Box
+                      key={`${option}-${index}`}
+                      px={4}
+                      py={4}
+                      borderRadius="2xl"
+                      bg="gray.50"
+                    >
+                      <Text fontSize="sm" fontWeight="medium">
+                        {option}
+                      </Text>
+                    </Box>
+                  ))}
+                </Box>
+              </Box>
+            ) : null}
+
+            {isConfiguredMiddleNode && customInputs.length > 0 ? (
+              <Box mt={8}>
+                <Text fontSize="md" fontWeight="bold" mb={3}>
+                  직접 입력
+                </Text>
+                <Box display="flex" flexDirection="column" gap={3}>
+                  {customInputs.map((input, index) => (
+                    <Box
+                      key={`${input}-${index}`}
+                      px={4}
+                      py={4}
+                      borderRadius="2xl"
+                      bg="gray.50"
+                    >
+                      <Text fontSize="sm" fontWeight="medium">
+                        {input}
+                      </Text>
+                    </Box>
+                  ))}
+                </Box>
+              </Box>
+            ) : null}
+          </Box>
+        ) : isStartNode ? (
+          <Box>
+            <Text fontSize="md" fontWeight="medium">
+              시작점
+            </Text>
+            <Text fontSize="sm" color="text.secondary" mt={2}>
+              워크플로우의 입력 데이터가 이 지점에서 들어옵니다.
+            </Text>
           </Box>
         ) : (
           <Text fontSize="sm" color="text.secondary">
