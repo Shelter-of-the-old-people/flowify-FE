@@ -1,3 +1,4 @@
+export * from "./app-shell";
 export * from "./canvas";
 export * from "./editor-layout";
 export * from "./editor-toolbar";
