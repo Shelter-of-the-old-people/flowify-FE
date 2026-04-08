@@ -72,7 +72,6 @@ export const AppSidebar = ({
       as="aside"
       direction="column"
       justify="space-between"
-      h="100%"
       w={`${isExpanded ? sidebarLayoutSpec.expandedWidth : sidebarLayoutSpec.collapsedWidth}px`}
       px={1.5}
       py={6}
@@ -82,6 +81,7 @@ export const AppSidebar = ({
       transition="width 220ms ease"
       overflow="visible"
       flexShrink={0}
+      alignSelf="stretch"
       onMouseLeave={onCloseLogoutMenu}
     >
       <Flex direction="column" gap={3}>

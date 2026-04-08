@@ -16,7 +16,7 @@ export const AppShellLayout = () => {
   } = useSidebarState();
 
   return (
-    <Flex minH="100dvh" bg="gray.50">
+    <Flex h="100dvh" minH="100dvh" bg="gray.50">
       <AppSidebar
         isExpanded={isExpanded}
         isLogoutMenuOpen={isLogoutMenuOpen}
