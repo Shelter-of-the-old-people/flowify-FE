@@ -5,7 +5,7 @@ import {
   useRef,
   useState,
 } from "react";
-import type { ElementType, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { MdArrowBack, MdCancel, MdSearch } from "react-icons/md";
 
 import { Box, Grid, Icon, Input, Text, VStack } from "@chakra-ui/react";
@@ -64,32 +64,6 @@ const WizardCard = ({
     overflow="hidden"
   >
     {children}
-  </Box>
-);
-
-const SelectedNodePreview = ({
-  iconComponent,
-  label,
-  color,
-}: {
-  iconComponent: ElementType;
-  label: string;
-  color?: string;
-}) => (
-  <Box width="100px" textAlign="center">
-    <Box
-      h="100px"
-      display="flex"
-      alignItems="center"
-      justifyContent="center"
-      mb={3}
-      mx="auto"
-    >
-      <Icon as={iconComponent} boxSize={20} color={color ?? "text.primary"} />
-    </Box>
-    <Text fontSize="16px" fontWeight="bold" lineHeight="short">
-      {label}
-    </Text>
   </Box>
 );
 
@@ -578,20 +552,6 @@ export const ServiceSelectionPanel = () => {
     }
   };
 
-  const previewMeta = selectedService
-    ? {
-        iconComponent: selectedService.iconComponent,
-        color: undefined,
-        label: selectedService.label,
-      }
-    : selectedMeta
-      ? {
-          iconComponent: selectedMeta.iconComponent,
-          color: selectedMeta.color,
-          label: selectedMeta.label,
-        }
-      : null;
-
   return (
     <Box
       ref={overlayRef}
@@ -630,15 +590,7 @@ export const ServiceSelectionPanel = () => {
             <Icon as={MdCancel} boxSize={7} color="gray.600" />
           </Box>
 
-          <Box display="flex" gap="48px" alignItems="center">
-            {previewMeta ? (
-              <SelectedNodePreview
-                iconComponent={previewMeta.iconComponent}
-                color={previewMeta.color}
-                label={previewMeta.label}
-              />
-            ) : null}
-
+          <Box>
             {step === "category" ? (
               <CategoryGrid
                 searchQuery={searchQuery}
