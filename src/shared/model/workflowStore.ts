@@ -13,6 +13,7 @@ import { immer } from "zustand/middleware/immer";
 import type { FlowNodeData } from "@/entities/node";
 
 import { collectDescendantIds } from "../libs/graph";
+import type { WorkflowHydratedState } from "../libs/workflow-adapter";
 
 export type ExecutionStatus = "idle" | "running" | "success" | "failed";
 
@@ -47,6 +48,7 @@ interface WorkflowEditorActions {
   openPanel: (nodeId: string) => void;
   closePanel: () => void;
   setWorkflowMeta: (id: string, name: string) => void;
+  hydrateWorkflow: (payload: WorkflowHydratedState) => void;
   setWorkflowName: (name: string) => void;
   setExecutionStatus: (status: ExecutionStatus) => void;
   setStartNodeId: (id: string | null) => void;
@@ -173,6 +175,19 @@ export const useWorkflowStore = create<
       set((state) => {
         state.workflowId = id;
         state.workflowName = name;
+      }),
+
+    hydrateWorkflow: (payload) =>
+      set((state) => {
+        state.workflowId = payload.workflowId;
+        state.workflowName = payload.workflowName;
+        state.nodes = payload.nodes;
+        state.edges = payload.edges;
+        state.startNodeId = payload.startNodeId;
+        state.endNodeId = payload.endNodeId;
+        state.creationMethod = payload.creationMethod;
+        state.activePanelNodeId = null;
+        state.activePlaceholder = null;
       }),
 
     setWorkflowName: (name) =>

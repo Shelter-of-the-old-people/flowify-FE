@@ -1,6 +1,7 @@
 import type { Edge, Node } from "@xyflow/react";
 
 import type { FlowNodeData } from "@/entities/node";
+import type { ValidationWarning } from "@/shared";
 
 export type WorkflowStatus = "active" | "inactive";
 
@@ -17,26 +18,28 @@ export interface Workflow {
   id: string;
   name: string;
   description: string;
-  status: WorkflowStatus;
   nodes: Node<FlowNodeData>[];
   edges: Edge[];
   userId: string;
-  sharedWith: string[];
-  isTemplate: boolean;
-  templateId: string | null;
+  sharedWith?: string[];
+  isTemplate?: boolean;
+  templateId?: string | null;
   trigger: TriggerConfig | null;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  warnings?: ValidationWarning[];
 }
 
-export type WorkflowSummary = Pick<
-  Workflow,
-  | "id"
-  | "name"
-  | "description"
-  | "status"
-  | "isActive"
-  | "createdAt"
-  | "updatedAt"
->;
+export interface WorkflowSummary {
+  id: string;
+  name: string;
+  description: string;
+  isActive: boolean;
+  status: WorkflowStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const getWorkflowStatus = (isActive: boolean): WorkflowStatus =>
+  isActive ? "active" : "inactive";

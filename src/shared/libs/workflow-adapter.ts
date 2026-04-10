@@ -26,6 +26,34 @@ const DATA_TYPE_MAP = {
   SCHEDULE_DATA: "schedule-data",
 } as const satisfies Record<string, DataType>;
 
+const NODE_TYPE_TO_BACKEND: Record<
+  NodeType,
+  { category: string; type: string }
+> = {
+  communication: { category: "service", type: "communication" },
+  storage: { category: "service", type: "storage" },
+  spreadsheet: { category: "service", type: "spreadsheet" },
+  "web-scraping": { category: "service", type: "web-scraping" },
+  calendar: { category: "service", type: "calendar" },
+  notification: { category: "service", type: "notification" },
+  trigger: { category: "control", type: "trigger" },
+  filter: { category: "control", type: "filter" },
+  loop: { category: "control", type: "loop" },
+  condition: { category: "control", type: "condition" },
+  "multi-output": { category: "control", type: "multi-output" },
+  "early-exit": { category: "control", type: "early-exit" },
+  "data-process": { category: "processing", type: "data-process" },
+  "output-format": { category: "processing", type: "output-format" },
+  llm: { category: "ai", type: "llm" },
+};
+
+const BACKEND_TYPE_TO_NODE_TYPE = Object.fromEntries(
+  Object.entries(NODE_TYPE_TO_BACKEND).map(([nodeType, { type }]) => [
+    type,
+    nodeType as NodeType,
+  ]),
+) as Record<string, NodeType>;
+
 export interface WorkflowAdapterStoreState {
   workflowName: string;
   nodes: Node<FlowNodeData>[];
@@ -41,6 +69,7 @@ export interface WorkflowHydratedState {
   edges: Edge[];
   startNodeId: string | null;
   endNodeId: string | null;
+  creationMethod: "manual" | null;
 }
 
 const isNodeType = (value: string): value is NodeType => value in NODE_REGISTRY;
@@ -62,19 +91,19 @@ export const toBackendDataType = (frontend: DataType): string =>
   frontend.toUpperCase().replace(/-/g, "_");
 
 export const toEdgeDefinition = (edge: Edge): EdgeDefinitionResponse => ({
-  id: edge.id,
   source: edge.source,
   target: edge.target,
-  sourceHandle: edge.sourceHandle ?? null,
-  targetHandle: edge.targetHandle ?? null,
 });
 
 export const toFlowEdge = (edge: EdgeDefinitionResponse): Edge => ({
-  id: edge.id,
+  id: edge.id ?? crypto.randomUUID(),
   source: edge.source,
   target: edge.target,
   sourceHandle: edge.sourceHandle ?? null,
   targetHandle: edge.targetHandle ?? null,
+  data: {
+    variant: "flow-arrow",
+  },
 });
 
 export const toNodeDefinition = (
@@ -91,8 +120,8 @@ export const toNodeDefinition = (
 
   return {
     id: node.id,
-    type: node.data.type,
-    label: node.data.label,
+    category: NODE_TYPE_TO_BACKEND[node.data.type].category,
+    type: NODE_TYPE_TO_BACKEND[node.data.type].type,
     role,
     position: {
       x: node.position.x,
@@ -112,7 +141,9 @@ export const toNodeDefinition = (
 export const toFlowNode = (
   node: NodeDefinitionResponse,
 ): Node<FlowNodeData> => {
-  const nodeType = getFallbackNodeType(node.type);
+  const nodeType = getFallbackNodeType(
+    BACKEND_TYPE_TO_NODE_TYPE[node.type] ?? node.type,
+  );
   const meta = NODE_REGISTRY[nodeType];
 
   return {
@@ -121,7 +152,7 @@ export const toFlowNode = (
     position: node.position,
     data: {
       type: nodeType,
-      label: node.label,
+      label: node.label ?? meta.label,
       config: {
         ...meta.defaultConfig,
         ...(node.config as Record<string, unknown>),
@@ -160,5 +191,6 @@ export const hydrateStore = (
     edges: workflow.edges.map(toFlowEdge),
     startNodeId: startNode?.id ?? null,
     endNodeId: endNode?.id ?? null,
+    creationMethod: startNode ? "manual" : null,
   };
 };
