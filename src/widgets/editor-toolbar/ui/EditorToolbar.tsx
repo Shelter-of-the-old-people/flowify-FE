@@ -1,10 +1,10 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MdCheck, MdPlayArrow, MdRefresh, MdSave } from "react-icons/md";
 
 import { Box, IconButton, Input, Spinner, Text } from "@chakra-ui/react";
 
 import type { ExecutionStatus } from "@/shared";
-import { useWorkflowStore } from "@/shared";
+import { useSaveWorkflowMutation, useWorkflowStore } from "@/shared";
 
 interface RunButtonConfig {
   colorPalette: string;
@@ -126,8 +126,55 @@ const WorkflowNameEditor = () => {
 
 export const EditorToolbar = ({ variant = "bar" }: EditorToolbarProps) => {
   const executionStatus = useWorkflowStore((state) => state.executionStatus);
+  const workflowId = useWorkflowStore((state) => state.workflowId);
+  const workflowName = useWorkflowStore((state) => state.workflowName);
+  const nodes = useWorkflowStore((state) => state.nodes);
+  const edges = useWorkflowStore((state) => state.edges);
+  const startNodeId = useWorkflowStore((state) => state.startNodeId);
+  const endNodeId = useWorkflowStore((state) => state.endNodeId);
+  const { mutateAsync: saveWorkflow, isPending: isSavePending } =
+    useSaveWorkflowMutation();
+  const [saveState, setSaveState] = useState<"idle" | "success" | "error">(
+    "idle",
+  );
   const runConfig = getRunButtonConfig(executionStatus);
   const isOverlay = variant === "overlay";
+
+  useEffect(() => {
+    if (saveState === "idle") {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setSaveState("idle");
+    }, 2500);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [saveState]);
+
+  const handleSave = async () => {
+    if (!workflowId) {
+      return;
+    }
+
+    try {
+      await saveWorkflow({
+        workflowId,
+        store: {
+          workflowName,
+          nodes,
+          edges,
+          startNodeId,
+          endNodeId,
+        },
+      });
+      setSaveState("success");
+    } catch {
+      setSaveState("error");
+    }
+  };
 
   return (
     <Box
@@ -135,7 +182,7 @@ export const EditorToolbar = ({ variant = "bar" }: EditorToolbarProps) => {
       alignItems="center"
       justifyContent="space-between"
       height={isOverlay ? "auto" : "48px"}
-      px={isOverlay ? 4 : 4}
+      px={4}
       py={isOverlay ? 3 : 0}
       bg={isOverlay ? "transparent" : "bg.surface"}
       borderBottom={isOverlay ? "none" : "1px solid"}
@@ -151,7 +198,17 @@ export const EditorToolbar = ({ variant = "bar" }: EditorToolbarProps) => {
       <Box pointerEvents="auto">
         <WorkflowNameEditor />
       </Box>
-      <Box display="flex" gap={2} pointerEvents="auto">
+      <Box display="flex" gap={2} alignItems="center" pointerEvents="auto">
+        {saveState === "success" ? (
+          <Text fontSize="xs" color="green.600" fontWeight="semibold">
+            저장 완료
+          </Text>
+        ) : null}
+        {saveState === "error" ? (
+          <Text fontSize="xs" color="red.500" fontWeight="semibold">
+            저장 실패
+          </Text>
+        ) : null}
         <IconButton
           aria-label="워크플로우 실행"
           size="sm"
@@ -168,8 +225,10 @@ export const EditorToolbar = ({ variant = "bar" }: EditorToolbarProps) => {
           variant="outline"
           bg="white"
           boxShadow="0 8px 24px rgba(15, 23, 42, 0.08)"
+          disabled={!workflowId || isSavePending}
+          onClick={() => void handleSave()}
         >
-          <MdSave />
+          {isSavePending ? <Spinner size="xs" /> : <MdSave />}
         </IconButton>
       </Box>
     </Box>

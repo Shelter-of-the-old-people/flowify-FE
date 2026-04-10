@@ -10,7 +10,7 @@ import {
   MdOutlineWorkspaces,
 } from "react-icons/md";
 
-import { ROUTE_PATHS, buildPath } from "@/shared";
+import { ROUTE_PATHS } from "@/shared";
 
 export type SidebarItemKind = "action" | "route" | "placeholder" | "user";
 
@@ -34,8 +34,7 @@ export const sidebarPrimaryItems: SidebarItem[] = [
     id: "create-workflow",
     label: "새 워크플로우",
     icon: MdAdd,
-    kind: "route",
-    path: buildPath.workflowEditor("1"),
+    kind: "action",
   },
   {
     id: "home",
