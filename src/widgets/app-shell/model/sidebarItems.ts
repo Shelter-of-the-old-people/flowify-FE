@@ -10,7 +10,7 @@ import {
   MdOutlineWorkspaces,
 } from "react-icons/md";
 
-import { ROUTE_PATHS, buildPath } from "@/shared";
+import { ROUTE_PATHS } from "@/shared";
 
 export type SidebarItemKind = "action" | "route" | "placeholder" | "user";
 
@@ -24,7 +24,7 @@ export type SidebarItem = {
 
 export const sidebarControlItem: SidebarItem = {
   id: "toggle",
-  label: "펼치기",
+  label: "접기",
   icon: MdKeyboardDoubleArrowRight,
   kind: "action",
 };
@@ -34,8 +34,7 @@ export const sidebarPrimaryItems: SidebarItem[] = [
     id: "create-workflow",
     label: "새 워크플로우",
     icon: MdAdd,
-    kind: "route",
-    path: buildPath.workflowEditor("1"),
+    kind: "action",
   },
   {
     id: "home",
@@ -77,6 +76,7 @@ export const sidebarSecondaryItems: SidebarItem[] = [
     id: "settings",
     label: "설정",
     icon: MdOutlineSettings,
-    kind: "placeholder",
+    kind: "route",
+    path: ROUTE_PATHS.SETTINGS,
   },
 ];

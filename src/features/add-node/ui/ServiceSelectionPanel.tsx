@@ -13,7 +13,14 @@ import { useReactFlow, useViewport } from "@xyflow/react";
 
 import { NODE_REGISTRY } from "@/entities/node";
 import type { FlowNodeData, NodeMeta } from "@/entities/node";
-import { useWorkflowStore } from "@/shared";
+import {
+  findAddedNodeId,
+  toFlowNode,
+  toNodeAddRequest,
+  useAddWorkflowNodeMutation,
+  useDeleteWorkflowNodeMutation,
+  useWorkflowStore,
+} from "@/shared";
 
 import { CATEGORY_SERVICE_MAP } from "../model/serviceMap";
 import type { ServiceOption } from "../model/serviceMap";
@@ -21,7 +28,6 @@ import {
   SERVICE_REQUIREMENTS,
   type ServiceRequirement,
 } from "../model/serviceRequirements";
-import { useAddNode } from "../model/useAddNode";
 
 type WizardStep = "category" | "service" | "requirement" | "auth";
 
@@ -310,6 +316,9 @@ export const ServiceSelectionPanel = () => {
   const activePlaceholder = useWorkflowStore(
     (state) => state.activePlaceholder,
   );
+  const workflowId = useWorkflowStore((state) => state.workflowId);
+  const nodes = useWorkflowStore((state) => state.nodes);
+  const addNode = useWorkflowStore((state) => state.addNode);
   const setActivePlaceholder = useWorkflowStore(
     (state) => state.setActivePlaceholder,
   );
@@ -318,7 +327,10 @@ export const ServiceSelectionPanel = () => {
   const onConnect = useWorkflowStore((state) => state.onConnect);
   const removeNode = useWorkflowStore((state) => state.removeNode);
   const updateNodeConfig = useWorkflowStore((state) => state.updateNodeConfig);
-  const { addNode } = useAddNode();
+  const { mutateAsync: addWorkflowNode, isPending: isAddNodePending } =
+    useAddWorkflowNodeMutation();
+  const { mutateAsync: deleteWorkflowNode, isPending: isDeleteNodePending } =
+    useDeleteWorkflowNodeMutation();
   const { flowToScreenPosition } = useReactFlow();
   const viewport = useViewport();
 
@@ -406,36 +418,66 @@ export const ServiceSelectionPanel = () => {
   ]);
 
   const placeNode = useCallback(
-    (meta: NodeMeta, service?: ServiceOption) => {
-      if (!activePlaceholder) return null;
-
-      const nodeId = addNode(meta.type, {
-        position: activePlaceholder.position,
-        config: service
-          ? ({ service: service.value } as Partial<FlowNodeData["config"]>)
-          : undefined,
-      });
-
+    async (meta: NodeMeta, service?: ServiceOption) => {
+      if (!activePlaceholder || !workflowId) return null;
       const sourceNodeId = parseSourceNodeId(activePlaceholder.id);
 
+      const nextWorkflow = await addWorkflowNode({
+        workflowId,
+        body: toNodeAddRequest({
+          type: meta.type,
+          position: activePlaceholder.position,
+          role:
+            activePlaceholder.id === "placeholder-start"
+              ? "start"
+              : activePlaceholder.id === "placeholder-end"
+                ? "end"
+                : "middle",
+          prevNodeId: sourceNodeId,
+          config: service
+            ? ({ service: service.value } as Partial<FlowNodeData["config"]>)
+            : undefined,
+        }),
+      });
+
+      const addedNodeId = findAddedNodeId(nodes, nextWorkflow.nodes);
+      const addedNode = nextWorkflow.nodes.find(
+        (node) => node.id === addedNodeId,
+      );
+
+      if (!addedNodeId || !addedNode) {
+        return null;
+      }
+
+      addNode(toFlowNode(addedNode));
+
       if (activePlaceholder.id === "placeholder-start") {
-        setStartNodeId(nodeId);
+        setStartNodeId(addedNodeId);
       } else if (activePlaceholder.id === "placeholder-end") {
-        setEndNodeId(nodeId);
+        setEndNodeId(addedNodeId);
       }
 
       if (sourceNodeId) {
         onConnect({
           source: sourceNodeId,
-          target: nodeId,
+          target: addedNodeId,
           sourceHandle: null,
           targetHandle: null,
         });
       }
 
-      return nodeId;
+      return addedNodeId;
     },
-    [activePlaceholder, addNode, onConnect, setEndNodeId, setStartNodeId],
+    [
+      activePlaceholder,
+      addNode,
+      addWorkflowNode,
+      nodes,
+      onConnect,
+      setEndNodeId,
+      setStartNodeId,
+      workflowId,
+    ],
   );
 
   if (!activePlaceholder) return null;
@@ -458,37 +500,41 @@ export const ServiceSelectionPanel = () => {
       return;
     }
 
-    const nodeId = placeNode(meta);
-    if (!nodeId) return;
+    void (async () => {
+      const nodeId = await placeNode(meta);
+      if (!nodeId) return;
 
-    const nextRequirementGroup = SERVICE_REQUIREMENTS[meta.type];
-    if (nextRequirementGroup) {
-      setSelectedMeta(meta);
-      setPlacedNodeId(nodeId);
-      setStep("requirement");
-      return;
-    }
+      const nextRequirementGroup = SERVICE_REQUIREMENTS[meta.type];
+      if (nextRequirementGroup) {
+        setSelectedMeta(meta);
+        setPlacedNodeId(nodeId);
+        setStep("requirement");
+        return;
+      }
 
-    updateNodeConfig(nodeId, {});
-    resetWizard();
+      updateNodeConfig(nodeId, {});
+      resetWizard();
+    })();
   };
 
   const handleServiceSelect = (service: ServiceOption) => {
     if (!selectedMeta) return;
 
-    const nodeId = placeNode(selectedMeta, service);
-    if (!nodeId) return;
+    void (async () => {
+      const nodeId = await placeNode(selectedMeta, service);
+      if (!nodeId) return;
 
-    setSelectedService(service);
-    setPlacedNodeId(nodeId);
+      setSelectedService(service);
+      setPlacedNodeId(nodeId);
 
-    if (SERVICE_REQUIREMENTS[selectedMeta.type]) {
-      setStep("requirement");
-      return;
-    }
+      if (SERVICE_REQUIREMENTS[selectedMeta.type]) {
+        setStep("requirement");
+        return;
+      }
 
-    updateNodeConfig(nodeId, {});
-    resetWizard();
+      updateNodeConfig(nodeId, {});
+      resetWizard();
+    })();
   };
 
   const handleRequirementSelect = (requirement: ServiceRequirement) => {
@@ -519,19 +565,28 @@ export const ServiceSelectionPanel = () => {
   };
 
   const handleBackFromRequirement = () => {
-    if (placedNodeId) {
-      removeNode(placedNodeId);
-      setPlacedNodeId(null);
-    }
+    void (async () => {
+      if (placedNodeId && workflowId) {
+        await deleteWorkflowNode({
+          workflowId,
+          nodeId: placedNodeId,
+        });
+        setPlacedNodeId(null);
+        removeNode(placedNodeId);
+      } else if (placedNodeId) {
+        removeNode(placedNodeId);
+        setPlacedNodeId(null);
+      }
 
-    if (selectedService) {
-      setSelectedService(null);
-      setStep("service");
-      return;
-    }
+      if (selectedService) {
+        setSelectedService(null);
+        setStep("service");
+        return;
+      }
 
-    setSelectedMeta(null);
-    setStep("category");
+      setSelectedMeta(null);
+      setStep("category");
+    })();
   };
 
   const handleBackToRequirement = () => {
@@ -625,6 +680,11 @@ export const ServiceSelectionPanel = () => {
             ) : null}
           </Box>
         </Box>
+        {isAddNodePending || isDeleteNodePending ? (
+          <Text mt={4} textAlign="center" color="gray.500">
+            노드 변경 내용을 반영하는 중입니다.
+          </Text>
+        ) : null}
       </Box>
     </Box>
   );

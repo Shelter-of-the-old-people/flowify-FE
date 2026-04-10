@@ -7,6 +7,7 @@ export interface AuthUser {
   email: string;
   name: string;
   picture: string | null;
+  createdAt: string;
 }
 
 export interface LoginResponse {
@@ -15,21 +16,14 @@ export interface LoginResponse {
   user: AuthUser;
 }
 
-export interface RefreshTokenResponse {
-  accessToken: string;
-  refreshToken: string;
-}
-
 export const authApi = {
-  getGoogleLoginUrl: () => apiClient.get<ApiResponse<string>>("/auth/google"),
-
   googleCallback: (code: string) =>
     apiClient.get<ApiResponse<LoginResponse>>(
       `/auth/google/callback?code=${encodeURIComponent(code)}`,
     ),
 
   refresh: (refreshToken: string) =>
-    apiClient.post<ApiResponse<RefreshTokenResponse>>("/auth/refresh", {
+    apiClient.post<ApiResponse<LoginResponse>>("/auth/refresh", {
       refreshToken,
     }),
 

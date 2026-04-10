@@ -1,10 +1,6 @@
-import type {
-  TriggerConfig,
-  WorkflowStatus,
-  WorkflowSummary,
-} from "@/entities/workflow";
+import type { TriggerConfig, Workflow } from "@/entities/workflow";
 
-import type { ApiResponse } from "../types";
+import type { ApiResponse, PageResponse, ValidationWarning } from "../types";
 
 import { apiClient } from "./client";
 
@@ -14,70 +10,69 @@ export interface CreateWorkflowRequest {
 
 export interface UpdateWorkflowRequest {
   name?: string;
+  description?: string;
   nodes?: NodeDefinitionResponse[];
   edges?: EdgeDefinitionResponse[];
-}
-
-export interface ExecuteWorkflowResponse {
-  executionId: string;
-  status: "pending" | "running";
+  trigger?: TriggerConfig | null;
+  isActive?: boolean;
 }
 
 export type NodeDefinitionRole = "start" | "end" | "middle";
 
 export interface NodeDefinitionResponse {
   id: string;
+  category?: string;
   type: string;
-  label: string;
+  label?: string;
   role: NodeDefinitionRole;
   position: { x: number; y: number };
   config: Record<string, unknown>;
   dataType: string | null;
   outputDataType: string | null;
-  authWarning?: boolean;
+  authWarning: boolean;
 }
 
 export interface EdgeDefinitionResponse {
-  id: string;
+  id?: string;
   source: string;
   target: string;
-  sourceHandle: string | null;
-  targetHandle: string | null;
+  sourceHandle?: string | null;
+  targetHandle?: string | null;
 }
 
-export interface WorkflowResponse {
-  id: string;
-  name: string;
-  description: string;
-  status: WorkflowStatus;
+export interface WorkflowResponse extends Omit<Workflow, "nodes" | "edges"> {
   nodes: NodeDefinitionResponse[];
   edges: EdgeDefinitionResponse[];
-  userId: string;
-  sharedWith: string[];
-  isTemplate: boolean;
-  templateId: string | null;
-  trigger: TriggerConfig | null;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
+  warnings?: ValidationWarning[];
 }
 
 export interface NodeAddRequest {
+  category: string;
   type: string;
-  label: string;
   position: { x: number; y: number };
-  config: Record<string, unknown>;
-  prevNodeId: string;
+  config?: Record<string, unknown>;
+  dataType?: string | null;
+  outputDataType?: string | null;
+  role?: NodeDefinitionRole;
+  authWarning?: boolean;
+  prevNodeId?: string;
 }
 
 export interface NodeUpdateRequest {
-  config: Record<string, unknown>;
+  category?: string;
+  type?: string;
+  config?: Record<string, unknown>;
+  position?: { x: number; y: number };
+  dataType?: string | null;
+  outputDataType?: string | null;
+  role?: NodeDefinitionRole;
+  authWarning?: boolean;
 }
 
 export interface NodeChoiceSelectRequest {
-  actionId: string;
-  processingMethod?: string;
-  options?: Record<string, unknown>;
+  selectedOptionId: string;
+  dataType: string;
+  context?: Record<string, unknown>;
 }
 
 export interface ShareRequest {
@@ -91,49 +86,41 @@ export interface WorkflowGenerateRequest {
 export interface ChoiceOption {
   id: string;
   label: string;
+  type?: string | null;
+  node_type?: string | null;
+  output_data_type?: string | null;
+  priority?: number | null;
 }
 
 export interface ChoiceFollowUp {
   question: string;
   options: ChoiceOption[];
+  options_source?: string | null;
+  multi_select?: boolean | null;
+  description?: string | null;
 }
 
-export interface ChoiceBranchConfig {
-  type: string;
-  options: ChoiceOption[];
-}
-
-export interface ChoiceAction {
-  id: string;
-  label: string;
-  nodeType: string;
-  outputDataType: string;
-  priority: number;
-  followUp?: ChoiceFollowUp;
-  branchConfig?: ChoiceBranchConfig;
-}
-
-export interface ProcessingMethod {
-  id: string;
-  label: string;
-}
+export type ChoiceBranchConfig = ChoiceFollowUp;
 
 export interface ChoiceResponse {
-  dataType: string;
+  question: string;
+  options: ChoiceOption[];
   requiresProcessingMethod: boolean;
-  processingMethods?: ProcessingMethod[];
-  actions: ChoiceAction[];
+  multiSelect?: boolean | null;
 }
 
 export interface NodeSelectionResult {
-  nodeType: string;
-  label: string;
-  outputDataType: string;
-  config: Record<string, unknown>;
+  nodeType: string | null;
+  outputDataType: string | null;
+  followUp?: ChoiceFollowUp | null;
+  branchConfig?: ChoiceBranchConfig | null;
 }
 
 export const workflowApi = {
-  getList: () => apiClient.get<ApiResponse<WorkflowSummary[]>>("/workflows"),
+  getList: (page = 0, size = 20) =>
+    apiClient.get<ApiResponse<PageResponse<WorkflowResponse>>>("/workflows", {
+      params: { page, size },
+    }),
 
   getById: (id: string) =>
     apiClient.get<ApiResponse<WorkflowResponse>>(`/workflows/${id}`),
@@ -147,25 +134,20 @@ export const workflowApi = {
   delete: (id: string) =>
     apiClient.delete<ApiResponse<void>>(`/workflows/${id}`),
 
-  execute: (id: string) =>
-    apiClient.post<ApiResponse<ExecuteWorkflowResponse>>(
-      `/workflows/${id}/execute`,
-    ),
-
   addNode: (workflowId: string, body: NodeAddRequest) =>
-    apiClient.post<ApiResponse<NodeDefinitionResponse>>(
+    apiClient.post<ApiResponse<WorkflowResponse>>(
       `/workflows/${workflowId}/nodes`,
       body,
     ),
 
   updateNode: (workflowId: string, nodeId: string, body: NodeUpdateRequest) =>
-    apiClient.put<ApiResponse<NodeDefinitionResponse>>(
+    apiClient.put<ApiResponse<WorkflowResponse>>(
       `/workflows/${workflowId}/nodes/${nodeId}`,
       body,
     ),
 
   deleteNode: (workflowId: string, nodeId: string) =>
-    apiClient.delete<ApiResponse<void>>(
+    apiClient.delete<ApiResponse<WorkflowResponse>>(
       `/workflows/${workflowId}/nodes/${nodeId}`,
     ),
 

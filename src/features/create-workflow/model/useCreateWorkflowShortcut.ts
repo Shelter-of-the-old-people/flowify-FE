@@ -1,7 +1,13 @@
 import { useCallback, useState } from "react";
 import { useNavigate } from "react-router";
 
-import { ROUTE_PATHS, buildPath, workflowApi } from "@/shared";
+import {
+  QUERY_KEYS,
+  ROUTE_PATHS,
+  buildPath,
+  queryClient,
+  workflowApi,
+} from "@/shared";
 
 export const useCreateWorkflowShortcut = () => {
   const navigate = useNavigate();
@@ -19,6 +25,7 @@ export const useCreateWorkflowShortcut = () => {
         name: "새 워크플로우",
       });
 
+      await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.workflows });
       navigate(buildPath.workflowEditor(response.data.data.id));
     } catch {
       navigate(ROUTE_PATHS.WORKFLOWS);

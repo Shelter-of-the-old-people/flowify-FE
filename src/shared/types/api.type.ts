@@ -12,3 +12,10 @@ export type PageResponse<T> = {
   totalElements: number;
   totalPages: number;
 };
+
+export interface ValidationWarning {
+  nodeId: string;
+  message: string;
+  sourceType: string;
+  targetType: string;
+}

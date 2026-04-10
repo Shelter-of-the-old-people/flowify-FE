@@ -4,31 +4,34 @@ import { MdArrowBack } from "react-icons/md";
 import { Box, Button, Icon, Input, Text, VStack } from "@chakra-ui/react";
 
 import type {
-  BranchConfig,
-  FollowUp,
-  FollowUpOption,
-  MappingAction,
-  ProcessingMethod,
-  ProcessingMethodOption,
-} from "@/features/choice-panel";
+  ChoiceBranchConfig,
+  ChoiceFollowUp,
+  ChoiceOption,
+} from "@/shared";
+
+interface SelectableOption extends ChoiceOption {
+  description?: string;
+}
 
 interface ProcessingMethodStepProps {
-  processingMethod: ProcessingMethod;
-  onSelect: (option: ProcessingMethodOption) => void;
+  question: string;
+  options: SelectableOption[];
+  onSelect: (option: SelectableOption) => void;
 }
 
 export const ProcessingMethodStep = ({
-  processingMethod,
+  question,
+  options,
   onSelect,
 }: ProcessingMethodStepProps) => {
-  const sortedOptions = [...processingMethod.options].sort(
-    (left, right) => left.priority - right.priority,
+  const sortedOptions = [...options].sort(
+    (left, right) => (left.priority ?? 0) - (right.priority ?? 0),
   );
 
   return (
     <VStack align="stretch" gap={6}>
       <Text fontSize="lg" fontWeight="semibold">
-        {processingMethod.question}
+        {question}
       </Text>
 
       <VStack align="stretch" gap={3}>
@@ -47,6 +50,11 @@ export const ProcessingMethodStep = ({
               <Text fontSize="md" fontWeight="semibold">
                 {option.label}
               </Text>
+              {option.description ? (
+                <Text mt={1} fontSize="sm" color="text.secondary">
+                  {option.description}
+                </Text>
+              ) : null}
             </Box>
           </Button>
         ))}
@@ -56,14 +64,20 @@ export const ProcessingMethodStep = ({
 };
 
 interface ActionStepProps {
-  actions: MappingAction[];
-  onSelect: (action: MappingAction) => void;
+  question: string;
+  actions: SelectableOption[];
+  onSelect: (action: SelectableOption) => void;
   onBack?: () => void;
 }
 
-export const ActionStep = ({ actions, onSelect, onBack }: ActionStepProps) => {
+export const ActionStep = ({
+  question,
+  actions,
+  onSelect,
+  onBack,
+}: ActionStepProps) => {
   const sortedActions = [...actions].sort(
-    (left, right) => left.priority - right.priority,
+    (left, right) => (left.priority ?? 0) - (right.priority ?? 0),
   );
 
   return (
@@ -84,7 +98,7 @@ export const ActionStep = ({ actions, onSelect, onBack }: ActionStepProps) => {
       ) : null}
 
       <Text fontSize="lg" fontWeight="semibold">
-        어떤 작업을 할까요?
+        {question}
       </Text>
 
       {sortedActions.length === 0 ? (
@@ -125,8 +139,8 @@ export const ActionStep = ({ actions, onSelect, onBack }: ActionStepProps) => {
 type SelectionValue = string | string[];
 
 interface FollowUpStepProps {
-  followUp: FollowUp | null;
-  branchConfig: BranchConfig | null;
+  followUp: ChoiceFollowUp | null;
+  branchConfig: ChoiceBranchConfig | null;
   onComplete: (selections: Record<string, SelectionValue>) => void;
   onBack: () => void;
 }
@@ -135,13 +149,13 @@ type QuestionBlock = {
   id: "follow_up" | "branch_config";
   question: string;
   multiSelect: boolean;
-  options: FollowUpOption[];
-  description?: string;
+  options: ChoiceOption[];
+  description?: string | null;
 };
 
 const buildQuestionBlocks = (
-  followUp: FollowUp | null,
-  branchConfig: BranchConfig | null,
+  followUp: ChoiceFollowUp | null,
+  branchConfig: ChoiceBranchConfig | null,
 ): QuestionBlock[] => {
   const blocks: QuestionBlock[] = [];
 
@@ -261,7 +275,7 @@ export const FollowUpStep = ({
 
           {block.options.length === 0 ? (
             <Text fontSize="sm" color="text.secondary">
-              현재 단계에서는 동적 옵션을 표시하지 않습니다.
+              현재 단계에서 보여줄 추가 옵션이 없습니다.
             </Text>
           ) : (
             <VStack align="stretch" gap={3}>

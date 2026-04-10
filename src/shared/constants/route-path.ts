@@ -2,6 +2,9 @@
 export const ROUTE_PATHS = {
   MAIN: "/",
   LOGIN: "/login",
+  LOGIN_CALLBACK: "/login/callback",
+  ACCOUNT: "/account",
+  SETTINGS: "/settings",
   TEMPLATES: "/templates",
   WORKFLOWS: "/workflows",
   NOT_FOUND: "*",

@@ -6,7 +6,13 @@ import { Box, Button, Icon, Spinner, Text } from "@chakra-ui/react";
 import { ReactFlowProvider } from "@xyflow/react";
 
 import { ServiceSelectionPanel } from "@/features/add-node";
-import { EDITOR_CANVAS_AREA_ID, ROUTE_PATHS, useWorkflowStore } from "@/shared";
+import {
+  EDITOR_CANVAS_AREA_ID,
+  ROUTE_PATHS,
+  hydrateStore,
+  useWorkflowQuery,
+  useWorkflowStore,
+} from "@/shared";
 import { Canvas, EditorToolbar, InputPanel, OutputPanel } from "@/widgets";
 
 const EditorLoadingView = () => (
@@ -53,30 +59,35 @@ const EditorErrorView = () => {
 const WorkflowEditorInner = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const setWorkflowMeta = useWorkflowStore((state) => state.setWorkflowMeta);
+  const hydrateWorkflow = useWorkflowStore((state) => state.hydrateWorkflow);
   const resetEditor = useWorkflowStore((state) => state.resetEditor);
-
-  const isLoading = false;
-  const isError = false;
+  const { data: workflow, isLoading, isError } = useWorkflowQuery(id);
 
   useEffect(() => {
     if (!id) {
       navigate(ROUTE_PATHS.WORKFLOWS, { replace: true });
+    }
+  }, [id, navigate]);
+
+  useEffect(() => {
+    if (!workflow) {
       return;
     }
 
-    setWorkflowMeta(id, "");
+    hydrateWorkflow(hydrateStore(workflow));
+  }, [hydrateWorkflow, workflow]);
 
+  useEffect(() => {
     return () => {
       resetEditor();
     };
-  }, [id, navigate, setWorkflowMeta, resetEditor]);
+  }, [resetEditor]);
 
   if (isLoading) {
     return <EditorLoadingView />;
   }
 
-  if (isError) {
+  if (isError || (!workflow && id)) {
     return <EditorErrorView />;
   }
 

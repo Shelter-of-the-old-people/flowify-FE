@@ -1,9 +1,11 @@
 import { useEffect, useRef } from "react";
 import type { IconType } from "react-icons";
+import { useNavigate } from "react-router";
 
-import { Box } from "@chakra-ui/react";
+import { Box, Button, VStack } from "@chakra-ui/react";
 
 import { LogoutMenu, useLogout } from "@/features/auth/logout";
+import { ROUTE_PATHS } from "@/shared";
 
 import { SidebarNavItem } from "./SidebarNavItem";
 
@@ -25,6 +27,7 @@ export const SidebarUserMenu = ({
   onClose,
 }: SidebarUserMenuProps) => {
   const { isPending, logout } = useLogout();
+  const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -71,13 +74,36 @@ export const SidebarUserMenu = ({
 
       {isOpen ? (
         <Box position="absolute" left="calc(100% + 8px)" bottom="0" zIndex={20}>
-          <LogoutMenu
-            isPending={isPending}
-            onLogout={() => {
-              onClose();
-              void logout();
-            }}
-          />
+          <VStack
+            align="stretch"
+            gap={2}
+            p={2}
+            bg="white"
+            border="1px solid"
+            borderColor="gray.200"
+            borderRadius="12px"
+            boxShadow="0 10px 30px rgba(15, 23, 42, 0.12)"
+            minW="132px"
+          >
+            <Button
+              size="sm"
+              variant="ghost"
+              justifyContent="flex-start"
+              onClick={() => {
+                onClose();
+                navigate(ROUTE_PATHS.ACCOUNT);
+              }}
+            >
+              내 정보
+            </Button>
+            <LogoutMenu
+              isPending={isPending}
+              onLogout={() => {
+                onClose();
+                void logout();
+              }}
+            />
+          </VStack>
         </Box>
       ) : null}
     </Box>
