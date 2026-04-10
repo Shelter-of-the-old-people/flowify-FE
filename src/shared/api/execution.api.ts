@@ -4,38 +4,48 @@ import { apiClient } from "./client";
 
 export type ExecutionRunStatus = "pending" | "running" | "success" | "failed";
 
-export interface ExecutionSummary {
-  id: string;
-  workflowId: string;
-  status: ExecutionRunStatus;
-  startedAt: string;
-  finishedAt: string | null;
+export interface ExecutionErrorDetail {
+  code: string | null;
+  message: string | null;
+  stackTrace: string | null;
+}
+
+export interface ExecutionSnapshot {
+  nodeId?: string | null;
+  nodeType?: string | null;
+  config?: Record<string, unknown> | null;
+  inputDataType?: string | null;
+  outputDataType?: string | null;
 }
 
 export interface ExecutionLog {
+  id: string;
   nodeId: string;
-  status: ExecutionRunStatus;
-  message: string;
-  timestamp: string;
+  status: string;
+  inputData?: Record<string, unknown> | null;
+  outputData?: Record<string, unknown> | null;
+  snapshot?: ExecutionSnapshot | null;
+  error?: ExecutionErrorDetail | null;
+  startedAt: string | null;
+  finishedAt: string | null;
 }
 
-export interface ExecutionDetail extends ExecutionSummary {
-  logs: ExecutionLog[];
-  errorMessage: string | null;
-}
-
-export interface ExecutionStartResponse {
-  executionId: string;
+export interface ExecutionDetail {
+  id: string;
+  workflowId: string;
+  userId?: string | null;
+  state: string;
+  nodeLogs: ExecutionLog[];
+  startedAt: string | null;
+  finishedAt: string | null;
 }
 
 export const executionApi = {
   execute: (workflowId: string) =>
-    apiClient.post<ApiResponse<ExecutionStartResponse>>(
-      `/workflows/${workflowId}/execute`,
-    ),
+    apiClient.post<ApiResponse<string>>(`/workflows/${workflowId}/execute`),
 
   getList: (workflowId: string) =>
-    apiClient.get<ApiResponse<ExecutionSummary[]>>(
+    apiClient.get<ApiResponse<ExecutionDetail[]>>(
       `/workflows/${workflowId}/executions`,
     ),
 
@@ -44,8 +54,12 @@ export const executionApi = {
       `/workflows/${workflowId}/executions/${execId}`,
     ),
 
-  rollback: (workflowId: string, execId: string) =>
+  rollback: (workflowId: string, execId: string, nodeId?: string) =>
     apiClient.post<ApiResponse<void>>(
       `/workflows/${workflowId}/executions/${execId}/rollback`,
+      undefined,
+      {
+        params: nodeId ? { nodeId } : undefined,
+      },
     ),
 };

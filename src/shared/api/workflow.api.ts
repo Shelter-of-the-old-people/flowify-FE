@@ -17,11 +17,6 @@ export interface UpdateWorkflowRequest {
   isActive?: boolean;
 }
 
-export interface ExecuteWorkflowResponse {
-  executionId: string;
-  status: "pending" | "running";
-}
-
 export type NodeDefinitionRole = "start" | "end" | "middle";
 
 export interface NodeDefinitionResponse {
@@ -115,8 +110,8 @@ export interface ChoiceResponse {
 }
 
 export interface NodeSelectionResult {
-  nodeType: string;
-  outputDataType: string;
+  nodeType: string | null;
+  outputDataType: string | null;
   followUp?: ChoiceFollowUp | null;
   branchConfig?: ChoiceBranchConfig | null;
 }
@@ -138,11 +133,6 @@ export const workflowApi = {
 
   delete: (id: string) =>
     apiClient.delete<ApiResponse<void>>(`/workflows/${id}`),
-
-  execute: (id: string) =>
-    apiClient.post<ApiResponse<ExecuteWorkflowResponse>>(
-      `/workflows/${id}/execute`,
-    ),
 
   addNode: (workflowId: string, body: NodeAddRequest) =>
     apiClient.post<ApiResponse<WorkflowResponse>>(
