@@ -4,11 +4,15 @@ import { executionApi } from "../api";
 import { QUERY_KEYS } from "../constants";
 import { queryClient } from "../libs";
 
+import type { ExecutionStatus } from "./workflowStore";
+
 const POLL_INTERVAL_MS = Number(
   import.meta.env.VITE_EXECUTION_POLL_INTERVAL_MS ?? 3000,
 );
 
-export const normalizeExecutionStatus = (state: string | null | undefined) => {
+export const normalizeExecutionStatus = (
+  state: string | null | undefined,
+): ExecutionStatus => {
   const normalized = state?.toLowerCase() ?? "";
 
   if (normalized.includes("success") || normalized.includes("complete")) {
@@ -23,7 +27,21 @@ export const normalizeExecutionStatus = (state: string | null | undefined) => {
     return "running" as const;
   }
 
-  return "pending" as const;
+  if (normalized.includes("pending") || normalized.includes("queue")) {
+    return "running" as const;
+  }
+
+  return "idle" as const;
+};
+
+export const isExecutionInFlight = (state: string | null | undefined) => {
+  const normalized = state?.toLowerCase() ?? "";
+
+  return (
+    normalized.includes("pending") ||
+    normalized.includes("queue") ||
+    normalized.includes("run")
+  );
 };
 
 export const useWorkflowExecutionsQuery = (
@@ -49,10 +67,9 @@ export const useWorkflowExecutionsQuery = (
         return false;
       }
 
-      const isRunning = executions.some((execution) => {
-        const status = normalizeExecutionStatus(execution.state);
-        return status === "pending" || status === "running";
-      });
+      const isRunning = executions.some((execution) =>
+        isExecutionInFlight(execution.state),
+      );
 
       return isRunning ? POLL_INTERVAL_MS : false;
     },
@@ -84,10 +101,7 @@ export const useWorkflowExecutionQuery = (
         return false;
       }
 
-      const status = normalizeExecutionStatus(execution.state);
-      return status === "pending" || status === "running"
-        ? POLL_INTERVAL_MS
-        : false;
+      return isExecutionInFlight(execution.state) ? POLL_INTERVAL_MS : false;
     },
     throwOnError: false,
   });

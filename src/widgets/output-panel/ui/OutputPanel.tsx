@@ -14,6 +14,8 @@ import {
   toMappingKey,
 } from "@/features/choice-panel";
 import type {
+  BranchConfig,
+  FollowUp,
   MappingAction,
   MappingDataTypeKey,
 } from "@/features/choice-panel";
@@ -69,20 +71,53 @@ const isMappingDataTypeKey = (
 ): value is MappingDataTypeKey =>
   Boolean(value && value in MAPPING_RULES.data_types);
 
+const toChoiceFollowUp = (followUp: FollowUp | null | undefined) =>
+  followUp
+    ? {
+        question: followUp.question,
+        options: (followUp.options ?? []).map((option) => ({
+          id: option.id,
+          label: option.label,
+          type: option.type ?? null,
+        })),
+        options_source: followUp.options_source ?? null,
+        multi_select: followUp.multi_select ?? null,
+        description: followUp.description ?? null,
+      }
+    : null;
+
+const toChoiceBranchConfig = (branchConfig: BranchConfig | null | undefined) =>
+  branchConfig
+    ? {
+        question: branchConfig.question,
+        options: (branchConfig.options ?? []).map((option) => ({
+          id: option.id,
+          label: option.label,
+          type: option.type ?? null,
+        })),
+        options_source: branchConfig.options_source ?? null,
+        multi_select: branchConfig.multi_select ?? null,
+        description: branchConfig.description ?? null,
+      }
+    : null;
+
 const toWizardChoiceOption = (
   option: ChoiceOption | MappingAction,
 ): WizardChoiceOption => ({
   id: option.id,
   label: option.label,
-  type: option.type ?? null,
+  type: "type" in option ? (option.type ?? null) : null,
   node_type: "node_type" in option ? (option.node_type ?? null) : null,
   output_data_type:
     "output_data_type" in option ? (option.output_data_type ?? null) : null,
   priority: "priority" in option ? (option.priority ?? null) : null,
   description: "description" in option ? option.description : undefined,
-  followUp: "follow_up" in option ? (option.follow_up ?? null) : null,
+  followUp:
+    "follow_up" in option ? toChoiceFollowUp(option.follow_up ?? null) : null,
   branchConfig:
-    "branch_config" in option ? (option.branch_config ?? null) : null,
+    "branch_config" in option
+      ? toChoiceBranchConfig(option.branch_config ?? null)
+      : null,
 });
 
 const mergeChoiceResponses = (
