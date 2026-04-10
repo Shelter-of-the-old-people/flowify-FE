@@ -1,13 +1,17 @@
 import axios from "axios";
 import type { AxiosError, InternalAxiosRequestConfig } from "axios";
 
+import {
+  clearAuthSession,
+  getAccessToken,
+  getRefreshToken,
+  storeTokens,
+} from "../libs/auth-session";
 import type { ApiResponse } from "../types";
 
 import type { RefreshTokenResponse } from "./auth.api";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-const ACCESS_TOKEN_KEY = "accessToken";
-const REFRESH_TOKEN_KEY = "refreshToken";
 const LOGIN_PATH = "/login";
 
 const apiClientConfig = {
@@ -29,20 +33,6 @@ let failedQueue: Array<{
   resolve: (token: string) => void;
   reject: (error: unknown) => void;
 }> = [];
-
-const getAccessToken = () => localStorage.getItem(ACCESS_TOKEN_KEY);
-
-const getRefreshToken = () => localStorage.getItem(REFRESH_TOKEN_KEY);
-
-const storeTokens = (accessToken: string, refreshToken: string) => {
-  localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
-  localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
-};
-
-const clearTokens = () => {
-  localStorage.removeItem(ACCESS_TOKEN_KEY);
-  localStorage.removeItem(REFRESH_TOKEN_KEY);
-};
 
 const redirectToLogin = () => {
   window.location.href = LOGIN_PATH;
@@ -111,7 +101,7 @@ apiClient.interceptors.response.use(
 
     const refreshToken = getRefreshToken();
     if (!refreshToken) {
-      clearTokens();
+      clearAuthSession();
       redirectToLogin();
       return Promise.reject(error);
     }
@@ -138,7 +128,7 @@ apiClient.interceptors.response.use(
       return apiClient(originalRequest);
     } catch (refreshError) {
       processQueue(refreshError, null);
-      clearTokens();
+      clearAuthSession();
       redirectToLogin();
 
       return Promise.reject(refreshError);
