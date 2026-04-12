@@ -33,8 +33,9 @@ import {
 } from "@chakra-ui/react";
 
 import { useCreateWorkflowShortcut } from "@/features/create-workflow";
-import type { NodeDefinitionResponse, WorkflowResponse } from "@/shared";
 import {
+  type NodeDefinitionResponse,
+  type WorkflowResponse,
   buildPath,
   useInfiniteWorkflowListQuery,
   useToggleWorkflowActiveMutation,
@@ -47,6 +48,22 @@ const WORKFLOW_FILTERS = [
 ] as const;
 
 type WorkflowFilterKey = (typeof WORKFLOW_FILTERS)[number]["key"];
+
+type ServiceBadgeProps = {
+  type: ServiceBadgeKey;
+};
+
+type WorkflowFilterTabsProps = {
+  activeFilter: WorkflowFilterKey;
+  onChange: (filter: WorkflowFilterKey) => void;
+};
+
+type WorkflowRowProps = {
+  workflow: WorkflowResponse;
+  isTogglePending: boolean;
+  onOpen: () => void;
+  onToggle: () => void;
+};
 
 type ServiceBadgeKey =
   | "calendar"
@@ -202,7 +219,7 @@ const getServiceBadgeKey = (
   }
 };
 
-const ServiceBadge = ({ type }: { type: ServiceBadgeKey }) => {
+const ServiceBadge = ({ type }: ServiceBadgeProps) => {
   const fallbackIcon = FALLBACK_NODE_ICONS[type];
 
   const content = (() => {
@@ -210,18 +227,17 @@ const ServiceBadge = ({ type }: { type: ServiceBadgeKey }) => {
       case "calendar":
         return (
           <Box
-            w="30px"
-            h="30px"
-            bg="white"
-            borderRadius="8px"
+            boxSize="30px"
+            bg="bg.surface"
+            borderRadius="lg"
             border="1px solid"
-            borderColor="#D6E3FF"
+            borderColor="blue.100"
             overflow="hidden"
             boxShadow="0 6px 12px rgba(66, 133, 244, 0.10)"
           >
-            <Box h="8px" bg="#4285F4" />
+            <Box h="8px" bg="blue.500" />
             <Flex h="22px" align="center" justify="center">
-              <Text fontSize="10px" fontWeight="black" color="#4285F4">
+              <Text fontSize="xs" fontWeight="bold" color="blue.500">
                 31
               </Text>
             </Flex>
@@ -230,17 +246,16 @@ const ServiceBadge = ({ type }: { type: ServiceBadgeKey }) => {
       case "notion":
         return (
           <Flex
-            w="30px"
-            h="30px"
+            boxSize="30px"
             align="center"
             justify="center"
-            bg="white"
-            borderRadius="8px"
+            bg="bg.surface"
+            borderRadius="lg"
             border="2px solid"
-            borderColor="black"
+            borderColor="neutral.950"
             boxShadow="0 6px 12px rgba(15, 23, 42, 0.08)"
           >
-            <Text fontSize="15px" fontWeight="black" color="black">
+            <Text fontSize="sm" fontWeight="bold" color="neutral.950">
               N
             </Text>
           </Flex>
@@ -328,12 +343,11 @@ const ServiceBadge = ({ type }: { type: ServiceBadgeKey }) => {
       default:
         return (
           <Flex
-            w="30px"
-            h="30px"
+            boxSize="30px"
             align="center"
             justify="center"
-            bg="gray.50"
-            borderRadius="8px"
+            bg="bg.overlay"
+            borderRadius="lg"
             border="1px solid"
             borderColor="border.default"
           >
@@ -344,7 +358,7 @@ const ServiceBadge = ({ type }: { type: ServiceBadgeKey }) => {
   })();
 
   return (
-    <Flex w="38px" h="38px" align="center" justify="center" flexShrink={0}>
+    <Flex boxSize="38px" align="center" justify="center" flexShrink={0}>
       {content}
     </Flex>
   );
@@ -353,10 +367,7 @@ const ServiceBadge = ({ type }: { type: ServiceBadgeKey }) => {
 const WorkflowFilterTabs = ({
   activeFilter,
   onChange,
-}: {
-  activeFilter: WorkflowFilterKey;
-  onChange: (filter: WorkflowFilterKey) => void;
-}) => (
+}: WorkflowFilterTabsProps) => (
   <HStack gap={6} px={2} py={3}>
     {WORKFLOW_FILTERS.map((filter) => {
       const isActive = filter.key === activeFilter;
@@ -366,11 +377,11 @@ const WorkflowFilterTabs = ({
           key={filter.key}
           type="button"
           py={0.5}
-          fontSize="14px"
-          fontWeight="regular"
+          fontSize="sm"
+          fontWeight={isActive ? "semibold" : "medium"}
           color="text.primary"
           borderBottom="1px solid"
-          borderColor={isActive ? "black" : "transparent"}
+          borderColor={isActive ? "neutral.950" : "transparent"}
           transition="border-color 160ms ease"
           onClick={() => onChange(filter.key)}
         >
@@ -386,12 +397,7 @@ const WorkflowRow = ({
   isTogglePending,
   onOpen,
   onToggle,
-}: {
-  workflow: WorkflowResponse;
-  isTogglePending: boolean;
-  onOpen: () => void;
-  onToggle: () => void;
-}) => {
+}: WorkflowRowProps) => {
   const { startNode, endNode } = getEndpointNodes(workflow);
   const startBadgeKey = getServiceBadgeKey(startNode);
   const endBadgeKey = getServiceBadgeKey(endNode);
@@ -422,10 +428,10 @@ const WorkflowRow = ({
         justify="space-between"
         gap={4}
         p={4}
-        bg="white"
+        bg="bg.surface"
         border="1px solid"
-        borderColor="#F2F2F2"
-        borderRadius="10px"
+        borderColor="border.default"
+        borderRadius="xl"
         boxShadow="0 4px 12px rgba(15, 23, 42, 0.03)"
         cursor="pointer"
         transition="transform 180ms ease, box-shadow 180ms ease"
@@ -441,7 +447,7 @@ const WorkflowRow = ({
         <HStack gap={3} minW={0} flex={1}>
           <HStack gap={1.5} flexShrink={0}>
             <ServiceBadge type={startBadgeKey} />
-            <Text fontSize="14px" fontWeight="black" color="text.primary">
+            <Text fontSize="sm" fontWeight="bold" color="text.primary">
               →
             </Text>
             <ServiceBadge type={endBadgeKey} />
@@ -449,7 +455,7 @@ const WorkflowRow = ({
 
           <Box minW={0}>
             <Text
-              fontSize="14px"
+              fontSize="sm"
               fontWeight="medium"
               color="text.primary"
               lineClamp={1}
@@ -457,11 +463,11 @@ const WorkflowRow = ({
               {workflow.name}
             </Text>
             <HStack gap={2} mt={0.5} color="text.secondary">
-              <Text fontSize="12px" lineClamp={1}>
+              <Text fontSize="xs" lineClamp={1}>
                 {relativeUpdate}
               </Text>
-              <Box w="1px" h="10px" bg="#5C5C5C" flexShrink={0} />
-              <Text fontSize="12px" lineClamp={1}>
+              <Box w="1px" h="10px" bg="text.secondary" flexShrink={0} />
+              <Text fontSize="xs" lineClamp={1}>
                 {buildProgress}
               </Text>
             </HStack>
@@ -512,17 +518,17 @@ const WorkflowRow = ({
             py={2.5}
             gap={1.5}
             align="stretch"
-            bg="#FFF7ED"
+            bg="orange.50"
             border="1px solid"
-            borderColor="#FDBA74"
-            borderRadius="10px"
-            color="#9A3412"
+            borderColor="orange.100"
+            borderRadius="xl"
+            color="orange.600"
             maxH="200px"
             overflowY="auto"
           >
             <HStack gap={2} align="center">
               <Icon as={MdErrorOutline} boxSize={4} flexShrink={0} />
-              <Text fontSize="12px" fontWeight="semibold">
+              <Text fontSize="xs" fontWeight="semibold">
                 구성 연결 경고
               </Text>
             </HStack>
@@ -531,7 +537,7 @@ const WorkflowRow = ({
                 <Text
                   key={`${workflow.id}-warning-${index}`}
                   pl={6}
-                  fontSize="12px"
+                  fontSize="xs"
                   fontWeight="medium"
                   lineHeight="1.45"
                 >
@@ -643,28 +649,28 @@ export default function WorkflowsPage() {
       <VStack align="stretch" gap={6}>
         <Flex align="center" justify="space-between" gap={6} wrap="wrap">
           <Box>
-            <Text fontSize="20px" fontWeight="semibold" color="text.primary">
+            <Text fontSize="xl" fontWeight="bold" color="text.primary">
               내 자동화 목록
             </Text>
-            <Text mt={1} fontSize="14px" color="#5C5C5C">
+            <Text mt={1} fontSize="sm" color="text.secondary">
               내가 구축한 자동화 시스템 목록
             </Text>
           </Box>
 
           <Button
             bg="black"
-            color="white"
+            color="bg.surface"
             px={3}
             py={1.5}
             h="auto"
-            borderRadius="10px"
-            fontSize="14px"
+            borderRadius="xl"
+            fontSize="sm"
             fontWeight="semibold"
             display="inline-flex"
             alignItems="center"
             gap={2}
             disabled={isCreatePending}
-            _hover={{ bg: "#191919" }}
+            _hover={{ bg: "neutral.900" }}
             onClick={handleCreateWorkflow}
           >
             <Icon as={MdAdd} boxSize={3} />
@@ -716,7 +722,7 @@ export default function WorkflowsPage() {
               {isFetchingNextPage ? (
                 <HStack justify="center" py={4} color="text.secondary">
                   <Spinner size="sm" />
-                  <Text fontSize="13px">
+                  <Text fontSize="xs">
                     다음 자동화 목록을 불러오는 중입니다.
                   </Text>
                 </HStack>
@@ -725,21 +731,17 @@ export default function WorkflowsPage() {
               {filteredWorkflows.length === 0 ? (
                 <Box
                   p={6}
-                  bg="white"
+                  bg="bg.surface"
                   border="1px dashed"
                   borderColor="border.default"
-                  borderRadius="16px"
+                  borderRadius="2xl"
                 >
-                  <Text
-                    fontSize="14px"
-                    fontWeight="medium"
-                    color="text.primary"
-                  >
+                  <Text fontSize="sm" fontWeight="medium" color="text.primary">
                     {workflows.length === 0
                       ? "아직 구축한 자동화가 없습니다."
                       : "선택한 상태의 자동화가 없습니다."}
                   </Text>
-                  <Text mt={2} fontSize="13px" color="text.secondary">
+                  <Text mt={2} fontSize="xs" color="text.secondary">
                     첫 자동화를 만들고 워크플로우 편집기로 바로 이동해보세요.
                   </Text>
                   {workflows.length === 0 ? (
@@ -747,9 +749,9 @@ export default function WorkflowsPage() {
                       mt={4}
                       size="sm"
                       bg="black"
-                      color="white"
+                      color="bg.surface"
                       disabled={isCreatePending}
-                      _hover={{ bg: "#191919" }}
+                      _hover={{ bg: "neutral.900" }}
                       onClick={handleCreateWorkflow}
                     >
                       자동화 시스템 만들기
