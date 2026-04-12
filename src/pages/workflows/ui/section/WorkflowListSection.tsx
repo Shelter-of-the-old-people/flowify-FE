@@ -23,7 +23,7 @@ export const WorkflowListSection = () => {
     hasNextPage,
     fetchNextPage,
     isFetchingNextPage,
-    refetch,
+    handleReload,
   } = useWorkflowListData();
   const {
     isCreatePending,
@@ -37,9 +37,6 @@ export const WorkflowListSection = () => {
     isFetchingNextPage,
     fetchNextPage,
   });
-  const handleReload = () => {
-    void refetch();
-  };
 
   return (
     <VStack align="stretch" gap={6}>

@@ -31,6 +31,9 @@ export const useWorkflowListData = () => {
 
   const filteredWorkflows = filterWorkflowsByStatus(workflows, activeFilter);
   const hasWorkflows = workflows.length > 0;
+  const handleReload = () => {
+    void refetch();
+  };
 
   return {
     activeFilter,
@@ -42,6 +45,6 @@ export const useWorkflowListData = () => {
     hasNextPage,
     fetchNextPage,
     isFetchingNextPage,
-    refetch,
+    handleReload,
   };
 };
