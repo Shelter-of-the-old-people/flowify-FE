@@ -250,7 +250,7 @@ export const ApplicationProviders = ({ children }: Props) => {
 ```text
 Page
 → Section
-  → model hook
+  → model hooks
   → ui components
     → entity ui
 ```
@@ -261,7 +261,7 @@ Page
 
 - `page`는 라우트 진입점과 최상위 레이아웃 조합만 담당한다.
 - `section`은 실제 화면 단위 컨테이너 역할을 담당한다.
-- `model hook`은 section 내부에서 호출하고, 조회/필터/페이지네이션/무한 스크롤/핸들러를 관리한다.
+- `model hook`은 section 내부에서 호출하되, **하나의 거대한 facade hook보다 책임별로 나뉜 작은 hook 조합을 우선한다.**
 - `ui` 컴포넌트는 props 기반 표현 컴포넌트로 유지한다.
 - `entity ui`는 item, card, row, badge처럼 재사용 가능한 도메인 표현에 집중한다.
 - `feature`는 생성, 삭제, 실행, 로그아웃처럼 사용자 액션 단위를 담당한다.
@@ -275,7 +275,9 @@ src/pages/<route>/
 ├─ XxxPage.tsx
 ├─ index.ts
 ├─ model/
-│  ├─ useXxxSection.ts
+│  ├─ useXxxData.ts
+│  ├─ useXxxActions.ts
+│  ├─ useXxxScroll.ts
 │  ├─ constants.ts
 │  ├─ types.ts
 │  └─ *.ts
@@ -297,7 +299,7 @@ src/pages/<route>/
 
 - `section`
   - 화면 단위 조합
-  - model hook 호출
+  - 필요한 model hook들을 직접 호출해 조합
   - loading / error / empty / list 상태 처리
   - toolbar, list, dialog, action UI 연결
 
@@ -328,6 +330,15 @@ src/pages/<route>/
   - 여러 페이지/레이아웃에서 의미를 갖는 구조적 단위
   - 예: layout, shell, canvas, toolbar, panel
 
+#### model hook 분리 기준
+
+- section 안에서 사용하는 model hook은 **기능이 아니라 책임 기준으로 분리**한다.
+- 조회/정렬/필터링은 `data` 계열 hook으로 분리한다.
+- 생성/삭제/이동/토글 같은 사용자 액션은 `actions` 계열 hook으로 분리한다.
+- observer, infinite scroll, resize, keyboard binding 같은 효과성 로직은 별도 hook으로 분리한다.
+- 하나의 `useXxxSection` hook이 단순히 section에서 쓰는 모든 값과 핸들러를 모아 반환하기 시작하면, facade가 아니라 **God hook**이 되기 쉽다.
+- section facade hook은 여러 작은 hook을 얇게 조합할 때만 선택적으로 둔다. 단일 section만 위해 모든 책임을 감춘다면 우선 제거를 검토한다.
+
 #### 승격 기준
 
 - **기본값은 page slice 내부 유지**다.
@@ -352,15 +363,25 @@ export default function MyPage() {
 ```
 
 ```tsx
-// O 권장: 섹션이 내부에서 hook과 하위 UI를 연결
+// O 권장: 섹션이 책임별 hook을 직접 조합
 export const ProjectListSection = () => {
-  const { data, isLoading } = useProjectListSection();
+  const { projects, isLoading, activeFilter, setActiveFilter } =
+    useProjectListData();
+  const { handleOpenProject, handleDeleteProject } = useProjectListActions();
 
   return (
     <>
-      <ProjectListToolbar />
-      {data?.content.map((project) => (
-        <ProjectListItem key={project.projectId} {...project} />
+      <ProjectListToolbar
+        activeFilter={activeFilter}
+        onFilterChange={setActiveFilter}
+      />
+      {projects.map((project) => (
+        <ProjectListItem
+          key={project.id}
+          {...project}
+          onClick={() => handleOpenProject(project.id)}
+          onDelete={() => handleDeleteProject(project.id)}
+        />
       ))}
     </>
   );
@@ -368,24 +389,8 @@ export const ProjectListSection = () => {
 ```
 
 ```tsx
-// X 지양: 페이지가 hook 결과를 모두 들고 props drilling
-export default function WorkflowsPage() {
-  const pageState = useWorkflowListSection();
-
-  return (
-    <WorkflowListSection
-      activeFilter={pageState.activeFilter}
-      workflows={pageState.filteredWorkflows}
-      onToggle={pageState.handleToggleWorkflow}
-      ...
-    />
-  );
-}
-```
-
-```text
-// X 지양: 재사용 근거가 없는 화면 전용 리스트를 곧바로 widgets로 승격
-src/widgets/workflow-list/...
+// X 지양: section 전용 책임을 하나의 facade hook에 모두 몰아넣기
+const sectionState = useWorkflowListSection();
 ```
 
 #### 적용 기준
@@ -393,6 +398,8 @@ src/widgets/workflow-list/...
 - 페이지가 너무 많은 props를 하위로 전달하기 시작하면 section 분리를 우선 검토한다.
 - loading, error, empty, list rendering이 페이지에 함께 있으면 section 컨테이너로 이동을 검토한다.
 - item row, toolbar, badge처럼 표현 중심인 요소는 section 밖으로 분리하되, **우선은 같은 page slice 안에 둔다.**
+- section model hook 하나가 조회, 액션, observer, navigation을 함께 들고 있으면 책임 기준 재분리를 검토한다.
+- section이 사용하는 값이 모두 하나의 hook에서 나오더라도, 그 hook이 실제로 여러 성격의 책임을 숨기고 있지 않은지 먼저 본다.
 - row/card/badge가 다른 화면에서도 반복되기 전에는 `entities`로 올리지 않는다.
 - 공용 레이아웃/캔버스/패널처럼 구조적 의미가 있는 블록이 아니라면 `widgets`를 기본 저장소처럼 사용하지 않는다.
 
