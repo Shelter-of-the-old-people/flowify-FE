@@ -14,7 +14,7 @@ export interface UpdateWorkflowRequest {
   nodes?: NodeDefinitionResponse[];
   edges?: EdgeDefinitionResponse[];
   trigger?: TriggerConfig | null;
-  isActive?: boolean;
+  active?: boolean;
 }
 
 export type NodeDefinitionRole = "start" | "end" | "middle";

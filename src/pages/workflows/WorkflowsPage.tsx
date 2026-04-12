@@ -7,6 +7,7 @@ import {
   MdBolt,
   MdCalendarMonth,
   MdEmail,
+  MdErrorOutline,
   MdFolder,
   MdLanguage,
   MdMoreHoriz,
@@ -126,6 +127,9 @@ const getBuildProgressLabel = (workflow: WorkflowResponse) => {
 
   return `${configuredNodes}/${totalNodes} 구축`;
 };
+
+const getWorkflowWarningMessages = (workflow: WorkflowResponse) =>
+  workflow.warnings?.map((warning) => warning.message).filter(Boolean) ?? [];
 
 const getEndpointNodes = (workflow: WorkflowResponse) => {
   const startNode =
@@ -393,7 +397,8 @@ const WorkflowRow = ({
   const endBadgeKey = getServiceBadgeKey(endNode);
   const relativeUpdate = getRelativeUpdateLabel(workflow.updatedAt);
   const buildProgress = getBuildProgressLabel(workflow);
-  const quickActionLabel = workflow.isActive ? "자동화 중지" : "자동화 실행";
+  const warningMessages = getWorkflowWarningMessages(workflow);
+  const quickActionLabel = workflow.active ? "자동화 중지" : "자동화 실행";
 
   const handleRowKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "Enter" || event.key === " ") {
@@ -411,83 +416,133 @@ const WorkflowRow = ({
   };
 
   return (
-    <Flex
-      align="center"
-      justify="space-between"
-      gap={4}
-      p={4}
-      bg="white"
-      border="1px solid"
-      borderColor="#F2F2F2"
-      borderRadius="10px"
-      boxShadow="0 4px 12px rgba(15, 23, 42, 0.03)"
-      cursor="pointer"
-      transition="transform 180ms ease, box-shadow 180ms ease"
-      _hover={{
-        transform: "translateY(-1px)",
-        boxShadow: "0 12px 24px rgba(15, 23, 42, 0.06)",
-      }}
-      onClick={onOpen}
-      onKeyDown={handleRowKeyDown}
-      role="button"
-      tabIndex={0}
-    >
-      <HStack gap={3} minW={0} flex={1}>
-        <HStack gap={1.5} flexShrink={0}>
-          <ServiceBadge type={startBadgeKey} />
-          <Text fontSize="14px" fontWeight="black" color="text.primary">
-            →
-          </Text>
-          <ServiceBadge type={endBadgeKey} />
+    <Box role="group">
+      <Flex
+        align="center"
+        justify="space-between"
+        gap={4}
+        p={4}
+        bg="white"
+        border="1px solid"
+        borderColor="#F2F2F2"
+        borderRadius="10px"
+        boxShadow="0 4px 12px rgba(15, 23, 42, 0.03)"
+        cursor="pointer"
+        transition="transform 180ms ease, box-shadow 180ms ease"
+        _hover={{
+          transform: "translateY(-1px)",
+          boxShadow: "0 12px 24px rgba(15, 23, 42, 0.06)",
+        }}
+        onClick={onOpen}
+        onKeyDown={handleRowKeyDown}
+        role="button"
+        tabIndex={0}
+      >
+        <HStack gap={3} minW={0} flex={1}>
+          <HStack gap={1.5} flexShrink={0}>
+            <ServiceBadge type={startBadgeKey} />
+            <Text fontSize="14px" fontWeight="black" color="text.primary">
+              →
+            </Text>
+            <ServiceBadge type={endBadgeKey} />
+          </HStack>
+
+          <Box minW={0}>
+            <Text
+              fontSize="14px"
+              fontWeight="medium"
+              color="text.primary"
+              lineClamp={1}
+            >
+              {workflow.name}
+            </Text>
+            <HStack gap={2} mt={0.5} color="text.secondary">
+              <Text fontSize="12px" lineClamp={1}>
+                {relativeUpdate}
+              </Text>
+              <Box w="1px" h="10px" bg="#5C5C5C" flexShrink={0} />
+              <Text fontSize="12px" lineClamp={1}>
+                {buildProgress}
+              </Text>
+            </HStack>
+          </Box>
         </HStack>
 
-        <Box minW={0}>
-          <Text
-            fontSize="14px"
-            fontWeight="medium"
-            color="text.primary"
-            lineClamp={1}
+        <HStack gap={0} flexShrink={0}>
+          <IconButton
+            aria-label={quickActionLabel}
+            variant="ghost"
+            size="sm"
+            disabled={isTogglePending}
+            onClick={(event) => handleInnerAction(event, onToggle)}
           >
-            {workflow.name}
-          </Text>
-          <HStack gap={2} mt={0.5} color="text.secondary">
-            <Text fontSize="12px" lineClamp={1}>
-              {relativeUpdate}
-            </Text>
-            <Box w="1px" h="10px" bg="#5C5C5C" flexShrink={0} />
-            <Text fontSize="12px" lineClamp={1}>
-              {buildProgress}
-            </Text>
-          </HStack>
-        </Box>
-      </HStack>
+            {isTogglePending ? (
+              <Spinner size="xs" />
+            ) : workflow.active ? (
+              <MdPause />
+            ) : (
+              <MdPlayArrow />
+            )}
+          </IconButton>
+          <IconButton
+            aria-label="자동화 상세 보기"
+            variant="ghost"
+            size="sm"
+            onClick={(event) => handleInnerAction(event, onOpen)}
+          >
+            <MdMoreHoriz />
+          </IconButton>
+        </HStack>
+      </Flex>
 
-      <HStack gap={0} flexShrink={0}>
-        <IconButton
-          aria-label={quickActionLabel}
-          variant="ghost"
-          size="sm"
-          disabled={isTogglePending}
-          onClick={(event) => handleInnerAction(event, onToggle)}
+      {warningMessages.length > 0 ? (
+        <Box
+          maxH={0}
+          opacity={0}
+          overflow="hidden"
+          transition="all 180ms ease"
+          _groupHover={{
+            maxH: "200px",
+            opacity: 1,
+          }}
         >
-          {isTogglePending ? (
-            <Spinner size="xs" />
-          ) : workflow.isActive ? (
-            <MdPause />
-          ) : (
-            <MdPlayArrow />
-          )}
-        </IconButton>
-        <IconButton
-          aria-label="자동화 상세 보기"
-          variant="ghost"
-          size="sm"
-          onClick={(event) => handleInnerAction(event, onOpen)}
-        >
-          <MdMoreHoriz />
-        </IconButton>
-      </HStack>
-    </Flex>
+          <VStack
+            mt={2}
+            px={3}
+            py={2.5}
+            gap={1.5}
+            align="stretch"
+            bg="#FFF7ED"
+            border="1px solid"
+            borderColor="#FDBA74"
+            borderRadius="10px"
+            color="#9A3412"
+            maxH="200px"
+            overflowY="auto"
+          >
+            <HStack gap={2} align="center">
+              <Icon as={MdErrorOutline} boxSize={4} flexShrink={0} />
+              <Text fontSize="12px" fontWeight="semibold">
+                구성 연결 경고
+              </Text>
+            </HStack>
+            <VStack gap={1} align="stretch">
+              {warningMessages.map((warningMessage, index) => (
+                <Text
+                  key={`${workflow.id}-warning-${index}`}
+                  pl={6}
+                  fontSize="12px"
+                  fontWeight="medium"
+                  lineHeight="1.45"
+                >
+                  {warningMessage}
+                </Text>
+              ))}
+            </VStack>
+          </VStack>
+        </Box>
+      ) : null}
+    </Box>
   );
 };
 
@@ -524,9 +579,9 @@ export default function WorkflowsPage() {
   const filteredWorkflows = useMemo(() => {
     switch (activeFilter) {
       case "active":
-        return workflows.filter((workflow) => workflow.isActive);
+        return workflows.filter((workflow) => workflow.active);
       case "inactive":
-        return workflows.filter((workflow) => !workflow.isActive);
+        return workflows.filter((workflow) => !workflow.active);
       case "all":
       default:
         return workflows;
@@ -576,7 +631,7 @@ export default function WorkflowsPage() {
     try {
       await toggleWorkflowActive({
         workflowId: workflow.id,
-        isActive: !workflow.isActive,
+        active: !workflow.active,
       });
     } finally {
       setTogglingWorkflowId(null);

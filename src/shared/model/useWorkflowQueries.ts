@@ -85,13 +85,13 @@ export const useToggleWorkflowActiveMutation = () =>
   useMutation({
     mutationFn: async ({
       workflowId,
-      isActive,
+      active,
     }: {
       workflowId: string;
-      isActive: boolean;
+      active: boolean;
     }) => {
       const response = await workflowApi.update(workflowId, {
-        isActive,
+        active,
       });
 
       return response.data.data;
@@ -189,8 +189,8 @@ export const toWorkflowSummary = (
   id: workflow.id,
   name: workflow.name,
   description: workflow.description,
-  isActive: workflow.isActive,
-  status: getWorkflowStatus(workflow.isActive),
+  active: workflow.active,
+  status: getWorkflowStatus(workflow.active),
   createdAt: workflow.createdAt,
   updatedAt: workflow.updatedAt,
 });

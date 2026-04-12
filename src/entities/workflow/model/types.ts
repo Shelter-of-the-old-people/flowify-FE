@@ -25,7 +25,7 @@ export interface Workflow {
   isTemplate?: boolean;
   templateId?: string | null;
   trigger: TriggerConfig | null;
-  isActive: boolean;
+  active: boolean;
   createdAt: string;
   updatedAt: string;
   warnings?: ValidationWarning[];
@@ -35,11 +35,11 @@ export interface WorkflowSummary {
   id: string;
   name: string;
   description: string;
-  isActive: boolean;
+  active: boolean;
   status: WorkflowStatus;
   createdAt: string;
   updatedAt: string;
 }
 
-export const getWorkflowStatus = (isActive: boolean): WorkflowStatus =>
-  isActive ? "active" : "inactive";
+export const getWorkflowStatus = (active: boolean): WorkflowStatus =>
+  active ? "active" : "inactive";
