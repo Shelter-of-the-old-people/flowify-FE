@@ -1,6 +1,10 @@
 import { Box, HStack, Spinner, Text, VStack } from "@chakra-ui/react";
 
-import { useWorkflowListSection } from "../../model";
+import {
+  useWorkflowListActions,
+  useWorkflowListData,
+  useWorkflowListInfiniteScroll,
+} from "../../model";
 import { WorkflowFilterTabs } from "../WorkflowFilterTabs";
 import { WorkflowListEmptyState } from "../WorkflowListEmptyState";
 import { WorkflowListErrorState } from "../WorkflowListErrorState";
@@ -13,19 +17,29 @@ export const WorkflowListSection = () => {
     activeFilter,
     setActiveFilter,
     filteredWorkflows,
-    workflows,
-    loadMoreRef,
+    hasWorkflows,
     isLoading,
     isError,
     hasNextPage,
+    fetchNextPage,
     isFetchingNextPage,
+    refetch,
+  } = useWorkflowListData();
+  const {
     isCreatePending,
     togglingWorkflowId,
     handleCreateWorkflow,
     handleOpenWorkflow,
     handleToggleWorkflow,
-    handleReload,
-  } = useWorkflowListSection();
+  } = useWorkflowListActions();
+  const loadMoreRef = useWorkflowListInfiniteScroll({
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+  });
+  const handleReload = () => {
+    void refetch();
+  };
 
   return (
     <VStack align="stretch" gap={6}>
@@ -67,7 +81,7 @@ export const WorkflowListSection = () => {
 
             {filteredWorkflows.length === 0 ? (
               <WorkflowListEmptyState
-                hasWorkflows={workflows.length > 0}
+                hasWorkflows={hasWorkflows}
                 isCreatePending={isCreatePending}
                 onCreate={handleCreateWorkflow}
               />
