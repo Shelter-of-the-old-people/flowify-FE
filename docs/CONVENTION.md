@@ -241,6 +241,105 @@ export const ApplicationProviders = ({ children }: Props) => {
 };
 ```
 
+### 4.4 관심사 분리 기준
+
+페이지와 UI를 분리할 때는 "페이지가 모든 것을 알고 하위 컴포넌트에 props를 내려주는 구조"보다, 화면 단위 섹션이 필요한 상태와 UI를 내부에서 조합하는 구조를 우선한다.
+
+#### 기본 원칙
+
+- `page`는 라우트 진입점과 최상위 레이아웃 조합만 담당한다.
+- `section`은 실제 화면 단위 컨테이너 역할을 담당한다.
+- `model hook`은 section 내부에서 호출하고, 목록 조회/필터/페이지네이션/무한 스크롤/핸들러를 관리한다.
+- `ui` 컴포넌트는 props 기반 표현 컴포넌트로 유지한다.
+- `entity ui`는 item, card, row처럼 재사용 가능한 단위 표현에 집중한다.
+
+#### 권장 구조
+
+```text
+Page
+→ Section
+  → model hook
+  → ui components
+    → entity ui
+```
+
+#### 예시
+
+```tsx
+// O 권장: 페이지는 섹션만 조합
+export default function MyPage() {
+  return (
+    <Layout>
+      <UserNameSection />
+      <ProjectListSection />
+    </Layout>
+  );
+}
+```
+
+```tsx
+// O 권장: 섹션이 내부에서 hook과 하위 UI를 연결
+export const ProjectListSection = () => {
+  const { data, isLoading } = useGetProjectList();
+  const [filter, setFilter] = useState();
+
+  return (
+    <>
+      <ProjectListToolbar activeFilter={filter} onFilterChange={setFilter} />
+      {data?.content.map((project) => (
+        <ProjectListItem key={project.projectId} {...project} />
+      ))}
+    </>
+  );
+};
+```
+
+```tsx
+// X 지양: 페이지가 hook 결과를 모두 들고 props drilling
+export default function WorkflowsPage() {
+  const pageState = useWorkflowsPage();
+
+  return (
+    <WorkflowListSection
+      activeFilter={pageState.activeFilter}
+      workflows={pageState.filteredWorkflows}
+      onToggle={pageState.handleToggleWorkflow}
+      ...
+    />
+  );
+}
+```
+
+#### 분리 기준
+
+- `page`
+  - route 진입
+  - 최상위 레이아웃
+  - section 조합
+
+- `section`
+  - 화면 단위 조합
+  - query 호출
+  - loading / error / empty 상태 처리
+  - toolbar, list, dialog, action UI 연결
+
+- `model`
+  - query/mutation hook
+  - 파생 상태
+  - 핸들러
+  - 순수 계산 로직
+
+- `ui`
+  - props 기반 표현 컴포넌트
+  - fetch/query 직접 호출 지양
+  - 재사용 가능한 시각 요소
+
+#### 적용 기준
+
+- 페이지가 너무 많은 props를 하위로 전달하기 시작하면 section 분리를 우선 검토한다.
+- loading, error, empty, list rendering이 페이지에 함께 있으면 section 컨테이너로 이동을 검토한다.
+- item row, toolbar, badge처럼 표현 중심인 요소는 section 밖으로 분리한다.
+
 ---
 
 ## 5. 타입 컨벤션
