@@ -46,7 +46,7 @@ export default function LoginPage() {
           bg="bg.surface"
           border="1px solid"
           borderColor="#f2f2f2"
-          borderRadius="20px"
+          borderRadius="2xl"
           boxShadow="0 4px 4px rgba(0, 0, 0, 0.25)"
           px={{ base: "32px", md: "48px" }}
           py={{ base: "32px", md: "48px" }}
