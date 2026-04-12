@@ -11,9 +11,12 @@ import {
 
 import { WORKFLOW_LIST_PAGE_SIZE } from "./constants";
 import { type WorkflowFilterKey } from "./types";
-import { sortWorkflowsByUpdatedAtDesc } from "./workflow-list";
+import {
+  filterWorkflowsByStatus,
+  sortWorkflowsByUpdatedAtDesc,
+} from "./workflow-list";
 
-export const useWorkflowsPage = () => {
+export const useWorkflowListSection = () => {
   const navigate = useNavigate();
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const [activeFilter, setActiveFilter] = useState<WorkflowFilterKey>("all");
@@ -41,17 +44,7 @@ export const useWorkflowsPage = () => {
     [data],
   );
 
-  const filteredWorkflows = useMemo(() => {
-    switch (activeFilter) {
-      case "active":
-        return workflows.filter((workflow) => workflow.active);
-      case "inactive":
-        return workflows.filter((workflow) => !workflow.active);
-      case "all":
-      default:
-        return workflows;
-    }
-  }, [activeFilter, workflows]);
+  const filteredWorkflows = filterWorkflowsByStatus(workflows, activeFilter);
 
   useEffect(() => {
     if (!hasNextPage || isFetchingNextPage) {

@@ -1,4 +1,4 @@
 export * from "./constants";
 export * from "./types";
-export * from "./useWorkflowsPage";
+export * from "./useWorkflowListSection";
 export * from "./workflow-list";

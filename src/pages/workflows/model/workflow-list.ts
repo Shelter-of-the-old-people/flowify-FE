@@ -1,6 +1,6 @@
 import { type NodeDefinitionResponse, type WorkflowResponse } from "@/shared";
 
-import { type ServiceBadgeKey } from "./types";
+import { type ServiceBadgeKey, type WorkflowFilterKey } from "./types";
 
 export const getUpdatedTimestamp = (updatedAt: string) => {
   const updatedTime = new Date(updatedAt).getTime();
@@ -13,6 +13,21 @@ export const sortWorkflowsByUpdatedAtDesc = (workflows: WorkflowResponse[]) =>
       getUpdatedTimestamp(rightWorkflow.updatedAt) -
       getUpdatedTimestamp(leftWorkflow.updatedAt),
   );
+
+export const filterWorkflowsByStatus = (
+  workflows: WorkflowResponse[],
+  activeFilter: WorkflowFilterKey,
+) => {
+  switch (activeFilter) {
+    case "active":
+      return workflows.filter((workflow) => workflow.active);
+    case "inactive":
+      return workflows.filter((workflow) => !workflow.active);
+    case "all":
+    default:
+      return workflows;
+  }
+};
 
 export const getRelativeUpdateLabel = (updatedAt: string) => {
   const updatedTime = getUpdatedTimestamp(updatedAt);

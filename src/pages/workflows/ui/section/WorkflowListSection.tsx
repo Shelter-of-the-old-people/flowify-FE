@@ -11,7 +11,7 @@ import {
   VStack,
 } from "@chakra-ui/react";
 
-import { useWorkflowsPage } from "../../model";
+import { useWorkflowListSection } from "../../model";
 import { WorkflowFilterTabs } from "../WorkflowFilterTabs";
 import { WorkflowRow } from "../WorkflowRow";
 
@@ -32,7 +32,7 @@ export const WorkflowListSection = () => {
     handleOpenWorkflow,
     handleToggleWorkflow,
     handleReload,
-  } = useWorkflowsPage();
+  } = useWorkflowListSection();
 
   return (
     <VStack align="stretch" gap={6}>
