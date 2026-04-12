@@ -23,6 +23,10 @@ export const useCreateWorkflowShortcut = () => {
     try {
       const response = await workflowApi.create({
         name: "새 워크플로우",
+        description: "",
+        nodes: [],
+        edges: [],
+        trigger: null,
       });
 
       await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.workflows });

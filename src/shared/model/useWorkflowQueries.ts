@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
 
 import type { WorkflowSummary } from "@/entities/workflow";
 import { getWorkflowStatus } from "@/entities/workflow";
@@ -14,13 +14,31 @@ import { QUERY_KEYS } from "../constants";
 import { queryClient } from "../libs";
 import { toWorkflowUpdateRequest } from "../libs/workflow-adapter";
 import type { WorkflowAdapterStoreState } from "../libs/workflow-adapter";
+import type { PageResponse } from "../types";
 
-export const useWorkflowListQuery = (page = 0, size = 20) =>
+export const useWorkflowListQuery = (page = 0, size = 20, enabled = true) =>
   useQuery({
     queryKey: [...QUERY_KEYS.workflows, { page, size }] as const,
     queryFn: async () => {
       const response = await workflowApi.getList(page, size);
       return response.data.data;
+    },
+    enabled,
+    throwOnError: false,
+  });
+
+export const useInfiniteWorkflowListQuery = (size = 20, enabled = true) =>
+  useInfiniteQuery({
+    queryKey: [...QUERY_KEYS.workflows, "infinite", { size }] as const,
+    queryFn: async ({ pageParam }) => {
+      const response = await workflowApi.getList(pageParam, size);
+      return response.data.data;
+    },
+    enabled,
+    initialPageParam: 0,
+    getNextPageParam: (lastPage: PageResponse<WorkflowResponse>) => {
+      const nextPage = lastPage.page + 1;
+      return nextPage < lastPage.totalPages ? nextPage : undefined;
     },
     throwOnError: false,
   });
@@ -61,6 +79,24 @@ export const useSaveWorkflowMutation = () =>
         queryKey: QUERY_KEYS.workflows,
       });
     },
+  });
+
+export const useToggleWorkflowActiveMutation = () =>
+  useMutation({
+    mutationFn: async ({
+      workflowId,
+      active,
+    }: {
+      workflowId: string;
+      active: boolean;
+    }) => {
+      const response = await workflowApi.update(workflowId, {
+        active,
+      });
+
+      return response.data.data;
+    },
+    onSuccess: syncWorkflowCache,
   });
 
 const syncWorkflowCache = async (workflow: WorkflowResponse) => {
@@ -153,8 +189,8 @@ export const toWorkflowSummary = (
   id: workflow.id,
   name: workflow.name,
   description: workflow.description,
-  isActive: workflow.isActive,
-  status: getWorkflowStatus(workflow.isActive),
+  active: workflow.active,
+  status: getWorkflowStatus(workflow.active),
   createdAt: workflow.createdAt,
   updatedAt: workflow.updatedAt,
 });

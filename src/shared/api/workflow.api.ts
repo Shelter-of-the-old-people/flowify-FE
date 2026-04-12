@@ -6,6 +6,10 @@ import { apiClient } from "./client";
 
 export interface CreateWorkflowRequest {
   name: string;
+  description?: string;
+  nodes?: NodeDefinitionResponse[];
+  edges?: EdgeDefinitionResponse[];
+  trigger?: TriggerConfig | null;
 }
 
 export interface UpdateWorkflowRequest {
@@ -14,7 +18,7 @@ export interface UpdateWorkflowRequest {
   nodes?: NodeDefinitionResponse[];
   edges?: EdgeDefinitionResponse[];
   trigger?: TriggerConfig | null;
-  isActive?: boolean;
+  active?: boolean;
 }
 
 export type NodeDefinitionRole = "start" | "end" | "middle";
