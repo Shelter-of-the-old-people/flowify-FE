@@ -40,17 +40,17 @@ export default function LoginPage() {
       alignItems="center"
       justifyContent="center"
       bg="bg.surface"
-      px={6}
+      px={{ base: 6, md: 8 }}
     >
       <VStack
-        gap={12}
+        gap={{ base: 10, md: 12 }}
         maxW="437px"
         w="full"
         align="stretch"
       >
         <Text
           textAlign="center"
-          fontSize={{ base: "36px", md: "48px" }}
+          fontSize={{ base: "40px", md: "48px" }}
           fontWeight="medium"
           lineHeight="1"
           color="text.primary"
@@ -90,7 +90,7 @@ export default function LoginPage() {
             h="auto"
             minH="auto"
             w="full"
-            px={{ base: "24px", md: "64px" }}
+            px={{ base: "32px", md: "64px" }}
             py="10px"
             onClick={handleGoogleLogin}
             disabled={isPending}
