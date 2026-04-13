@@ -4,7 +4,7 @@ import { TemplateListSection } from "./ui";
 
 export default function TemplatesPage() {
   return (
-    <Box maxW="1200px" mx="auto" w="full">
+    <Box maxW="1180px" mx="auto" w="full">
       <TemplateListSection />
     </Box>
   );

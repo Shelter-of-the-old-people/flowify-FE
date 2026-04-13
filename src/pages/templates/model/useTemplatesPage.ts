@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useNavigate } from "react-router";
 
 import { buildPath } from "@/shared";
@@ -10,17 +9,12 @@ export const getTemplateDescription = (description: string) =>
 
 export const useTemplatesPage = () => {
   const navigate = useNavigate();
-  const [selectedCategory, setSelectedCategory] = useState<
-    string | undefined
-  >();
 
   const handleOpenTemplate = (templateId: string) => {
     navigate(buildPath.templateDetail(templateId));
   };
 
   return {
-    selectedCategory,
-    setSelectedCategory,
     handleOpenTemplate,
   };
 };
