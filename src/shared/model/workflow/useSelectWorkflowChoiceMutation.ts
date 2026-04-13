@@ -1,8 +1,22 @@
 import { useMutation } from "@tanstack/react-query";
 
 import { workflowApi } from "../../api";
+import { type MutationPolicyOptions, toMutationMeta } from "../query-policy";
 
-export const useSelectWorkflowChoiceMutation = () =>
+type SelectWorkflowChoiceVariables = {
+  workflowId: string;
+  prevNodeId: string;
+  selectedOptionId: string;
+  dataType: string;
+  context?: Record<string, unknown>;
+};
+
+export const useSelectWorkflowChoiceMutation = (
+  options?: MutationPolicyOptions<
+    Awaited<ReturnType<typeof workflowApi.selectChoice>>,
+    SelectWorkflowChoiceVariables
+  >,
+) =>
   useMutation({
     mutationFn: ({
       workflowId,
@@ -10,16 +24,18 @@ export const useSelectWorkflowChoiceMutation = () =>
       selectedOptionId,
       dataType,
       context,
-    }: {
-      workflowId: string;
-      prevNodeId: string;
-      selectedOptionId: string;
-      dataType: string;
-      context?: Record<string, unknown>;
-    }) =>
+    }: SelectWorkflowChoiceVariables) =>
       workflowApi.selectChoice(workflowId, prevNodeId, {
         selectedOptionId,
         dataType,
         context,
       }),
+    retry: options?.retry,
+    meta: toMutationMeta(options),
+    onSuccess: async (data, variables, onMutateResult, context) => {
+      await options?.onSuccess?.(data, variables, onMutateResult, context);
+    },
+    onError: async (error, variables, onMutateResult, context) => {
+      await options?.onError?.(error, variables, onMutateResult, context);
+    },
   });
