@@ -1,3 +1,5 @@
+import { Toaster } from "@/shared";
+
 import { QueryProvider, ThemeProvider } from "./components";
 
 type Props = {
@@ -7,7 +9,10 @@ type Props = {
 export const ApplicationProviders = ({ children }: Props) => {
   return (
     <QueryProvider>
-      <ThemeProvider>{children}</ThemeProvider>
+      <ThemeProvider>
+        {children}
+        <Toaster />
+      </ThemeProvider>
     </QueryProvider>
   );
 };

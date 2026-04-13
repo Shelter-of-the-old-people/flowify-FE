@@ -1,43 +1,43 @@
-import type { AxiosError } from "axios";
 import { isAxiosError } from "axios";
 
-import type { ApiResponse } from "../../types";
+import { API_ERROR_MESSAGES, HTTP_ERROR_MESSAGES } from "../../constants";
+import type { ApiResponse, ErrorResponse } from "../../types";
 
 export class ApiError extends Error {
   public readonly errorCode: string;
 
-  constructor(message: string, errorCode: string) {
-    super(message);
+  constructor(errorResponse: ErrorResponse) {
+    super(errorResponse.message);
     this.name = "ApiError";
-    this.errorCode = errorCode;
+    this.errorCode = errorResponse.errorCode;
   }
 }
 
-export const processApiResponse = <T>(response: ApiResponse<T>): T => {
-  if (response.success) {
-    return response.data;
-  }
-
-  throw new ApiError(response.message, response.errorCode);
-};
-
-export const getApiErrorMessage = (error: unknown) => {
+export const getApiErrorMessage = (error: unknown): string => {
   if (error instanceof ApiError) {
-    return error.message;
+    const mapped =
+      API_ERROR_MESSAGES[error.errorCode as keyof typeof API_ERROR_MESSAGES];
+
+    return mapped ?? error.message;
   }
 
   if (isAxiosError(error)) {
-    return getAxiosErrorMessage(error);
+    const status = error.response?.status as keyof typeof HTTP_ERROR_MESSAGES;
+
+    return HTTP_ERROR_MESSAGES[status] ?? HTTP_ERROR_MESSAGES.default;
   }
 
   if (error instanceof Error) {
     return error.message;
   }
 
-  return "알 수 없는 오류가 발생했습니다.";
+  return HTTP_ERROR_MESSAGES.default;
 };
 
-const getAxiosErrorMessage = (error: AxiosError) =>
-  error.response?.statusText ||
-  error.message ||
-  "요청 처리 중 오류가 발생했습니다.";
+export const processApiResponse = <T>(response: ApiResponse<T>): T => {
+  if (response.success) {
+    return response.data;
+  }
+
+  throw new ApiError(response);
+};
