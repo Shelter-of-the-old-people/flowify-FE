@@ -8,10 +8,9 @@ import {
   storeAuthUser,
   storeTokens,
 } from "../libs/auth-session";
-import type { ApiResponse } from "../types";
-import { processApiResponse } from "../utils";
 
 import type { LoginResponse } from "./auth";
+import { requestWithClient } from "./core";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const LOGIN_PATH = "/login";
@@ -62,14 +61,13 @@ const processQueue = (error: unknown, token: string | null) => {
 };
 
 const refreshAccessToken = async (refreshToken: string) => {
-  const { data } = await refreshClient.post<ApiResponse<LoginResponse>>(
-    "/auth/refresh",
-    {
+  const result = await requestWithClient<LoginResponse>(refreshClient, {
+    url: "/auth/refresh",
+    method: "POST",
+    data: {
       refreshToken,
     },
-  );
-
-  const result = processApiResponse(data);
+  });
 
   storeTokens(result.accessToken, result.refreshToken);
   storeAuthUser(result.user);

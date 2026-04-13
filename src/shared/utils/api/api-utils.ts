@@ -1,24 +1,30 @@
 import { isAxiosError } from "axios";
 
+import { ApiError } from "../../api/core";
 import { API_ERROR_MESSAGES, HTTP_ERROR_MESSAGES } from "../../constants";
-import type { ApiResponse, ErrorResponse } from "../../types";
-
-export class ApiError extends Error {
-  public readonly errorCode: string;
-
-  constructor(errorResponse: ErrorResponse) {
-    super(errorResponse.message);
-    this.name = "ApiError";
-    this.errorCode = errorResponse.errorCode;
-  }
-}
+import type { ApiResponse } from "../../types";
 
 export const getApiErrorMessage = (error: unknown): string => {
   if (error instanceof ApiError) {
-    const mapped =
-      API_ERROR_MESSAGES[error.errorCode as keyof typeof API_ERROR_MESSAGES];
+    if (error.errorCode) {
+      const mapped =
+        API_ERROR_MESSAGES[error.errorCode as keyof typeof API_ERROR_MESSAGES];
+      if (mapped) {
+        return mapped;
+      }
+    }
 
-    return mapped ?? error.message;
+    if (error.statusCode) {
+      const httpMessage =
+        HTTP_ERROR_MESSAGES[
+          error.statusCode as keyof typeof HTTP_ERROR_MESSAGES
+        ];
+      if (httpMessage) {
+        return httpMessage;
+      }
+    }
+
+    return error.message;
   }
 
   if (isAxiosError(error)) {
@@ -39,5 +45,8 @@ export const processApiResponse = <T>(response: ApiResponse<T>): T => {
     return response.data;
   }
 
-  throw new ApiError(response);
+  throw new ApiError({
+    message: response.message,
+    errorCode: response.errorCode,
+  });
 };
