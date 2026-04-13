@@ -1,17 +1,18 @@
-import { type NodeDefinitionResponse, type WorkflowResponse } from "@/shared";
+import {
+  type NodeDefinitionResponse,
+  type WorkflowResponse,
+  getDateTimestamp,
+  getRelativeTimeLabel,
+  getServiceBadgeKeyFromService,
+} from "@/shared";
 
 import { type ServiceBadgeKey, type WorkflowFilterKey } from "./types";
-
-export const getUpdatedTimestamp = (updatedAt: string) => {
-  const updatedTime = new Date(updatedAt).getTime();
-  return Number.isNaN(updatedTime) ? 0 : updatedTime;
-};
 
 export const sortWorkflowsByUpdatedAtDesc = (workflows: WorkflowResponse[]) =>
   [...workflows].sort(
     (leftWorkflow, rightWorkflow) =>
-      getUpdatedTimestamp(rightWorkflow.updatedAt) -
-      getUpdatedTimestamp(leftWorkflow.updatedAt),
+      getDateTimestamp(rightWorkflow.updatedAt) -
+      getDateTimestamp(leftWorkflow.updatedAt),
   );
 
 export const filterWorkflowsByStatus = (
@@ -29,36 +30,10 @@ export const filterWorkflowsByStatus = (
   }
 };
 
-export const getRelativeUpdateLabel = (updatedAt: string) => {
-  const updatedTime = getUpdatedTimestamp(updatedAt);
-  if (updatedTime === 0) {
-    return "방금 전 변경됨";
-  }
-
-  const diffMs = Math.max(0, Date.now() - updatedTime);
-  const minuteMs = 60 * 1000;
-  const hourMs = 60 * minuteMs;
-  const dayMs = 24 * hourMs;
-  const weekMs = 7 * dayMs;
-
-  if (diffMs < minuteMs) {
-    return "방금 전 변경됨";
-  }
-
-  if (diffMs < hourMs) {
-    return `${Math.floor(diffMs / minuteMs)}분 전 변경됨`;
-  }
-
-  if (diffMs < dayMs) {
-    return `${Math.floor(diffMs / hourMs)}시간 전 변경됨`;
-  }
-
-  if (diffMs < weekMs) {
-    return `${Math.floor(diffMs / dayMs)}일 전 변경됨`;
-  }
-
-  return `${Math.floor(diffMs / weekMs)}주 전 변경됨`;
-};
+export const getRelativeUpdateLabel = (updatedAt: string) =>
+  getRelativeTimeLabel(updatedAt, {
+    suffix: "변경됨",
+  });
 
 export const getBuildProgressLabel = (workflow: WorkflowResponse) => {
   const totalNodes = workflow.nodes.length;
@@ -95,21 +70,9 @@ export const getServiceBadgeKey = (
 
   const service = node.config?.["service"];
   if (typeof service === "string") {
-    switch (service) {
-      case "google-calendar":
-        return "calendar";
-      case "gmail":
-        return "gmail";
-      case "google-drive":
-        return "google-drive";
-      case "google-sheets":
-        return "google-sheets";
-      case "notion":
-        return "notion";
-      case "slack":
-        return "slack";
-      default:
-        break;
+    const serviceBadgeKey = getServiceBadgeKeyFromService(service);
+    if (serviceBadgeKey !== "unknown") {
+      return serviceBadgeKey;
     }
   }
 
