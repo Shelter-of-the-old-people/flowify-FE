@@ -48,6 +48,34 @@
 - Axios cancel / abort는 `ApiError`로 감싸지 않는다.
 - 취소된 요청은 토스트 대상이 아니다.
 
+### 2.5 OAuth callback 인증 경계
+
+- `/auth/exchange`와 `/auth/refresh`는 로그인 완료 전(pre-auth) 인증 흐름으로 본다.
+- pre-auth 엔드포인트는 `publicApiClient`를 사용한다.
+  - `Authorization` 헤더를 자동 주입하지 않는다.
+  - `401 -> refresh -> /login redirect` 인터셉터를 타지 않는다.
+- 보호 API는 기존 `apiClient`를 사용한다.
+  - `Authorization` 헤더 자동 주입
+  - `401 -> refresh -> retry`
+  - refresh 실패 시 세션 정리 후 `/login` 이동
+- 이유:
+  - `AuthCallbackPage`는 `/auth/exchange` 실패를 직접 받아 사용자에게 안내해야 한다.
+  - callback 단계에서 전역 인증 인터셉터가 먼저 개입하면 실제 교환 실패 원인을 화면에서 설명하기 어렵다.
+
+### 2.6 Auth callback 에러 메시지 정책
+
+- callback 페이지는 실패 원인을 두 갈래로 나눈다.
+  - redirect query 기반 실패
+  - exchange API 기반 실패
+- 메시지 우선순위는 아래와 같다.
+  1. query `message`
+  2. query `error` 코드 매핑
+  3. `ApiError.errorCode` 기반 auth callback 전용 매핑
+  4. shared `getApiErrorMessage(error)`
+  5. generic callback fallback message
+- auth callback 전용 코드(`oauth_failed`, `exchange_code_expired`, `exchange_code_invalid`)는 page-local helper에서 관리한다.
+- 공통 HTTP/API 에러 메시지는 계속 `shared/constants/api-error-messages.ts`가 담당한다.
+
 ---
 
 ## 3. Phase 1 — Request 경계 통합
@@ -63,8 +91,10 @@
 | `shared/api/core/api-error.ts` | `ApiError`, `normalizeApiError()`, `isCanceledRequestError()` |
 | `shared/api/core/request.ts` | `unwrapApiResponse()`, `request()`, `requestWithClient()` |
 | `shared/api/core/index.ts` | core 배럴 |
-| `shared/api/client.ts` | `refreshAccessToken()`을 `requestWithClient(refreshClient, ...)` 기반으로 변경 |
+| `shared/api/client.ts` | `publicApiClient`, `apiClient`, `refreshClient` 책임 분리 및 `refreshAccessToken()`을 `requestWithClient(refreshClient, ...)` 기반으로 변경 |
 | `shared/utils/api/api-utils.ts` | 제거 또는 역할 이전 |
+| `shared/api/auth/exchange-auth.api.ts` | `requestWithClient(publicApiClient, ...)` 사용 |
+| `shared/api/auth/refresh-auth.api.ts` | `requestWithClient(publicApiClient, ...)` 사용 |
 | 모든 `shared/api/**/*.api.ts` | `apiClient.* + processApiResponse()` 패턴 제거 |
 
 ### 3.3 `ApiError`
@@ -197,6 +227,60 @@ const refreshAccessToken = async (refreshToken: string) => {
 };
 ```
 
+### 3.7 public/private auth client
+
+```typescript
+const sharedClientConfig = {
+  baseURL: API_BASE_URL,
+  timeout: 10_000,
+  headers: {
+    "Content-Type": "application/json",
+  },
+};
+
+export const publicApiClient = axios.create(sharedClientConfig);
+export const apiClient = axios.create(sharedClientConfig);
+const refreshClient = axios.create(sharedClientConfig);
+```
+
+규칙:
+
+- `publicApiClient`
+  - `/auth/exchange`, `/auth/refresh` 전용
+  - 인증 헤더 부착 없음
+  - 401 refresh/login redirect 없음
+- `apiClient`
+  - 보호 API 전용
+  - request interceptor에서 access token 주입
+  - response interceptor에서 `401 -> refresh -> retry`
+- `refreshClient`
+  - transport 전용 내부 client
+  - refresh 응답도 동일한 `requestWithClient()` 경계를 탄다
+
+예시:
+
+```typescript
+export const exchangeAuthAPI = (exchangeCode: string): Promise<LoginResponse> =>
+  requestWithClient<LoginResponse>(publicApiClient, {
+    url: "/auth/exchange",
+    method: "POST",
+    data: {
+      exchangeCode,
+    },
+  });
+```
+
+```typescript
+export const refreshAuthAPI = (refreshToken: string): Promise<LoginResponse> =>
+  requestWithClient<LoginResponse>(publicApiClient, {
+    url: "/auth/refresh",
+    method: "POST",
+    data: {
+      refreshToken,
+    },
+  });
+```
+
 ---
 
 ## 4. Phase 2 — 에러 표시 정책 정리
@@ -277,6 +361,27 @@ const showErrorToast = (
 ```
 
 `query.meta.showErrorToast === true`일 때만 query 토스트를 띄우고, mutation은 `showErrorToast === false`가 아닌 한 기본 토스트를 띄운다. `throwOnError` 기본값은 계속 `false`다.
+
+### 4.5 `AuthCallbackPage` 에러 처리
+
+`AuthCallbackPage`는 아래 순서로 동작한다.
+
+1. `exchange_code`, `error`, `message`를 query에서 읽는다.
+2. redirect 단계 실패가 있으면 세션을 정리하고 즉시 에러 UI를 보여준다.
+3. `exchange_code`가 있으면 `authApi.exchange(exchangeCode)`를 호출한다.
+4. 성공 시 `accessToken`, `refreshToken`, `user`를 저장하고 `/workflows`로 이동한다.
+5. 실패 시 `clearAuthSession()` 후 exchange 에러를 해석해 에러 UI를 보여준다.
+
+권장 helper 분리:
+
+- `resolveRedirectError(searchParams): string | null`
+- `resolveAuthExchangeError(error: unknown): string`
+
+규칙:
+
+- redirect query 에러와 API 에러 해석 로직을 분리한다.
+- `catch`에서 실제 `error`를 버리지 않는다.
+- exchange 실패는 callback 페이지가 직접 처리하고, 전역 인증 인터셉터가 먼저 `/login`으로 보내지 않도록 한다.
 
 ---
 
@@ -447,9 +552,12 @@ rg -n "from ['\"]@/shared/api" src |
 ## 8. 영향 범위와 마이그레이션 체크리스트
 
 - [ ] `shared/api/core` 도입
+- [ ] `publicApiClient` / `apiClient` / `refreshClient` 책임 분리
 - [ ] `refreshAccessToken()`을 `requestWithClient()`로 전환
 - [ ] 모든 API 파일에서 `processApiResponse()` 제거
 - [ ] `shared/utils/api/api-utils.ts` 역할 정리
+- [ ] `/auth/exchange`, `/auth/refresh`를 `publicApiClient` 기반으로 전환
+- [ ] `AuthCallbackPage`에서 redirect/query 에러와 exchange API 에러를 분리 처리
 - [ ] query/mutation public hook에 `options` 계약 추가
 - [ ] `removeWorkflowDomainCache()` 도입
 - [ ] `executionKeys.workflow(workflowId)` 루트 도입
@@ -469,6 +577,7 @@ rg -n "from ['\"]@/shared/api" src |
 - `.env.local`은 Docker 로컬 개발용으로만 사용한다.
 - `VITE_AUTH_GOOGLE_PATH`는 기본값(`/api/auth/google`)을 유지하고, 특수 환경에서만 절대 URL로 오버라이드한다.
 - `refreshClient`도 동일한 `baseURL`을 사용하며, refresh 응답 역시 일반 API와 같은 request 경계를 탄다.
+- `VITE_AUTH_GOOGLE_PATH`가 가리키는 OAuth 시작 URL과 `/auth/callback`의 콜백 경로는 같은 환경(local/dev/prod) 쌍으로 관리한다.
 
 ---
 
@@ -500,3 +609,5 @@ rg -n "from ['\"]@/shared/api" src |
 6. mutation은 기본 토스트가 뜨고 `showErrorToast: false`일 때만 꺼진다.
 7. workflow 삭제 후 workflow detail, choices, execution cache가 모두 제거된다.
 8. 401 -> refresh 성공/실패 흐름이 기존과 동일하게 유지된다.
+9. `/auth/exchange`가 400/401/409로 실패해도 `AuthCallbackPage`가 실패 메시지를 직접 표시하고 즉시 `/login`으로 튕기지 않는다.
+10. redirect query(`?error=oauth_failed&message=...`)가 있으면 callback 페이지에서 해당 메시지를 우선 노출한다.
