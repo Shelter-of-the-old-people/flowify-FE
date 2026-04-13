@@ -1,10 +1,14 @@
 import { MdMoreHoriz } from "react-icons/md";
 
-import { Flex, HStack, IconButton, Text, VStack } from "@chakra-ui/react";
+import { Box, Flex, HStack, IconButton, Text, VStack } from "@chakra-ui/react";
 
 import type { TemplateSummary } from "@/shared";
 
-import { getTemplateDescription } from "../model";
+import {
+  getRelativeCreatedLabel,
+  getTemplateDescription,
+  getTemplateMetaLabel,
+} from "../model";
 
 import { TemplateServiceIcon } from "./TemplateServiceIcon";
 
@@ -14,6 +18,9 @@ type Props = {
 };
 
 export const TemplateRow = ({ template, onOpen }: Props) => {
+  const relativeCreatedLabel = getRelativeCreatedLabel(template.createdAt);
+  const metaLabel = getTemplateMetaLabel(template);
+
   return (
     <Flex
       align="center"
@@ -43,7 +50,15 @@ export const TemplateRow = ({ template, onOpen }: Props) => {
           <Text fontSize="xs" color="text.primary" lineClamp={1}>
             {getTemplateDescription(template.description)}
           </Text>
-          <Flex h="18px" />
+          <HStack gap={2} color="text.secondary">
+            <Text fontSize="xs" lineClamp={1}>
+              {relativeCreatedLabel}
+            </Text>
+            <Box w="1px" h="10px" bg="text.secondary" flexShrink={0} />
+            <Text fontSize="xs" lineClamp={1}>
+              {metaLabel}
+            </Text>
+          </HStack>
         </VStack>
       </HStack>
 
