@@ -1,4 +1,4 @@
-import type { ExecutionStatus } from "../workflowStore";
+import type { ExecutionStatus } from "@/shared";
 
 const POLL_INTERVAL_MS = Number(
   import.meta.env.VITE_EXECUTION_POLL_INTERVAL_MS ?? 3000,

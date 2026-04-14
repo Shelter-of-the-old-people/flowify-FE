@@ -1,14 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { executionApi } from "../../api";
-import { executionKeys } from "../../constants";
 import {
   type QueryPolicyOptions,
   resolveQueryPolicyOptions,
   toQueryMeta,
 } from "@/shared/api";
 
+import { executionApi } from "../api";
+
 import { executionPollInterval, isExecutionInFlight } from "./execution-utils";
+import { executionKeys } from "./query-keys";
 
 export const useWorkflowExecutionsQuery = (
   workflowId: string | undefined,

@@ -1,9 +1,11 @@
 import { useMutation } from "@tanstack/react-query";
 
-import { executionApi } from "../../api";
-import { executionKeys } from "../../constants";
-import { queryClient } from "../../libs";
 import { type MutationPolicyOptions, toMutationMeta } from "@/shared/api";
+import { queryClient } from "@/shared/libs";
+
+import { executionApi } from "../api";
+
+import { executionKeys } from "./query-keys";
 
 type RollbackExecutionVariables = {
   workflowId: string;

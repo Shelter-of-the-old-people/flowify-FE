@@ -1,4 +1,4 @@
-import { request } from "../core";
+import { request } from "@/shared/api/core";
 
 import type { ExecutionDetail } from "./types";
 
