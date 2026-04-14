@@ -1,7 +1,8 @@
 import { useMutation } from "@tanstack/react-query";
 
-import { oauthApi } from "../../api";
 import { type MutationPolicyOptions, toMutationMeta } from "@/shared/api";
+
+import { oauthApi } from "../api";
 
 export const useConnectOAuthTokenMutation = (
   options?: MutationPolicyOptions<

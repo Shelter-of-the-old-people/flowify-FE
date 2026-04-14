@@ -1,9 +1,10 @@
 import { useMutation } from "@tanstack/react-query";
 
-import { oauthApi } from "../../api";
-import { oauthKeys } from "../../constants";
-import { queryClient } from "../../libs";
 import { type MutationPolicyOptions, toMutationMeta } from "@/shared/api";
+import { queryClient } from "@/shared";
+
+import { oauthApi } from "../api";
+import { oauthKeys } from "./query-keys";
 
 export const useDisconnectOAuthTokenMutation = (
   options?: MutationPolicyOptions<void, string>,

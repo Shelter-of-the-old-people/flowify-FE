@@ -1,8 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { oauthApi } from "../../api";
-import { oauthKeys } from "../../constants";
 import { type QueryPolicyOptions, toQueryMeta } from "@/shared/api";
+
+import { oauthApi } from "../api";
+import { oauthKeys } from "./query-keys";
 
 export const useOAuthTokensQuery = (
   options?: QueryPolicyOptions<Awaited<ReturnType<typeof oauthApi.getTokens>>>,

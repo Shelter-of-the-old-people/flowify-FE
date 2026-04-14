@@ -13,11 +13,13 @@ import {
 } from "@chakra-ui/react";
 
 import {
-  ROUTE_PATHS,
-  getAuthUser,
   useConnectOAuthTokenMutation,
   useDisconnectOAuthTokenMutation,
   useOAuthTokensQuery,
+} from "@/entities";
+import {
+  ROUTE_PATHS,
+  getAuthUser,
 } from "@/shared";
 
 const OAUTH_SERVICES = [

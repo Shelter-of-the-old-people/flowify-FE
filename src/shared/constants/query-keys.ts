@@ -34,7 +34,3 @@ export const templateKeys = {
   detail: (id: string) => [...templateKeys.details(), id] as const,
 } as const;
 
-export const oauthKeys = {
-  all: () => ["oauth"] as const,
-  tokens: () => [...oauthKeys.all(), "tokens"] as const,
-} as const;
