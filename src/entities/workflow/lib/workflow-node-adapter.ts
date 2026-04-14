@@ -7,13 +7,12 @@ import type {
   NodeConfig,
   NodeType,
 } from "@/entities/node";
+
 import type {
   EdgeDefinitionResponse,
   NodeAddRequest,
   NodeDefinitionResponse,
-  UpdateWorkflowRequest,
-  WorkflowResponse,
-} from "@/entities/workflow";
+} from "../api";
 
 const DATA_TYPE_MAP = {
   FILE_LIST: "file-list",
@@ -54,34 +53,16 @@ const BACKEND_TYPE_TO_NODE_TYPE = Object.fromEntries(
   ]),
 ) as Record<string, NodeType>;
 
-export interface WorkflowAdapterStoreState {
-  workflowName: string;
-  nodes: Node<FlowNodeData>[];
-  edges: Edge[];
-  startNodeId: string | null;
-  endNodeId: string | null;
-}
-
-export interface WorkflowHydratedState {
-  workflowId: string;
-  workflowName: string;
-  nodes: Node<FlowNodeData>[];
-  edges: Edge[];
-  startNodeId: string | null;
-  endNodeId: string | null;
-  creationMethod: "manual" | null;
-}
-
-interface NodeDraftOptions {
-  type: NodeType;
-  position: { x: number; y: number };
+type NodeDraftOptions = {
+  authWarning?: boolean;
   config?: Partial<NodeConfig>;
   inputTypes?: DataType[];
   outputTypes?: DataType[];
-  role?: NodeDefinitionResponse["role"];
+  position: { x: number; y: number };
   prevNodeId?: string;
-  authWarning?: boolean;
-}
+  role?: NodeDefinitionResponse["role"];
+  type: NodeType;
+};
 
 const isNodeType = (value: string): value is NodeType => value in NODE_REGISTRY;
 
@@ -218,33 +199,6 @@ export const toFlowNode = (
         : [...meta.defaultOutputTypes],
       authWarning: node.authWarning,
     },
-  };
-};
-
-export const toWorkflowUpdateRequest = (
-  store: WorkflowAdapterStoreState,
-): UpdateWorkflowRequest => ({
-  name: store.workflowName,
-  nodes: store.nodes.map((node) =>
-    toNodeDefinition(node, store.startNodeId, store.endNodeId),
-  ),
-  edges: store.edges.map(toEdgeDefinition),
-});
-
-export const hydrateStore = (
-  workflow: WorkflowResponse,
-): WorkflowHydratedState => {
-  const startNode = workflow.nodes.find((node) => node.role === "start");
-  const endNode = workflow.nodes.find((node) => node.role === "end");
-
-  return {
-    workflowId: workflow.id,
-    workflowName: workflow.name,
-    nodes: workflow.nodes.map(toFlowNode),
-    edges: workflow.edges.map(toFlowEdge),
-    startNodeId: startNode?.id ?? null,
-    endNodeId: endNode?.id ?? null,
-    creationMethod: startNode ? "manual" : null,
   };
 };
 

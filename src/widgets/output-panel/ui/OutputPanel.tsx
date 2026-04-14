@@ -10,6 +10,9 @@ import {
   type ChoiceFollowUp,
   type ChoiceOption,
   type ChoiceResponse,
+  findAddedNodeId,
+  toFlowNode,
+  toNodeAddRequest,
   useAddWorkflowNodeMutation,
   useDeleteWorkflowNodeMutation,
   useSelectWorkflowChoiceMutation,
@@ -31,12 +34,7 @@ import type {
 } from "@/features/choice-panel";
 import { PanelRenderer } from "@/features/configure-node";
 import { useWorkflowStore } from "@/features/workflow-editor";
-import {
-  findAddedNodeId,
-  toFlowNode,
-  toNodeAddRequest,
-  useDualPanelLayout,
-} from "@/shared";
+import { useDualPanelLayout } from "@/shared";
 
 import {
   ActionStep,

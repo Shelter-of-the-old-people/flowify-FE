@@ -13,16 +13,14 @@ import { useReactFlow, useViewport } from "@xyflow/react";
 
 import { NODE_REGISTRY } from "@/entities/node";
 import {
+  findAddedNodeId,
+  toFlowNode,
+  toNodeAddRequest,
   useAddWorkflowNodeMutation,
   useDeleteWorkflowNodeMutation,
 } from "@/entities/workflow";
 import type { FlowNodeData, NodeMeta } from "@/entities/node";
 import { useWorkflowStore } from "@/features/workflow-editor";
-import {
-  findAddedNodeId,
-  toFlowNode,
-  toNodeAddRequest,
-} from "@/shared";
 
 import { CATEGORY_SERVICE_MAP } from "../model/serviceMap";
 import type { ServiceOption } from "../model/serviceMap";

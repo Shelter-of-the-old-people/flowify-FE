@@ -12,7 +12,8 @@ import { immer } from "zustand/middleware/immer";
 
 import type { FlowNodeData } from "@/entities/node";
 import { collectDescendantIds } from "@/shared/libs/graph";
-import type { WorkflowHydratedState } from "@/shared/libs/workflow-adapter";
+
+import type { WorkflowHydratedState } from "./workflow-editor-adapter";
 
 export type ExecutionStatus = "idle" | "running" | "success" | "failed";
 

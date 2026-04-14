@@ -3,15 +3,15 @@ import { useMutation } from "@tanstack/react-query";
 import {
   syncWorkflowCache,
   workflowApi,
-  type UpdateWorkflowRequest,
 } from "@/entities/workflow";
 import { type MutationPolicyOptions, toMutationMeta } from "@/shared/api";
-import type { WorkflowAdapterStoreState } from "@/shared/libs/workflow-adapter";
-import { toWorkflowUpdateRequest } from "@/shared/libs/workflow-adapter";
+
+import type { WorkflowEditorStoreState } from "./workflow-editor-adapter";
+import { toWorkflowUpdateRequest } from "./workflow-editor-adapter";
 
 type SaveWorkflowVariables = {
   workflowId: string;
-  store: WorkflowAdapterStoreState;
+  store: WorkflowEditorStoreState;
 };
 
 export const useSaveWorkflowMutation = (
@@ -22,10 +22,7 @@ export const useSaveWorkflowMutation = (
 ) =>
   useMutation({
     mutationFn: ({ workflowId, store }: SaveWorkflowVariables) =>
-      workflowApi.update(
-        workflowId,
-        toWorkflowUpdateRequest(store) as UpdateWorkflowRequest,
-      ),
+      workflowApi.update(workflowId, toWorkflowUpdateRequest(store)),
     retry: options?.retry,
     meta: toMutationMeta(options),
     onSuccess: async (workflow, variables, onMutateResult, context) => {
