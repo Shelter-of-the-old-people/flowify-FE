@@ -10,12 +10,11 @@ import { current } from "immer";
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
 
+import { type ExecutionStatus } from "@/entities/execution";
 import { type FlowNodeData } from "@/entities/node";
 import { collectDescendantIds } from "@/shared/libs/graph";
 
 import { type WorkflowHydratedState } from "./workflow-editor-adapter";
-
-export type ExecutionStatus = "idle" | "running" | "success" | "failed";
 
 type PlaceholderInfo = {
   id: string;

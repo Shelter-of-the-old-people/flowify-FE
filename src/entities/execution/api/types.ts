@@ -1,4 +1,6 @@
-export type ExecutionRunStatus = "pending" | "running" | "success" | "failed";
+import { type RemoteExecutionStatus } from "../model/types";
+
+export type ExecutionRunStatus = RemoteExecutionStatus;
 
 export interface ExecutionErrorDetail {
   code: string | null;
@@ -30,7 +32,7 @@ export interface ExecutionDetail {
   id: string;
   workflowId: string;
   userId?: string | null;
-  state: string;
+  state: ExecutionRunStatus;
   nodeLogs: ExecutionLog[];
   startedAt: string | null;
   finishedAt: string | null;

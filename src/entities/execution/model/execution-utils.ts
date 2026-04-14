@@ -1,4 +1,4 @@
-type ExecutionStatus = "idle" | "running" | "success" | "failed";
+import { type ExecutionStatus } from "./types";
 
 const POLL_INTERVAL_MS = Number(
   import.meta.env.VITE_EXECUTION_POLL_INTERVAL_MS ?? 3000,
@@ -9,35 +9,23 @@ export const executionPollInterval = POLL_INTERVAL_MS;
 export const normalizeExecutionStatus = (
   state: string | null | undefined,
 ): ExecutionStatus => {
-  const normalized = state?.toLowerCase() ?? "";
-
-  if (normalized.includes("success") || normalized.includes("complete")) {
-    return "success" as const;
+  switch (state?.toLowerCase()) {
+    case "pending":
+    case "running":
+    case "success":
+    case "failed":
+    case "rollback_available":
+    case "stopped":
+      return state.toLowerCase() as ExecutionStatus;
+    default:
+      return "idle";
   }
-
-  if (normalized.includes("fail") || normalized.includes("error")) {
-    return "failed" as const;
-  }
-
-  if (normalized.includes("run")) {
-    return "running" as const;
-  }
-
-  if (normalized.includes("pending") || normalized.includes("queue")) {
-    return "running" as const;
-  }
-
-  return "idle" as const;
 };
 
 export const isExecutionInFlight = (state: string | null | undefined) => {
-  const normalized = state?.toLowerCase() ?? "";
+  const normalized = normalizeExecutionStatus(state);
 
-  return (
-    normalized.includes("pending") ||
-    normalized.includes("queue") ||
-    normalized.includes("run")
-  );
+  return normalized === "pending" || normalized === "running";
 };
 
 export const getLatestExecution = <T extends { startedAt: string | null }>(

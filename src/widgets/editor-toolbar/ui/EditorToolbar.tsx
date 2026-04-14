@@ -34,11 +34,24 @@ type EditorToolbarProps = {
 
 const getRunButtonConfig = (status: ExecutionStatus): RunButtonConfig => {
   switch (status) {
+    case "pending":
     case "running":
       return {
         colorPalette: "yellow",
         icon: <Spinner size="xs" />,
         disabled: true,
+      };
+    case "rollback_available":
+      return {
+        colorPalette: "orange",
+        icon: <MdRefresh />,
+        disabled: false,
+      };
+    case "stopped":
+      return {
+        colorPalette: "gray",
+        icon: <MdPlayArrow />,
+        disabled: false,
       };
     case "failed":
       return {
@@ -59,12 +72,18 @@ const getRunButtonConfig = (status: ExecutionStatus): RunButtonConfig => {
 
 const getExecutionMessage = (status: ExecutionStatus | null) => {
   switch (status) {
+    case "pending":
+      return "최근 실행 대기 중";
     case "running":
       return "최근 실행 진행 중";
     case "success":
       return "최근 실행 성공";
     case "failed":
       return "최근 실행 실패";
+    case "rollback_available":
+      return "최근 실행 실패, 롤백 가능";
+    case "stopped":
+      return "최근 실행이 중지됨";
     case "idle":
     case null:
     default:
@@ -317,7 +336,7 @@ export const EditorToolbar = ({ variant = "bar" }: EditorToolbarProps) => {
           {isExecutePending ? <Spinner size="xs" /> : runConfig.icon}
         </IconButton>
 
-        {latestExecutionStatus === "failed" ? (
+        {latestExecutionStatus === "rollback_available" ? (
           <Button
             size="sm"
             variant="outline"

@@ -5,8 +5,6 @@ import { type ValidationWarning } from "@/shared";
 
 export type WorkflowStatus = "active" | "inactive";
 
-export type ExecutionStatus = "idle" | "running" | "success" | "failed";
-
 export interface TriggerConfig {
   type: "manual" | "schedule" | "event";
   schedule?: string;
