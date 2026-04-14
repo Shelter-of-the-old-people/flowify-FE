@@ -2,8 +2,7 @@ import { Outlet } from "react-router";
 
 import { Box, Flex } from "@chakra-ui/react";
 
-import { useSidebarState } from "@/widgets/app-shell/model/useSidebarState";
-import { AppSidebar } from "@/widgets/app-shell/ui/AppSidebar";
+import { AppSidebar, useSidebarState } from "@/widgets/app-shell";
 
 export const EditorLayout = () => {
   const {

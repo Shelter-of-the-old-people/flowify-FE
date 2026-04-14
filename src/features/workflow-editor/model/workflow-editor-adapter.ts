@@ -4,13 +4,11 @@ import { type FlowNodeData } from "@/entities/node";
 import {
   type UpdateWorkflowRequest,
   type WorkflowResponse,
-} from "@/entities/workflow/api";
-import {
   toEdgeDefinition,
   toFlowEdge,
   toFlowNode,
   toNodeDefinition,
-} from "@/entities/workflow/lib";
+} from "@/entities/workflow";
 
 export interface WorkflowEditorStoreState {
   workflowName: string;
