@@ -1,10 +1,6 @@
-export interface AuthUser {
-  id: string;
-  email: string;
-  name: string;
-  picture: string | null;
-  createdAt: string;
-}
+import type { AuthSessionUser } from "../../libs/auth-session";
+
+export type AuthUser = AuthSessionUser;
 
 export interface LoginResponse {
   accessToken: string;
