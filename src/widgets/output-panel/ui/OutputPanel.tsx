@@ -36,7 +36,7 @@ import type {
   ChoiceFollowUp,
   ChoiceOption,
   ChoiceResponse,
-} from "@/shared/api";
+} from "@/shared";
 
 import {
   ActionStep,

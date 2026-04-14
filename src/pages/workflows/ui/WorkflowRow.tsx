@@ -17,7 +17,7 @@ import {
   VStack,
 } from "@chakra-ui/react";
 
-import type { WorkflowResponse } from "@/shared/api";
+import type { WorkflowResponse } from "@/shared";
 
 import {
   getBuildProgressLabel,

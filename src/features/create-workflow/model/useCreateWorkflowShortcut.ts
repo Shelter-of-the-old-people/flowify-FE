@@ -1,12 +1,12 @@
 import { useCallback, useState } from "react";
 import { useNavigate } from "react-router";
 
-import { ROUTE_PATHS, buildPath, queryClient, workflowKeys } from "@/shared";
-import { workflowApi } from "@/shared/api";
+import { ROUTE_PATHS, buildPath, useCreateWorkflowMutation } from "@/shared";
 
 export const useCreateWorkflowShortcut = () => {
   const navigate = useNavigate();
   const [isPending, setIsPending] = useState(false);
+  const { mutateAsync: createWorkflowMutation } = useCreateWorkflowMutation();
 
   const createWorkflow = useCallback(async () => {
     if (isPending) {
@@ -16,7 +16,7 @@ export const useCreateWorkflowShortcut = () => {
     setIsPending(true);
 
     try {
-      const workflow = await workflowApi.create({
+      const workflow = await createWorkflowMutation({
         name: "새 워크플로우",
         description: "",
         nodes: [],
@@ -24,14 +24,13 @@ export const useCreateWorkflowShortcut = () => {
         trigger: null,
       });
 
-      await queryClient.invalidateQueries({ queryKey: workflowKeys.lists() });
       navigate(buildPath.workflowEditor(workflow.id));
     } catch {
       navigate(ROUTE_PATHS.WORKFLOWS);
     } finally {
       setIsPending(false);
     }
-  }, [isPending, navigate]);
+  }, [createWorkflowMutation, isPending, navigate]);
 
   return {
     createWorkflow,
