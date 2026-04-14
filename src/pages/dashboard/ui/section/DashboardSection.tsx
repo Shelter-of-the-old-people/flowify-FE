@@ -114,7 +114,13 @@ export const DashboardSection = () => {
     handleReloadWorkflows,
     handleReloadServices,
   } = useDashboardData();
-  const { expandedIssueId, handleToggleIssue } = useDashboardActions();
+  const {
+    expandedIssueId,
+    getIssueIsActive,
+    togglingWorkflowId,
+    handleToggleIssue,
+    handleToggleWorkflow,
+  } = useDashboardActions();
 
   return (
     <VStack align="stretch" gap={12}>
@@ -160,8 +166,16 @@ export const DashboardSection = () => {
                 <DashboardErrorCard
                   key={issue.id}
                   issue={issue}
+                  isActive={getIssueIsActive(issue.id, issue.isActive)}
                   isExpanded={expandedIssueId === issue.id}
+                  isTogglePending={togglingWorkflowId === issue.id}
                   onToggle={() => handleToggleIssue(issue.id)}
+                  onToggleWorkflow={() =>
+                    void handleToggleWorkflow(
+                      issue.id,
+                      getIssueIsActive(issue.id, issue.isActive),
+                    )
+                  }
                 />
               ))}
             </VStack>

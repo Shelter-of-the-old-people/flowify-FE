@@ -25,7 +25,6 @@ export type DashboardIssue = {
   endBadgeKey: ServiceBadgeKey;
   relativeUpdateLabel: string;
   buildProgressLabel: string;
-  statusLabel: string;
   items: DashboardIssueItem[];
 };
 

@@ -1,7 +1,15 @@
-import { type KeyboardEvent } from "react";
+import { type KeyboardEvent, type MouseEvent } from "react";
 import { MdPause, MdPlayArrow } from "react-icons/md";
 
-import { Box, Flex, HStack, Icon, Text, VStack } from "@chakra-ui/react";
+import {
+  Box,
+  Flex,
+  HStack,
+  IconButton,
+  Spinner,
+  Text,
+  VStack,
+} from "@chakra-ui/react";
 
 import { ServiceBadge } from "@/shared";
 
@@ -9,17 +17,34 @@ import { type DashboardIssue } from "../model";
 
 type Props = {
   issue: DashboardIssue;
+  isActive: boolean;
   isExpanded: boolean;
   onToggle: () => void;
+  isTogglePending: boolean;
+  onToggleWorkflow: () => void;
 };
 
-export const DashboardErrorCard = ({ issue, isExpanded, onToggle }: Props) => {
+export const DashboardErrorCard = ({
+  issue,
+  isActive,
+  isExpanded,
+  onToggle,
+  isTogglePending,
+  onToggleWorkflow,
+}: Props) => {
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
       onToggle();
     }
   };
+
+  const handleToggleWorkflowClick = (event: MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    onToggleWorkflow();
+  };
+
+  const toggleButtonLabel = isActive ? "자동화 중지" : "자동화 실행";
 
   return (
     <Box
@@ -68,14 +93,22 @@ export const DashboardErrorCard = ({ issue, isExpanded, onToggle }: Props) => {
           </Box>
         </HStack>
 
-        <HStack gap={1.5} color="text.primary" flexShrink={0}>
-          <Icon
-            as={issue.isActive ? MdPause : MdPlayArrow}
-            boxSize={4}
-            flexShrink={0}
-          />
-          <Text fontSize="sm">{issue.statusLabel}</Text>
-        </HStack>
+        <IconButton
+          aria-label={toggleButtonLabel}
+          variant="ghost"
+          size="sm"
+          flexShrink={0}
+          disabled={isTogglePending}
+          onClick={handleToggleWorkflowClick}
+        >
+          {isTogglePending ? (
+            <Spinner size="xs" />
+          ) : isActive ? (
+            <MdPause />
+          ) : (
+            <MdPlayArrow />
+          )}
+        </IconButton>
       </Flex>
 
       {isExpanded ? (

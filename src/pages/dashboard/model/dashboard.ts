@@ -170,9 +170,6 @@ const getDashboardIssueItems = (
     };
   }) ?? [];
 
-const getDashboardStatusLabel = (workflow: WorkflowResponse) =>
-  workflow.active ? "가동 중" : "중지됨";
-
 const getServiceLabelFromBadgeKey = (badgeKey: ServiceBadgeKey) => {
   if (badgeKey in DASHBOARD_SERVICE_LABELS) {
     return DASHBOARD_SERVICE_LABELS[badgeKey as SupportedServiceKey];
@@ -198,7 +195,6 @@ export const getDashboardIssues = (workflows: WorkflowResponse[]) =>
           suffix: "변경됨",
         }),
         buildProgressLabel: getBuildProgressLabel(workflow),
-        statusLabel: getDashboardStatusLabel(workflow),
         items: getDashboardIssueItems(workflow),
       };
     });
