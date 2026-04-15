@@ -12,7 +12,6 @@ import { Box, Grid, Icon, Input, Text, VStack } from "@chakra-ui/react";
 import { useReactFlow, useViewport } from "@xyflow/react";
 
 import { NODE_REGISTRY } from "@/entities/node";
-import { type FlowNodeData, type NodeMeta } from "@/entities/node";
 import {
   findAddedNodeId,
   toFlowNode,
@@ -20,9 +19,9 @@ import {
   useAddWorkflowNodeMutation,
   useDeleteWorkflowNodeMutation,
 } from "@/entities/workflow";
+import { type FlowNodeData, type NodeMeta } from "@/entities/node";
 import { useWorkflowStore } from "@/features/workflow-editor";
 
-import { getDemoNodeAvailability } from "../model/demoPalette";
 import { CATEGORY_SERVICE_MAP } from "../model/serviceMap";
 import { type ServiceOption } from "../model/serviceMap";
 import {
@@ -120,26 +119,11 @@ const CategoryGrid = ({
           <VStack
             key={meta.type}
             gap={1}
-            cursor={
-              getDemoNodeAvailability(meta.type).enabled
-                ? "pointer"
-                : "not-allowed"
-            }
-            minH="112px"
-            opacity={getDemoNodeAvailability(meta.type).enabled ? 1 : 0.45}
-            _hover={
-              getDemoNodeAvailability(meta.type).enabled
-                ? { opacity: 0.7 }
-                : undefined
-            }
+            cursor="pointer"
+            minH="80px"
+            _hover={{ opacity: 0.7 }}
             transition="opacity 150ms ease"
-            onClick={() => {
-              if (!getDemoNodeAvailability(meta.type).enabled) {
-                return;
-              }
-
-              onSelect(meta);
-            }}
+            onClick={() => onSelect(meta)}
           >
             <Box
               display="flex"
@@ -152,23 +136,6 @@ const CategoryGrid = ({
             </Box>
             <Text fontSize="xs" fontWeight="medium" textAlign="center">
               {meta.label}
-            </Text>
-            <Text
-              fontSize="2xs"
-              color={
-                getDemoNodeAvailability(meta.type).enabled
-                  ? meta.type === "condition"
-                    ? "orange.600"
-                    : "green.600"
-                  : "gray.500"
-              }
-              fontWeight="semibold"
-              textAlign="center"
-            >
-              {getDemoNodeAvailability(meta.type).badgeLabel}
-            </Text>
-            <Text fontSize="2xs" color="gray.500" textAlign="center">
-              {getDemoNodeAvailability(meta.type).helperText}
             </Text>
           </VStack>
         ))}

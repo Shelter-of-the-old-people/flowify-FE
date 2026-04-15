@@ -21,7 +21,6 @@ import { getNodesByCategory } from "@/entities/node";
 import { type NodeCategory } from "@/entities/node";
 import { type NodeType } from "@/entities/node";
 
-import { getDemoNodeAvailability } from "../model/demoPalette";
 import { useAddNode } from "../model/useAddNode";
 
 interface NodeCategoryDrawerProps {
@@ -42,10 +41,6 @@ export const NodeCategoryDrawer = ({
   const { addNode } = useAddNode();
 
   const handleNodeClick = (type: NodeType) => {
-    if (!getDemoNodeAvailability(type).enabled) {
-      return;
-    }
-
     addNode(type);
     onClose();
   };
@@ -82,26 +77,12 @@ export const NodeCategoryDrawer = ({
                       <Button
                         key={meta.type}
                         variant="ghost"
-                        justifyContent="space-between"
+                        justifyContent="flex-start"
                         gap={2}
-                        disabled={!getDemoNodeAvailability(meta.type).enabled}
                         onClick={() => handleNodeClick(meta.type)}
                       >
-                        <Box display="flex" alignItems="center" gap={2}>
-                          <Icon as={meta.iconComponent} boxSize={5} />
-                          <Text>{meta.label}</Text>
-                        </Box>
-                        <Text
-                          fontSize="2xs"
-                          color={
-                            getDemoNodeAvailability(meta.type).enabled
-                              ? "orange.600"
-                              : "gray.500"
-                          }
-                          fontWeight="semibold"
-                        >
-                          {getDemoNodeAvailability(meta.type).badgeLabel}
-                        </Text>
+                        <Icon as={meta.iconComponent} boxSize={5} />
+                        <Text>{meta.label}</Text>
                       </Button>
                     ))}
                   </Box>
