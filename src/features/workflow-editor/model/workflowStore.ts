@@ -32,6 +32,8 @@ interface WorkflowEditorState {
   workflowId: string;
   workflowName: string;
   executionStatus: ExecutionStatus;
+  isDirty: boolean;
+  _isSyncing: boolean;
 }
 
 interface WorkflowEditorActions {
@@ -54,6 +56,8 @@ interface WorkflowEditorActions {
   setEndNodeId: (id: string | null) => void;
   setCreationMethod: (method: "manual" | null) => void;
   setActivePlaceholder: (placeholder: PlaceholderInfo | null) => void;
+  batchServerSync: (fn: () => void) => void;
+  markClean: () => void;
   resetEditor: () => void;
 }
 
@@ -68,6 +72,8 @@ const initialState: WorkflowEditorState = {
   workflowId: "",
   workflowName: "",
   executionStatus: "idle",
+  isDirty: false,
+  _isSyncing: false,
 };
 
 export const useWorkflowStore = create<
@@ -82,21 +88,45 @@ export const useWorkflowStore = create<
           changes as NodeChange<Node<FlowNodeData>>[],
           current(state.nodes),
         );
+
+        if (!state._isSyncing) {
+          const hasDirtyChange = changes.some(
+            (change) => change.type === "position" || change.type === "replace",
+          );
+          if (hasDirtyChange) {
+            state.isDirty = true;
+          }
+        }
       }),
 
     onEdgesChange: (changes) =>
       set((state) => {
         state.edges = applyEdgeChanges(changes, current(state.edges));
+
+        if (!state._isSyncing) {
+          const hasDirtyChange = changes.some(
+            (change) => change.type === "remove" || change.type === "replace",
+          );
+          if (hasDirtyChange) {
+            state.isDirty = true;
+          }
+        }
       }),
 
     onConnect: (connection) =>
       set((state) => {
         state.edges = addEdge(connection, current(state.edges));
+        if (!state._isSyncing) {
+          state.isDirty = true;
+        }
       }),
 
     addNode: (node) =>
       set((state) => {
         state.nodes.push(node);
+        if (!state._isSyncing) {
+          state.isDirty = true;
+        }
       }),
 
     removeNode: (id) =>
@@ -126,6 +156,10 @@ export const useWorkflowStore = create<
         if (state.endNodeId && removeTargets.has(state.endNodeId)) {
           state.endNodeId = null;
         }
+
+        if (!state._isSyncing) {
+          state.isDirty = true;
+        }
       }),
 
     updateNodeConfig: (id, config) =>
@@ -138,6 +172,10 @@ export const useWorkflowStore = create<
           ...config,
           isConfigured: true,
         } as FlowNodeData["config"];
+
+        if (!state._isSyncing) {
+          state.isDirty = true;
+        }
       }),
 
     openPanel: (nodeId) =>
@@ -153,16 +191,25 @@ export const useWorkflowStore = create<
     setStartNodeId: (id) =>
       set((state) => {
         state.startNodeId = id;
+        if (!state._isSyncing) {
+          state.isDirty = true;
+        }
       }),
 
     setEndNodeId: (id) =>
       set((state) => {
         state.endNodeId = id;
+        if (!state._isSyncing) {
+          state.isDirty = true;
+        }
       }),
 
     setCreationMethod: (method) =>
       set((state) => {
         state.creationMethod = method;
+        if (!state._isSyncing) {
+          state.isDirty = true;
+        }
       }),
 
     setActivePlaceholder: (placeholder) =>
@@ -187,16 +234,38 @@ export const useWorkflowStore = create<
         state.creationMethod = payload.creationMethod;
         state.activePanelNodeId = null;
         state.activePlaceholder = null;
+        state.isDirty = false;
+        state._isSyncing = false;
       }),
 
     setWorkflowName: (name) =>
       set((state) => {
         state.workflowName = name;
+        state.isDirty = true;
       }),
 
     setExecutionStatus: (status) =>
       set((state) => {
         state.executionStatus = status;
+      }),
+
+    batchServerSync: (fn) => {
+      set((state) => {
+        state._isSyncing = true;
+      });
+
+      try {
+        fn();
+      } finally {
+        set((state) => {
+          state._isSyncing = false;
+        });
+      }
+    },
+
+    markClean: () =>
+      set((state) => {
+        state.isDirty = false;
       }),
 
     resetEditor: () => set(() => ({ ...initialState })),

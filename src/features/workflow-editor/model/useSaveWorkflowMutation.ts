@@ -1,13 +1,11 @@
 import { useMutation } from "@tanstack/react-query";
 
-import {
-  syncWorkflowCache,
-  workflowApi,
-} from "@/entities/workflow";
+import { syncWorkflowCache, workflowApi } from "@/entities/workflow";
 import { type MutationPolicyOptions, toMutationMeta } from "@/shared/api";
 
 import { type WorkflowEditorStoreState } from "./workflow-editor-adapter";
 import { toWorkflowUpdateRequest } from "./workflow-editor-adapter";
+import { useWorkflowStore } from "./workflowStore";
 
 type SaveWorkflowVariables = {
   workflowId: string;
@@ -27,6 +25,7 @@ export const useSaveWorkflowMutation = (
     meta: toMutationMeta(options),
     onSuccess: async (workflow, variables, onMutateResult, context) => {
       await syncWorkflowCache(workflow);
+      useWorkflowStore.getState().markClean();
       await options?.onSuccess?.(workflow, variables, onMutateResult, context);
     },
     onError: async (error, variables, onMutateResult, context) => {
