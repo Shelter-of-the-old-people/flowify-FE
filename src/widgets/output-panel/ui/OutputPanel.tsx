@@ -214,6 +214,7 @@ export const OutputPanel = () => {
   const onConnect = useWorkflowStore((state) => state.onConnect);
   const addNode = useWorkflowStore((state) => state.addNode);
   const removeNode = useWorkflowStore((state) => state.removeNode);
+  const batchServerSync = useWorkflowStore((state) => state.batchServerSync);
   const updateNodeConfig = useWorkflowStore((state) => state.updateNodeConfig);
   const openPanel = useWorkflowStore((state) => state.openPanel);
   const closePanel = useWorkflowStore((state) => state.closePanel);
@@ -462,23 +463,26 @@ export const OutputPanel = () => {
         return null;
       }
 
-      addNode(toFlowNode(addedNode));
-      onConnect({
-        source: sourceNodeId,
-        target: addedNodeId,
-        sourceHandle: null,
-        targetHandle: null,
-      });
+      batchServerSync(() => {
+        addNode(toFlowNode(addedNode));
+        onConnect({
+          source: sourceNodeId,
+          target: addedNodeId,
+          sourceHandle: null,
+          targetHandle: null,
+        });
 
-      if (label) {
-        updateNodeConfig(addedNodeId, {});
-      }
+        if (label) {
+          updateNodeConfig(addedNodeId, {});
+        }
+      });
 
       return addedNodeId;
     },
     [
       addNode,
       addWorkflowNode,
+      batchServerSync,
       createLocalNode,
       onConnect,
       updateNodeConfig,
@@ -493,11 +497,15 @@ export const OutputPanel = () => {
           workflowId,
           nodeId,
         });
+        batchServerSync(() => {
+          removeNode(nodeId);
+        });
+        return;
       }
 
       removeNode(nodeId);
     },
-    [deleteWorkflowNode, removeNode, workflowId],
+    [batchServerSync, deleteWorkflowNode, removeNode, workflowId],
   );
 
   useEffect(() => {

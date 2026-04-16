@@ -12,6 +12,7 @@ import { Box, Grid, Icon, Input, Text, VStack } from "@chakra-ui/react";
 import { useReactFlow, useViewport } from "@xyflow/react";
 
 import { NODE_REGISTRY } from "@/entities/node";
+import { type FlowNodeData, type NodeMeta } from "@/entities/node";
 import {
   findAddedNodeId,
   toFlowNode,
@@ -19,7 +20,6 @@ import {
   useAddWorkflowNodeMutation,
   useDeleteWorkflowNodeMutation,
 } from "@/entities/workflow";
-import { type FlowNodeData, type NodeMeta } from "@/entities/node";
 import { useWorkflowStore } from "@/features/workflow-editor";
 
 import { CATEGORY_SERVICE_MAP } from "../model/serviceMap";
@@ -326,6 +326,7 @@ export const ServiceSelectionPanel = () => {
   const setEndNodeId = useWorkflowStore((state) => state.setEndNodeId);
   const onConnect = useWorkflowStore((state) => state.onConnect);
   const removeNode = useWorkflowStore((state) => state.removeNode);
+  const batchServerSync = useWorkflowStore((state) => state.batchServerSync);
   const updateNodeConfig = useWorkflowStore((state) => state.updateNodeConfig);
   const { mutateAsync: addWorkflowNode, isPending: isAddNodePending } =
     useAddWorkflowNodeMutation();
@@ -449,22 +450,24 @@ export const ServiceSelectionPanel = () => {
         return null;
       }
 
-      addNode(toFlowNode(addedNode));
+      batchServerSync(() => {
+        addNode(toFlowNode(addedNode));
 
-      if (activePlaceholder.id === "placeholder-start") {
-        setStartNodeId(addedNodeId);
-      } else if (activePlaceholder.id === "placeholder-end") {
-        setEndNodeId(addedNodeId);
-      }
+        if (activePlaceholder.id === "placeholder-start") {
+          setStartNodeId(addedNodeId);
+        } else if (activePlaceholder.id === "placeholder-end") {
+          setEndNodeId(addedNodeId);
+        }
 
-      if (sourceNodeId) {
-        onConnect({
-          source: sourceNodeId,
-          target: addedNodeId,
-          sourceHandle: null,
-          targetHandle: null,
-        });
-      }
+        if (sourceNodeId) {
+          onConnect({
+            source: sourceNodeId,
+            target: addedNodeId,
+            sourceHandle: null,
+            targetHandle: null,
+          });
+        }
+      });
 
       return addedNodeId;
     },
@@ -472,6 +475,7 @@ export const ServiceSelectionPanel = () => {
       activePlaceholder,
       addNode,
       addWorkflowNode,
+      batchServerSync,
       nodes,
       onConnect,
       setEndNodeId,
@@ -572,7 +576,9 @@ export const ServiceSelectionPanel = () => {
           nodeId: placedNodeId,
         });
         setPlacedNodeId(null);
-        removeNode(placedNodeId);
+        batchServerSync(() => {
+          removeNode(placedNodeId);
+        });
       } else if (placedNodeId) {
         removeNode(placedNodeId);
         setPlacedNodeId(null);
