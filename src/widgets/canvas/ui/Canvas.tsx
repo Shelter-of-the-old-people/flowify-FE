@@ -41,9 +41,15 @@ import {
 } from "@/entities/node";
 import { type NodeType } from "@/entities/node";
 import { isDataTypeCompatible } from "@/entities/node";
-import { useAddNode } from "@/features/add-node";
+import {
+  findAddedNodeId,
+  toFlowNode,
+  toNodeAddRequest,
+  useAddWorkflowNodeMutation,
+} from "@/entities/workflow";
 import { useWorkflowStore } from "@/features/workflow-editor";
 import { getLeafNodeIds } from "@/shared";
+import { toaster } from "@/shared/utils/toaster/toaster";
 
 const NODE_GAP_X = 96;
 const DEFAULT_ROW_CENTER_Y = 320;
@@ -176,16 +182,20 @@ export const Canvas = () => {
   const activePlaceholder = useWorkflowStore(
     (state) => state.activePlaceholder,
   );
+  const workflowId = useWorkflowStore((state) => state.workflowId);
   const activePanelNodeId = useWorkflowStore(
     (state) => state.activePanelNodeId,
   );
   const setActivePlaceholder = useWorkflowStore(
     (state) => state.setActivePlaceholder,
   );
+  const addNode = useWorkflowStore((state) => state.addNode);
   const removeNode = useWorkflowStore((state) => state.removeNode);
   const openPanel = useWorkflowStore((state) => state.openPanel);
   const closePanel = useWorkflowStore((state) => state.closePanel);
-  const { addNode } = useAddNode();
+  const batchServerSync = useWorkflowStore((state) => state.batchServerSync);
+  const { mutateAsync: addWorkflowNode, isPending: isAddNodePending } =
+    useAddWorkflowNodeMutation();
   const nodeEditorContextValue = useMemo(
     () => ({
       startNodeId,
@@ -211,7 +221,7 @@ export const Canvas = () => {
   const { getZoom, setCenter } = useReactFlow();
 
   const handleNodeClick = useCallback(
-    (_event: MouseEvent, node: Node) => {
+    async (_event: MouseEvent, node: Node) => {
       if (node.type === "creation-method") {
         return;
       }
@@ -226,6 +236,11 @@ export const Canvas = () => {
 
         const isStartOrEndPlaceholder =
           node.id === "placeholder-start" || node.id === "placeholder-end";
+        const isMiddlePlaceholder = !isStartOrEndPlaceholder;
+
+        if (isMiddlePlaceholder && isAddNodePending) {
+          return;
+        }
 
         closePanel();
 
@@ -241,24 +256,72 @@ export const Canvas = () => {
           );
           const sourceOutputType = sourceNode?.data.outputTypes[0] ?? null;
 
-          const tempNodeId = addNode("data-process", {
-            position: panelNodePosition,
-            inputTypes: sourceNode
-              ? [...sourceNode.data.outputTypes]
-              : undefined,
-            outputTypes: sourceOutputType ? [sourceOutputType] : undefined,
-            label: sourceOutputType ? "설정 중" : "가공",
-          });
+          if (!workflowId) {
+            toaster.create({
+              title: "워크플로우 정보를 불러오지 못했습니다",
+              description: "페이지를 새로고침해주세요.",
+              type: "error",
+            });
+            return;
+          }
 
-          onConnect({
-            source: sourceNodeId,
-            target: tempNodeId,
-            sourceHandle: null,
-            targetHandle: null,
-          });
+          try {
+            const previousNodes = useWorkflowStore.getState().nodes;
+            const nextWorkflow = await addWorkflowNode({
+              workflowId,
+              body: toNodeAddRequest({
+                type: "data-process",
+                position: panelNodePosition,
+                role: "middle",
+                prevNodeId: sourceNodeId,
+                inputTypes: sourceNode
+                  ? [...sourceNode.data.outputTypes]
+                  : undefined,
+                outputTypes: sourceOutputType ? [sourceOutputType] : undefined,
+              }),
+            });
 
-          setActivePlaceholder(null);
-          openPanel(tempNodeId);
+            const addedNodeId =
+              findAddedNodeId(previousNodes, nextWorkflow.nodes) ??
+              nextWorkflow.nodes.at(-1)?.id ??
+              null;
+            const addedNode =
+              addedNodeId !== null
+                ? (nextWorkflow.nodes.find(
+                    (currentNode) => currentNode.id === addedNodeId,
+                  ) ?? null)
+                : null;
+
+            if (!addedNodeId || !addedNode) {
+              toaster.create({
+                title: "노드 추가 실패",
+                description: "서버 응답을 해석하지 못했습니다.",
+                type: "error",
+              });
+              return;
+            }
+
+            batchServerSync(() => {
+              addNode(toFlowNode(addedNode));
+              onConnect({
+                source: sourceNodeId,
+                target: addedNodeId,
+                sourceHandle: null,
+                targetHandle: null,
+              });
+            });
+
+            setActivePlaceholder(null);
+            openPanel(addedNodeId);
+          } catch {
+            toaster.create({
+              title: "노드 추가 실패",
+              description:
+                "노드를 추가하지 못했습니다. 잠시 후 다시 시도해주세요.",
+              type: "error",
+            });
+            return;
+          }
         }
 
         const viewportWidth = window.innerWidth;
@@ -277,12 +340,16 @@ export const Canvas = () => {
     },
     [
       addNode,
+      addWorkflowNode,
+      batchServerSync,
       closePanel,
+      isAddNodePending,
       nodes,
       onConnect,
       openPanel,
       setActivePlaceholder,
       setCenter,
+      workflowId,
     ],
   );
 
