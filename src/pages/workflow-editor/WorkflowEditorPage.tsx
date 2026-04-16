@@ -9,7 +9,7 @@ import { useWorkflowQuery } from "@/entities/workflow";
 import { ServiceSelectionPanel } from "@/features/add-node";
 import { hydrateStore, useWorkflowStore } from "@/features/workflow-editor";
 import { EDITOR_CANVAS_AREA_ID, ROUTE_PATHS } from "@/shared";
-import { Canvas, EditorToolbar, InputPanel, OutputPanel } from "@/widgets";
+import { Canvas, EditorRemoteBar, InputPanel, OutputPanel } from "@/widgets";
 
 const EditorLoadingView = () => (
   <Box
@@ -94,8 +94,8 @@ const WorkflowEditorInner = () => {
       overflow="hidden"
       height="100%"
     >
-      <EditorToolbar variant="overlay" />
       <Canvas />
+      <EditorRemoteBar />
       <ServiceSelectionPanel />
       <InputPanel />
       <OutputPanel />
