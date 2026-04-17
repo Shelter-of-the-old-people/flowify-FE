@@ -51,6 +51,14 @@ interface WorkflowEditorActions {
   closePanel: () => void;
   setWorkflowMeta: (id: string, name: string) => void;
   hydrateWorkflow: (payload: WorkflowHydratedState) => void;
+  syncWorkflowGraph: (
+    payload: WorkflowHydratedState,
+    options?: {
+      preserveActivePanelNodeId?: boolean;
+      preserveActivePlaceholder?: boolean;
+      preserveDirty?: boolean;
+    },
+  ) => void;
   setWorkflowName: (name: string) => void;
   setExecutionStatus: (status: ExecutionStatus) => void;
   setStartNodeId: (id: string | null) => void;
@@ -76,6 +84,12 @@ const initialState: WorkflowEditorState = {
   isDirty: false,
   _isSyncing: false,
 };
+
+const hasNode = (
+  nodes: Node<FlowNodeData>[],
+  nodeId: string | null,
+): nodeId is string =>
+  Boolean(nodeId && nodes.some((node) => node.id === nodeId));
 
 export const useWorkflowStore = create<
   WorkflowEditorState & WorkflowEditorActions
@@ -253,6 +267,33 @@ export const useWorkflowStore = create<
         state.activePanelNodeId = null;
         state.activePlaceholder = null;
         state.isDirty = false;
+        state._isSyncing = false;
+      }),
+
+    syncWorkflowGraph: (payload, options) =>
+      set((state) => {
+        const preserveActivePanelNodeId =
+          options?.preserveActivePanelNodeId ?? true;
+        const preserveActivePlaceholder =
+          options?.preserveActivePlaceholder ?? true;
+        const preserveDirty = options?.preserveDirty ?? true;
+
+        state.workflowId = payload.workflowId;
+        state.workflowName = payload.workflowName;
+        state.nodes = payload.nodes;
+        state.edges = payload.edges;
+        state.startNodeId = payload.startNodeId;
+        state.endNodeId = payload.endNodeId;
+        state.creationMethod = payload.creationMethod;
+        state.activePanelNodeId = preserveActivePanelNodeId
+          ? hasNode(payload.nodes, state.activePanelNodeId)
+            ? state.activePanelNodeId
+            : null
+          : null;
+        if (!preserveActivePlaceholder) {
+          state.activePlaceholder = null;
+        }
+        state.isDirty = preserveDirty ? state.isDirty : false;
         state._isSyncing = false;
       }),
 

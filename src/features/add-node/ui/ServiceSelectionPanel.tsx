@@ -15,12 +15,11 @@ import { NODE_REGISTRY } from "@/entities/node";
 import { type FlowNodeData, type NodeMeta } from "@/entities/node";
 import {
   findAddedNodeId,
-  toFlowNode,
   toNodeAddRequest,
   useAddWorkflowNodeMutation,
   useDeleteWorkflowNodeMutation,
 } from "@/entities/workflow";
-import { useWorkflowStore } from "@/features/workflow-editor";
+import { hydrateStore, useWorkflowStore } from "@/features/workflow-editor";
 
 import { CATEGORY_SERVICE_MAP } from "../model/serviceMap";
 import { type ServiceOption } from "../model/serviceMap";
@@ -318,15 +317,12 @@ export const ServiceSelectionPanel = () => {
   );
   const workflowId = useWorkflowStore((state) => state.workflowId);
   const nodes = useWorkflowStore((state) => state.nodes);
-  const addNode = useWorkflowStore((state) => state.addNode);
+  const syncWorkflowGraph = useWorkflowStore(
+    (state) => state.syncWorkflowGraph,
+  );
   const setActivePlaceholder = useWorkflowStore(
     (state) => state.setActivePlaceholder,
   );
-  const setStartNodeId = useWorkflowStore((state) => state.setStartNodeId);
-  const setEndNodeId = useWorkflowStore((state) => state.setEndNodeId);
-  const onConnect = useWorkflowStore((state) => state.onConnect);
-  const removeNode = useWorkflowStore((state) => state.removeNode);
-  const batchServerSync = useWorkflowStore((state) => state.batchServerSync);
   const updateNodeConfig = useWorkflowStore((state) => state.updateNodeConfig);
   const { mutateAsync: addWorkflowNode, isPending: isAddNodePending } =
     useAddWorkflowNodeMutation();
@@ -344,6 +340,16 @@ export const ServiceSelectionPanel = () => {
   const [placedNodeId, setPlacedNodeId] = useState<string | null>(null);
   const [selectedRequirementPreset, setSelectedRequirementPreset] =
     useState<Record<string, unknown> | null>(null);
+  const syncWorkflowFromResponse = useCallback(
+    (workflow: Parameters<typeof hydrateStore>[0]) => {
+      syncWorkflowGraph(hydrateStore(workflow), {
+        preserveActivePanelNodeId: true,
+        preserveActivePlaceholder: true,
+        preserveDirty: true,
+      });
+    },
+    [syncWorkflowGraph],
+  );
 
   const resetWizard = useCallback(() => {
     setStep("category");
@@ -450,36 +456,14 @@ export const ServiceSelectionPanel = () => {
         return null;
       }
 
-      batchServerSync(() => {
-        addNode(toFlowNode(addedNode));
-
-        if (activePlaceholder.id === "placeholder-start") {
-          setStartNodeId(addedNodeId);
-        } else if (activePlaceholder.id === "placeholder-end") {
-          setEndNodeId(addedNodeId);
-        }
-
-        if (sourceNodeId) {
-          onConnect({
-            source: sourceNodeId,
-            target: addedNodeId,
-            sourceHandle: null,
-            targetHandle: null,
-          });
-        }
-      });
-
+      syncWorkflowFromResponse(nextWorkflow);
       return addedNodeId;
     },
     [
       activePlaceholder,
-      addNode,
       addWorkflowNode,
-      batchServerSync,
       nodes,
-      onConnect,
-      setEndNodeId,
-      setStartNodeId,
+      syncWorkflowFromResponse,
       workflowId,
     ],
   );
@@ -571,17 +555,12 @@ export const ServiceSelectionPanel = () => {
   const handleBackFromRequirement = () => {
     void (async () => {
       if (placedNodeId && workflowId) {
-        await deleteWorkflowNode({
+        const nextWorkflow = await deleteWorkflowNode({
           workflowId,
           nodeId: placedNodeId,
         });
         setPlacedNodeId(null);
-        batchServerSync(() => {
-          removeNode(placedNodeId);
-        });
-      } else if (placedNodeId) {
-        removeNode(placedNodeId);
-        setPlacedNodeId(null);
+        syncWorkflowFromResponse(nextWorkflow);
       }
 
       if (selectedService) {
