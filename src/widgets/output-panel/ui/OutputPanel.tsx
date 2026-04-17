@@ -478,7 +478,7 @@ export const OutputPanel = () => {
         body: {
           category: toBackendNodeType(type).category,
           type: toBackendNodeType(type).type,
-          config,
+          config: config as unknown as Record<string, unknown>,
           position: position ?? node.position,
           dataType:
             inputDataTypeKey !== undefined
