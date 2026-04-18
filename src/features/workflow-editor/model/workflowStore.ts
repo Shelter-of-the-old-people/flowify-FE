@@ -296,6 +296,7 @@ export const useWorkflowStore = create<
         state.creationMethod = payload.creationMethod;
         state.activePanelNodeId = null;
         state.activePlaceholder = null;
+        state.unsavedNodePositions = {};
         state.isDirty = false;
         state._isSyncing = false;
       }),
@@ -362,6 +363,7 @@ export const useWorkflowStore = create<
 
     markClean: () =>
       set((state) => {
+        state.unsavedNodePositions = {};
         state.isDirty = false;
       }),
 
