@@ -108,6 +108,25 @@ const hasNode = (
 ): nodeId is string =>
   Boolean(nodeId && nodes.some((node) => node.id === nodeId));
 
+const mergeNodesWithUnsavedPositions = (
+  nodes: Node<FlowNodeData>[],
+  unsavedNodePositions: Record<string, NodePosition>,
+) =>
+  nodes.map((node) => {
+    const positionOverride = unsavedNodePositions[node.id];
+    if (!positionOverride) {
+      return node;
+    }
+
+    return {
+      ...node,
+      position: {
+        x: positionOverride.x,
+        y: positionOverride.y,
+      },
+    };
+  });
+
 export const useWorkflowStore = create<
   WorkflowEditorState & WorkflowEditorActions
 >()(
@@ -288,14 +307,24 @@ export const useWorkflowStore = create<
         const preserveActivePlaceholder =
           options?.preserveActivePlaceholder ?? true;
         const preserveDirty = options?.preserveDirty ?? true;
+        const nextNodeIds = new Set(payload.nodes.map((node) => node.id));
+        const preservedUnsavedNodePositions = Object.fromEntries(
+          Object.entries(state.unsavedNodePositions).filter(([nodeId]) =>
+            nextNodeIds.has(nodeId),
+          ),
+        );
 
         state.workflowId = payload.workflowId;
         state.workflowName = payload.workflowName;
-        state.nodes = payload.nodes;
+        state.nodes = mergeNodesWithUnsavedPositions(
+          payload.nodes,
+          preservedUnsavedNodePositions,
+        );
         state.edges = payload.edges;
         state.startNodeId = payload.startNodeId;
         state.endNodeId = payload.endNodeId;
         state.creationMethod = payload.creationMethod;
+        state.unsavedNodePositions = preservedUnsavedNodePositions;
         state.activePanelNodeId = preserveActivePanelNodeId
           ? hasNode(payload.nodes, state.activePanelNodeId)
             ? state.activePanelNodeId
