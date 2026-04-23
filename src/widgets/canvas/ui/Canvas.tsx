@@ -42,6 +42,7 @@ import {
 import { type NodeType } from "@/entities/node";
 import { isDataTypeCompatible } from "@/entities/node";
 import {
+  type WorkflowNodeStatusResponse,
   findAddedNodeId,
   toNodeAddRequest,
   useAddWorkflowNodeMutation,
@@ -170,6 +171,7 @@ const defaultEdgeOptions: DefaultEdgeOptions = {
 export const Canvas = () => {
   const nodes = useWorkflowStore((state) => state.nodes);
   const edges = useWorkflowStore((state) => state.edges);
+  const nodeStatuses = useWorkflowStore((state) => state.nodeStatuses);
   const onNodesChange = useWorkflowStore((state) => state.onNodesChange);
   const onEdgesChange = useWorkflowStore((state) => state.onEdgesChange);
   const onConnect = useWorkflowStore((state) => state.onConnect);
@@ -243,10 +245,19 @@ export const Canvas = () => {
       canEditNodes,
       startNodeId,
       endNodeId,
+      getNodeStatus: (nodeId: string): WorkflowNodeStatusResponse | null =>
+        nodeStatuses[nodeId] ?? null,
       onOpenPanel: openPanel,
       onRemoveNode: handleRemoveNode,
     }),
-    [canEditNodes, endNodeId, handleRemoveNode, openPanel, startNodeId],
+    [
+      canEditNodes,
+      endNodeId,
+      handleRemoveNode,
+      nodeStatuses,
+      openPanel,
+      startNodeId,
+    ],
   );
 
   const handleNodesChange = useCallback(
@@ -460,10 +471,12 @@ export const Canvas = () => {
     const endNode = endNodeId
       ? (nodes.find((node) => node.id === endNodeId) ?? null)
       : null;
+    const endNodeStatus = endNodeId ? (nodeStatuses[endNodeId] ?? null) : null;
     const showCreationMethod =
       startNodeId !== null &&
       endNodeId !== null &&
-      endNode?.data.config.isConfigured === true &&
+      (endNodeStatus?.configured ?? endNode?.data.config.isConfigured) ===
+        true &&
       !creationMethod;
 
     // 분기 1: 시작/도착 미설정 → placeholder 표시
@@ -634,6 +647,7 @@ export const Canvas = () => {
     edges,
     startNodeId,
     endNodeId,
+    nodeStatuses,
     creationMethod,
     handleSelectManual,
   ]);

@@ -5,7 +5,10 @@ import { Box, Icon, Text } from "@chakra-ui/react";
 
 import { NODE_REGISTRY } from "@/entities/node";
 import { type FlowNodeData } from "@/entities/node";
-import { useMappingRulesQuery } from "@/entities/workflow";
+import {
+  getNodeStatusMissingFieldLabel,
+  useMappingRulesQuery,
+} from "@/entities/workflow";
 import {
   MAPPING_RULES,
   OUTPUT_DATA_LABELS,
@@ -28,6 +31,7 @@ export const InputPanel = () => {
   );
   const startNodeId = useWorkflowStore((state) => state.startNodeId);
   const endNodeId = useWorkflowStore((state) => state.endNodeId);
+  const nodeStatuses = useWorkflowStore((state) => state.nodeStatuses);
   const nodes = useWorkflowStore((state) => state.nodes);
   const edges = useWorkflowStore((state) => state.edges);
   const closePanel = useWorkflowStore((state) => state.closePanel);
@@ -58,8 +62,13 @@ export const InputPanel = () => {
   const isStartNode = activePanelNodeId === startNodeId;
   const isEndNode = activePanelNodeId === endNodeId;
   const isMiddleNode = Boolean(activeNode) && !isStartNode && !isEndNode;
+  const activeNodeStatus = activePanelNodeId
+    ? (nodeStatuses[activePanelNodeId] ?? null)
+    : null;
   const isConfiguredMiddleNode =
     Boolean(activeNode?.data.config.isConfigured) && isMiddleNode;
+  const activeNodeMissingFields =
+    activeNodeStatus?.missingFields.map(getNodeStatusMissingFieldLabel) ?? [];
   const selectedAction = findActionById(
     mappingRules,
     activeNode?.data.config.choiceActionId,
@@ -213,6 +222,27 @@ export const InputPanel = () => {
                       </Text>
                     </Box>
                   ))}
+                </Box>
+              </Box>
+            ) : null}
+
+            {activeNodeStatus ? (
+              <Box mt={8}>
+                <Text fontSize="md" fontWeight="bold" mb={3}>
+                  노드 상태
+                </Text>
+                <Box bg="gray.50" borderRadius="2xl" px={4} py={4}>
+                  <Text fontSize="sm" fontWeight="semibold" mb={1}>
+                    {activeNodeStatus.configured ? "설정 완료" : "설정 필요"}
+                  </Text>
+                  <Text color="text.secondary" fontSize="sm">
+                    실행 가능: {activeNodeStatus.executable ? "예" : "아니오"}
+                  </Text>
+                  {activeNodeMissingFields.length > 0 ? (
+                    <Text color="text.secondary" fontSize="sm" mt={2}>
+                      누락 항목: {activeNodeMissingFields.join(", ")}
+                    </Text>
+                  ) : null}
                 </Box>
               </Box>
             ) : null}

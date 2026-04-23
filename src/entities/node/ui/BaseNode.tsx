@@ -5,6 +5,8 @@ import { MdCancel } from "react-icons/md";
 import { Box, Icon, IconButton, Text } from "@chakra-ui/react";
 import { Handle, Position } from "@xyflow/react";
 
+import { getNodeStatusMissingFieldLabel } from "@/entities/workflow";
+
 import { getNodePresentation } from "../model";
 import { type FlowNodeData } from "../model/types";
 
@@ -36,17 +38,33 @@ const getSummaryContent = (
 };
 
 export const BaseNode = ({ id, data, children }: BaseNodeProps) => {
-  const { canEditNodes, endNodeId, onOpenPanel, onRemoveNode, startNodeId } =
-    useNodeEditorContext();
+  const {
+    canEditNodes,
+    endNodeId,
+    getNodeStatus,
+    onOpenPanel,
+    onRemoveNode,
+    startNodeId,
+  } = useNodeEditorContext();
   const [isHovered, setIsHovered] = useState(false);
+  const nodeStatus = getNodeStatus(id);
 
   const presentation = getNodePresentation(data, {
     nodeId: id,
     startNodeId,
     endNodeId,
   });
-  const summaryContent = getSummaryContent(presentation.helperText, children);
-  const showNodeIcon = data.config.isConfigured;
+  const missingFieldSummary =
+    nodeStatus && !nodeStatus.configured && nodeStatus.missingFields.length > 0
+      ? `필수 설정: ${nodeStatus.missingFields
+          .map(getNodeStatusMissingFieldLabel)
+          .join(", ")}`
+      : null;
+  const summaryContent = getSummaryContent(
+    missingFieldSummary ?? presentation.helperText,
+    children,
+  );
+  const showNodeIcon = nodeStatus?.configured ?? data.config.isConfigured;
 
   const handleOpenPanel = () => {
     onOpenPanel(id);

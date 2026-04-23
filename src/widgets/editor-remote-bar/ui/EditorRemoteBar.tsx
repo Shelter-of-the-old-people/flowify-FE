@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 
 import { Box } from "@chakra-ui/react";
@@ -20,6 +20,7 @@ import {
   useWorkflowStore,
 } from "@/features/workflow-editor";
 import { ROUTE_PATHS } from "@/shared";
+import { getApiErrorMessage } from "@/shared/utils";
 import { toaster } from "@/shared/utils/toaster/toaster";
 
 import { DeleteConfirmDialog } from "./DeleteConfirmDialog";
@@ -44,6 +45,7 @@ export const EditorRemoteBar = () => {
   const workflowName = useWorkflowStore((state) => state.workflowName);
   const nodes = useWorkflowStore((state) => state.nodes);
   const edges = useWorkflowStore((state) => state.edges);
+  const nodeStatuses = useWorkflowStore((state) => state.nodeStatuses);
   const startNodeId = useWorkflowStore((state) => state.startNodeId);
   const endNodeId = useWorkflowStore((state) => state.endNodeId);
   const isDirty = useWorkflowStore((state) => state.isDirty);
@@ -113,6 +115,14 @@ export const EditorRemoteBar = () => {
     activeExecutionStatus === "pending" || activeExecutionStatus === "running";
   const isStarting = effectiveRunPhase === "starting";
   const isRunning = isStarting || isRemoteExecutionInFlight;
+  const executableBlockers = useMemo(
+    () =>
+      Object.values(nodeStatuses).filter(
+        (nodeStatus) => !nodeStatus.executable,
+      ),
+    [nodeStatuses],
+  );
+  const hasExecutableBlock = !isDirty && executableBlockers.length > 0;
   const executionStatusLabel =
     effectiveRunPhase === "auto-saving"
       ? "저장 중..."
@@ -120,7 +130,9 @@ export const EditorRemoteBar = () => {
         ? "실행 시작 중..."
         : isRemoteExecutionInFlight
           ? "실행 중..."
-          : null;
+          : hasExecutableBlock
+            ? "실행 전에 설정 확인 필요"
+            : null;
 
   const canRun =
     Boolean(workflowId) &&
@@ -130,7 +142,8 @@ export const EditorRemoteBar = () => {
     !isSavePending &&
     !isDeletePending &&
     !isExecutePending &&
-    !isRollbackPending;
+    !isRollbackPending &&
+    !hasExecutableBlock;
   const canStop =
     Boolean(workflowId) &&
     canRunWorkflow &&
@@ -217,11 +230,11 @@ export const EditorRemoteBar = () => {
       const executionId = await executeWorkflow(workflowId);
       setTrackedExecutionId(executionId);
       void refetchExecutions();
-    } catch {
+    } catch (error) {
       setRunPhase("idle");
       toaster.create({
         title: "실행 실패",
-        description: "워크플로우 실행을 시작하지 못했습니다.",
+        description: getApiErrorMessage(error),
         type: "error",
       });
     }

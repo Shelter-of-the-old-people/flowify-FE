@@ -4,6 +4,7 @@ import { Box, Button, Input, Spinner, Text } from "@chakra-ui/react";
 
 import { type FlowNodeData } from "@/entities/node";
 import {
+  getNodeStatusMissingFieldLabel,
   toBackendDataType,
   toEdgeDefinition,
   toNodeDefinition,
@@ -48,6 +49,7 @@ export const SinkNodePanel = ({
 }: NodePanelProps) => {
   const edges = useWorkflowStore((state) => state.edges);
   const endNodeId = useWorkflowStore((state) => state.endNodeId);
+  const nodeStatuses = useWorkflowStore((state) => state.nodeStatuses);
   const nodes = useWorkflowStore((state) => state.nodes);
   const startNodeId = useWorkflowStore((state) => state.startNodeId);
   const updateNodeConfig = useWorkflowStore((state) => state.updateNodeConfig);
@@ -65,6 +67,9 @@ export const SinkNodePanel = ({
   const selectedSinkService =
     sinkCatalog?.services.find((service) => service.key === serviceKey) ?? null;
   const { data: sinkSchema } = useSinkSchemaQuery(serviceKey, sinkInputType);
+  const nodeStatus = nodeStatuses[nodeId] ?? null;
+  const missingFields =
+    nodeStatus?.missingFields.map(getNodeStatusMissingFieldLabel) ?? [];
 
   const previewRequest = useMemo(() => {
     const previewNodes = nodes.filter((node) => node.id !== nodeId);
@@ -108,6 +113,25 @@ export const SinkNodePanel = ({
       description="현재 결과를 어디로 보낼지 정한 뒤 마지막 단계에서 상세 설정을 채웁니다."
     >
       <Box display="flex" flexDirection="column" gap={6}>
+        {nodeStatus ? (
+          <Box bg="gray.50" borderRadius="2xl" px={4} py={4}>
+            <Text fontSize="sm" fontWeight="medium" mb={1}>
+              현재 상태
+            </Text>
+            <Text color="text.secondary" fontSize="sm">
+              설정 완료: {nodeStatus.configured ? "예" : "아니오"}
+            </Text>
+            <Text color="text.secondary" fontSize="sm">
+              실행 가능: {nodeStatus.executable ? "예" : "아니오"}
+            </Text>
+            {missingFields.length > 0 ? (
+              <Text color="text.secondary" fontSize="sm" mt={2}>
+                누락 항목: {missingFields.join(", ")}
+              </Text>
+            ) : null}
+          </Box>
+        ) : null}
+
         <Box display="flex" flexDirection="column" gap={2}>
           <Text fontSize="sm" fontWeight="medium">
             현재 결과 타입
