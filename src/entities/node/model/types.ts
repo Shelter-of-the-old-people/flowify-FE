@@ -47,14 +47,14 @@ export interface CommunicationNodeConfig extends BaseNodeConfig {
 }
 
 export interface StorageNodeConfig extends BaseNodeConfig {
-  service: "google-drive" | "notion" | null;
+  service: "google_drive" | "notion" | null;
   targetPath: string | null;
   action: "read" | "write" | "update" | null;
   permissions: string | null;
 }
 
 export interface SpreadsheetNodeConfig extends BaseNodeConfig {
-  service: "google-sheets" | null;
+  service: "google_sheets" | null;
   spreadsheetId: string | null;
   sheetName: string | null;
   action: "read" | "write" | "append" | "update" | null;
@@ -69,7 +69,7 @@ export interface WebScrapingNodeConfig extends BaseNodeConfig {
 }
 
 export interface CalendarNodeConfig extends BaseNodeConfig {
-  service: "google-calendar" | null;
+  service: "google_calendar" | null;
   account: string | null;
   action: "read" | "create" | "update" | "delete" | null;
   calendarId: string | null;

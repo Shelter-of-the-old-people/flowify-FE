@@ -36,7 +36,7 @@ const STORAGE_SERVICE_TITLE: Record<
   NonNullable<StorageNodeConfig["service"]>,
   string
 > = {
-  "google-drive": "Google Drive",
+  google_drive: "Google Drive",
   notion: "Notion",
 };
 
