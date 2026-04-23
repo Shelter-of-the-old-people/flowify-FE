@@ -1,14 +1,18 @@
+import { useMemo } from "react";
 import { MdCancel } from "react-icons/md";
 
 import { Box, Icon, Text } from "@chakra-ui/react";
 
 import { NODE_REGISTRY } from "@/entities/node";
 import { type FlowNodeData } from "@/entities/node";
+import { useMappingRulesQuery } from "@/entities/workflow";
 import {
+  MAPPING_RULES,
   OUTPUT_DATA_LABELS,
   findActionById,
   readCustomInputs,
   readSelectionSummary,
+  toChoiceMappingRules,
 } from "@/features/choice-panel";
 import { useWorkflowStore } from "@/features/workflow-editor";
 import { useDualPanelLayout } from "@/shared";
@@ -29,6 +33,14 @@ export const InputPanel = () => {
   const closePanel = useWorkflowStore((state) => state.closePanel);
   const layout = useDualPanelLayout();
   const isOpen = Boolean(activePanelNodeId) && activePlaceholder === null;
+  const { data: mappingRulesResponse } = useMappingRulesQuery();
+  const mappingRules = useMemo(
+    () =>
+      mappingRulesResponse
+        ? toChoiceMappingRules(mappingRulesResponse)
+        : MAPPING_RULES,
+    [mappingRulesResponse],
+  );
   const activeNode = activePanelNodeId
     ? (nodes.find((node) => node.id === activePanelNodeId) ?? null)
     : null;
@@ -48,7 +60,10 @@ export const InputPanel = () => {
   const isMiddleNode = Boolean(activeNode) && !isStartNode && !isEndNode;
   const isConfiguredMiddleNode =
     Boolean(activeNode?.data.config.isConfigured) && isMiddleNode;
-  const selectedAction = findActionById(activeNode?.data.config.choiceActionId);
+  const selectedAction = findActionById(
+    mappingRules,
+    activeNode?.data.config.choiceActionId,
+  );
   const selectedOptions = readSelectionSummary(
     selectedAction,
     activeNode?.data.config.choiceSelections ?? null,
