@@ -1,0 +1,416 @@
+
+
+SC-031: 구글 시트 매출 데이터 요약 보고서 발송
+[cite_start]한 줄 요약: 구글 시트의 매출 데이터를 AI가 분석하여 핵심 성과만 요약한 뒤 이메일로 발송합니다[cite: 110].
+
+[시작 노드]
+- [cite_start]카테고리: 스프레드시트 [cite: 26]
+- [cite_start]서비스: Google Sheets [cite: 26]
+- 실행 조건:
+  - [cite_start]질문: "언제 실행할까요?" [cite: 12]
+  - [cite_start]선택지: "직접 실행할 때" / "매일 정해진 시간에" [cite: 33]
+  - 사용자 선택: "매일 정해진 시간에"
+  - [cite_start]후속 질문: "몇 시에 실행할까요?" [cite: 12]
+  - 사용자 입력: "오후 6시"
+- [cite_start]데이터 대상: "2026_상반기_매출" 시트 [cite: 26]
+- [cite_start]출력 데이터 타입: 스프레드시트 데이터 [cite: 26]
+
+[도착 노드]
+- [cite_start]카테고리: 커뮤니케이션 [cite: 26]
+- [cite_start]서비스: Gmail [cite: 26]
+- [cite_start]동작 유형: 이메일 발송 [cite: 26]
+- [cite_start]최종 입력 데이터 타입: 텍스트 [cite: 26]
+
+[중간 과정]
+  [중간 노드 1]
+  - [cite_start]들어오는 데이터: 스프레드시트 데이터 [cite: 26]
+  - [cite_start]사용자에게 보여줄 질문: "데이터를 어떻게 처리할까요?" [cite: 12]
+  - [cite_start]선택지: "전체 내용을 AI가 분석" / "한 행씩 처리" [cite: 67]
+  - 사용자 선택: "전체 내용을 AI가 분석"
+  - [cite_start]내부 노드 타입: AI 노드 [cite: 26, 36]
+  - AI 설정:
+    - [cite_start]질문: "무엇을 분석할까요?" [cite: 37]
+    - [cite_start]선택지: "전일 대비 매출 변화" / "가장 높은 판매 항목" / "목표 달성률" [cite: 38]
+    - 사용자 선택: "전일 대비 매출 변화"
+  - [cite_start]나가는 데이터: 텍스트 (분석 요약) [cite: 26]
+
+[도착 노드 세부 설정]
+- [cite_start]들어오는 데이터: 텍스트 (분석 요약) [cite: 26]
+- 설정 항목:
+  - [cite_start]질문: "누구에게 메일을 보낼까요?" [cite: 12]
+  - 사용자 입력: "manager@company.com"
+  - [cite_start]질문: "메일 제목은?" [cite: 12]
+  - 사용자 입력: "📊 오늘의 매출 분석 리포트"
+
+---
+
+SC-032: 구글 드라이브 사진 파일 자동 설명 및 기록
+[cite_start]한 줄 요약: 구글 드라이브에 올라온 사진을 AI가 설명하고, 이 설명을 노션 페이지에 자동으로 기록합니다[cite: 110].
+
+[시작 노드]
+- [cite_start]카테고리: 저장소 [cite: 26]
+- [cite_start]서비스: Google Drive [cite: 26]
+- 실행 조건:
+  - [cite_start]질문: "언제 실행할까요?" [cite: 12]
+  - [cite_start]사용자 선택: "특정 폴더에 파일이 들어올 때" [cite: 34]
+- [cite_start]데이터 대상: "내 드라이브 > 현장_사진" 폴더 [cite: 26]
+- [cite_start]출력 데이터 타입: 파일 목록 [cite: 26]
+
+[도착 노드]
+- [cite_start]카테고리: 저장소 [cite: 26]
+- [cite_start]서비스: Notion [cite: 26]
+- [cite_start]동작 유형: 데이터베이스 항목 추가 [cite: 26]
+- [cite_start]최종 입력 데이터 타입: 텍스트 [cite: 26]
+
+[중간 과정]
+  [중간 노드 1]
+  - [cite_start]들어오는 데이터: 파일 목록 [cite: 26]
+  - [cite_start]사용자에게 보여줄 질문: "파일들을 어떻게 처리할까요?" [cite: 12]
+  - [cite_start]사용자 선택: "한 파일씩" [cite: 67]
+  - [cite_start]내부 노드 타입: Loop 노드 [cite: 67]
+  - [cite_start]나가는 데이터: 단일 파일 [cite: 26]
+
+  [중간 노드 2]
+  - [cite_start]들어오는 데이터: 단일 파일 [cite: 26]
+  - [cite_start]사용자에게 보여줄 질문: "사진에 대해 무엇을 할까요?" [cite: 12]
+  - [cite_start]선택지: "사진 내용 설명 생성" / "이미지 텍스트 추출" [cite: 38]
+  - 사용자 선택: "사진 내용 설명 생성"
+  - [cite_start]내부 노드 타입: AI 노드 [cite: 36]
+  - [cite_start]나가는 데이터: 텍스트 (사진 설명) [cite: 26]
+
+[도착 노드 세부 설정]
+- [cite_start]들어오는 데이터: 텍스트 (사진 설명) [cite: 26]
+- 설정 항목:
+  - [cite_start]질문: "어떤 데이터베이스에 저장할까요?" [cite: 12]
+  - 선택: "현장 일지" 데이터베이스
+  - [cite_start]설정: 제목 = 파일 이름, 설명 = [사진 설명] [cite: 44]
+
+---
+
+SC-033: 네이버 뉴스 경쟁사 동향 감성 분석 알림
+[cite_start]한 줄 요약: 네이버 뉴스에서 경쟁사 관련 기사를 찾아 AI가 긍정/부정을 분석하고 부정적인 기사는 슬랙으로 긴급 알림을 보냅니다[cite: 67, 110].
+
+[시작 노드]
+- [cite_start]카테고리: 웹 수집 [cite: 26]
+- [cite_start]서비스: 네이버 뉴스 [cite: 26]
+- 실행 조건:
+  - [cite_start]질문: "언제 실행할까요?" [cite: 12]
+  - [cite_start]사용자 선택: "매일 정해진 시간에" [cite: 33]
+- [cite_start]데이터 대상: 키워드 "경쟁사_이름" 검색 결과 [cite: 26]
+- [cite_start]출력 데이터 타입: API 응답 데이터 [cite: 26]
+
+[도착 노드]
+- [cite_start]카테고리: 커뮤니케이션 [cite: 26]
+- [cite_start]서비스: Slack [cite: 26]
+- [cite_start]동작 유형: 메시지 전송 [cite: 26]
+- [cite_start]최종 입력 데이터 타입: 텍스트 [cite: 26]
+
+[중간 과정]
+  [중간 노드 1]
+  - [cite_start]들어오는 데이터: API 응답 데이터 [cite: 26]
+  - [cite_start]사용자에게 보여줄 질문: "기사들을 어떻게 처리할까요?" [cite: 12]
+  - [cite_start]사용자 선택: "한 건씩 분류" [cite: 67]
+  - [cite_start]내부 노드 타입: Loop 노드 [cite: 67]
+  - [cite_start]나가는 데이터: 텍스트 (기사 내용) [cite: 26]
+
+  [중간 노드 2]
+  - [cite_start]들어오는 데이터: 텍스트 (기사 내용) [cite: 26]
+  - [cite_start]사용자에게 보여줄 질문: "기사의 분위기를 어떻게 판단할까요?" [cite: 12]
+  - [cite_start]선택지: "긍정/부정으로 분류" / "요약하기" [cite: 38]
+  - 사용자 선택: "긍정/부정으로 분류"
+  - [cite_start]내부 노드 타입: AI 노드 [cite: 36]
+  - [cite_start]나가는 데이터: 텍스트 (분류 결과) [cite: 26]
+
+  [중간 노드 3]
+  - 들어오는 데이터: 텍스트 (분류 결과)
+  - [cite_start]사용자에게 보여줄 질문: "분위기에 따라 알림을 보낼까요?" [cite: 12]
+  - [cite_start]사용자 선택: "부정적인 기사일 때만" [cite: 67]
+  - [cite_start]내부 노드 타입: 조건 분기 (If) [cite: 67]
+  - [cite_start]나가는 데이터: 텍스트 (기사 요약 및 링크) [cite: 26]
+
+[도착 노드 세부 설정]
+- [cite_start]들어오는 데이터: 텍스트 (기사 요약) [cite: 26]
+- 설정 항목:
+  - [cite_start]질문: "알림 채널은?" [cite: 12]
+  - 선택: #시장-모니터링
+  - [cite_start]질문: "강조 문구" [cite: 12]
+  - 사용자 입력: "🚨 경쟁사 부정 이슈 감지!"
+
+---
+
+SC-034: 구글 캘린더 오늘 일정 슬랙 알리미
+[cite_start]한 줄 요약: 매일 아침 구글 캘린더 일정을 확인하여, 오늘 있는 회의 목록을 슬랙으로 보내줍니다[cite: 110].
+
+[시작 노드]
+- [cite_start]카테고리: 캘린더 [cite: 26]
+- [cite_start]서비스: Google Calendar [cite: 26]
+- 실행 조건:
+  - [cite_start]질문: "언제 실행할까요?" [cite: 12]
+  - [cite_start]사용자 선택: "매일 특정 시간에" [cite: 33]
+  - 사용자 입력: "오전 8시 30분"
+- [cite_start]데이터 대상: "업무" 캘린더 [cite: 26]
+- [cite_start]출력 데이터 타입: 일정 데이터 [cite: 26]
+
+[도착 노드]
+- [cite_start]카테고리: 커뮤니케이션 [cite: 26]
+- [cite_start]서비스: Slack [cite: 26]
+- [cite_start]동작 유형: 메시지 전송 [cite: 26]
+- [cite_start]최종 입력 데이터 타입: 텍스트 [cite: 26]
+
+[중간 과정]
+  [중간 노드 1]
+  - [cite_start]들어오는 데이터: 일정 데이터 [cite: 26]
+  - [cite_start]사용자에게 보여줄 질문: "일정을 어떻게 보여줄까요?" [cite: 12]
+  - [cite_start]선택지: "필요한 정보만 골라내기" / "AI가 비서처럼 요약" [cite: 60, 36]
+  - 사용자 선택: "필요한 정보만 골라내기"
+  - [cite_start]내부 노드 타입: 데이터 필터 [cite: 60]
+  - 후속 설정:
+    - [cite_start]질문: "어떤 정보를 보여줄까요?" [cite: 65]
+    - [cite_start]선택지: 일정 제목 / 시작 시간 / 장소 / 참석자 [cite: 61]
+    - 사용자 선택: 일정 제목, 시작 시간
+  - [cite_start]나가는 데이터: 텍스트 (일정 목록) [cite: 26]
+
+[도착 노드 세부 설정]
+- [cite_start]들어오는 데이터: 텍스트 (일정 목록) [cite: 26]
+- 설정 항목:
+  - [cite_start]질문: "어느 채널로 보낼까요?" [cite: 12]
+  - 선택: #개인-일정
+  - [cite_start]질문: "머릿말 입력" [cite: 12]
+  - 사용자 입력: "📅 오늘의 일정입니다."
+
+---
+
+SC-035: Gmail 중요 메일 할 일 추출 및 노션 저장
+[cite_start]한 줄 요약: Gmail로 온 메일 중 내가 '중요' 표시를 한 메일을 AI가 분석하여 할 일을 뽑아 노션에 정리합니다[cite: 110].
+
+[시작 노드]
+- [cite_start]카테고리: 커뮤니케이션 [cite: 26]
+- [cite_start]서비스: Gmail [cite: 26]
+- 실행 조건:
+  - [cite_start]질문: "언제 실행할까요?" [cite: 12]
+  - [cite_start]사용자 선택: "메일에 별표(중요)를 표시했을 때" [cite: 34]
+- [cite_start]데이터 대상: "별표 표시된 메일" [cite: 26]
+- [cite_start]출력 데이터 타입: 단일 이메일 [cite: 26]
+
+[도착 노드]
+- [cite_start]카테고리: 저장소 [cite: 26]
+- [cite_start]서비스: Notion [cite: 26]
+- [cite_start]동작 유형: 페이지 생성 [cite: 26]
+- [cite_start]최종 입력 데이터 타입: 텍스트 [cite: 26]
+
+[중간 과정]
+  [중간 노드 1]
+  - [cite_start]들어오는 데이터: 단일 이메일 [cite: 26]
+  - [cite_start]사용자에게 보여줄 질문: "메일에서 무엇을 할까요?" [cite: 12]
+  - [cite_start]선택지: "할 일 리스트 추출" / "요약하기" / "그대로 전달" [cite: 38]
+  - 사용자 선택: "할 일 리스트 추출"
+  - [cite_start]내부 노드 타입: AI 노드 [cite: 36]
+  - [cite_start]나가는 데이터: 텍스트 (할 일 목록) [cite: 26]
+
+[도착 노드 세부 설정]
+- [cite_start]들어오는 데이터: 텍스트 (할 일 목록) [cite: 26]
+- 설정 항목:
+  - [cite_start]질문: "저장할 위치" [cite: 12]
+  - 선택: "프로젝트 할 일" 데이터베이스
+  - [cite_start]설정: 제목 = 메일 제목, 내용 = [할 일 목록] [cite: 44]
+
+---
+
+SC-036: 유튜브 특정 키워드 영상 정보 시트 정리
+[cite_start]한 줄 요약: 유튜브에서 관심 있는 키워드로 검색된 최신 영상들의 정보를 수집하여 구글 시트에 한 줄씩 정리합니다[cite: 110].
+
+[시작 노드]
+- [cite_start]카테고리: 웹 수집 [cite: 26]
+- [cite_start]서비스: 유튜브 [cite: 26]
+- 실행 조건:
+  - [cite_start]질문: "언제 실행할까요?" [cite: 12]
+  - 사용자 선택: "직접 실행할 때"
+- [cite_start]데이터 대상: 검색어 "생성형 AI" [cite: 26]
+- [cite_start]출력 데이터 타입: API 응답 데이터 [cite: 26]
+
+[도착 노드]
+- [cite_start]카테고리: 스프레드시트 [cite: 26]
+- [cite_start]서비스: Google Sheets [cite: 26]
+- [cite_start]동작 유형: 행 추가 [cite: 26]
+- [cite_start]최종 입력 데이터 타입: 스프레드시트 데이터 [cite: 26]
+
+[중간 과정]
+  [중간 노드 1]
+  - [cite_start]들어오는 데이터: API 응답 데이터 [cite: 26]
+  - [cite_start]사용자에게 보여줄 질문: "수집된 정보를 어떻게 처리할까요?" [cite: 12]
+  - [cite_start]선택지: "필요한 정보만 골라서 시트에 기록" / "AI가 요약 후 기록" [cite: 60, 36]
+  - 사용자 선택: "필요한 정보만 골라서 시트에 기록"
+  - [cite_start]내부 노드 타입: 데이터 필터 [cite: 60]
+  - 후속 설정:
+    - [cite_start]질문: "시트에 담을 항목을 고르세요." [cite: 65]
+    - [cite_start]선택지: 제목 / 채널명 / 조회수 / 게시일 / 영상 주소 [cite: 61]
+    - 사용자 선택: 제목, 채널명, 영상 주소
+  - [cite_start]나가는 데이터: 스프레드시트 데이터 [cite: 26]
+
+[도착 노드 세부 설정]
+- [cite_start]들어오는 데이터: 스프레드시트 데이터 [cite: 26]
+- 설정 항목:
+  - [cite_start]질문: "저장할 파일" [cite: 12]
+  - 선택: "영상_트렌드_수집"
+  - [cite_start]질문: "데이터 추가 위치" [cite: 12]
+  - 선택: "마지막 행 아래"
+
+---
+
+SC-037: 구글 시트 성적 데이터 기반 서류 자동 분류
+[cite_start]한 줄 요약: 시트에 기록된 점수에 따라 AI가 '합격', '검토', '불합격'으로 분류하여 각각 다른 폴더나 채널로 보냅니다[cite: 67, 110].
+
+[시작 노드]
+- [cite_start]카테고리: 스프레드시트 [cite: 26]
+- [cite_start]서비스: Google Sheets [cite: 26]
+- 실행 조건:
+  - 사용자 선택: "직접 실행할 때"
+- [cite_start]데이터 대상: "지원자_명단" [cite: 26]
+- [cite_start]출력 데이터 타입: 스프레드시트 데이터 [cite: 26]
+
+[도착 노드]
+- [cite_start]카테고리: 커뮤니케이션 [cite: 26]
+- [cite_start]서비스: Slack [cite: 26]
+- [cite_start]동작 유형: 메시지 전송 [cite: 26]
+- [cite_start]최종 입력 데이터 타입: 텍스트 [cite: 26]
+
+[중간 과정]
+  [중간 노드 1]
+  - [cite_start]들어오는 데이터: 스프레드시트 데이터 [cite: 26]
+  - [cite_start]사용자에게 보여줄 질문: "명단을 어떻게 처리할까요?" [cite: 12]
+  - [cite_start]사용자 선택: "한 사람씩" [cite: 67]
+  - [cite_start]내부 노드 타입: Loop 노드 [cite: 67]
+  - [cite_start]나가는 데이터: 스프레드시트 데이터 (단일 행) [cite: 26]
+
+  [중간 노드 2]
+  - [cite_start]들어오는 데이터: 스프레드시트 데이터 (단일 행) [cite: 26]
+  - [cite_start]사용자에게 보여줄 질문: "기준에 따라 나누어 처리할까요?" [cite: 12]
+  - [cite_start]선택지: "점수나 등급별로 다르게 처리" / "그대로 전달" [cite: 67]
+  - 사용자 선택: "점수나 등급별로 다르게 처리"
+  - [cite_start]내부 노드 타입: 조건 분기 (Switch) [cite: 67]
+  - 분기 설정:
+    - [cite_start]질문: "어떤 기준을 나눌까요?" [cite: 67]
+    - [cite_start]선택지: 80점 이상(합격), 60~80점(검토), 60점 미만(불합격) [cite: 67]
+    - 사용자 선택: 전 항목 사용
+  - [cite_start]나가는 데이터: 분기별 텍스트 [cite: 26]
+
+[도착 노드 세부 설정]
+- [cite_start]들어오는 데이터: 텍스트 (지원자 정보) [cite: 26]
+- 설정 항목:
+  - [cite_start]질문: "합격자 알림 채널" [cite: 12]
+  - 선택: #인사-합격알림
+  - [cite_start]질문: "불합격자 알림 채널" [cite: 12]
+  - 선택: #인사-내부기록
+
+---
+
+SC-038: 쿠팡 상품 최저가 감지 및 메일 알림
+[cite_start]한 줄 요약: 쿠팡에서 내가 찾는 상품의 가격이 설정한 가격보다 떨어졌을 때만 나에게 메일을 보냅니다[cite: 110].
+
+[시작 노드]
+- [cite_start]카테고리: 웹 수집 [cite: 26]
+- [cite_start]서비스: 쿠팡 [cite: 26]
+- 실행 조건:
+  - [cite_start]사용자 선택: "매일 정해진 시간에" [cite: 33]
+- [cite_start]데이터 대상: 특정 상품 URL [cite: 26]
+- [cite_start]출력 데이터 타입: API 응답 데이터 [cite: 26]
+
+[도착 노드]
+- [cite_start]카테고리: 커뮤니케이션 [cite: 26]
+- [cite_start]서비스: Gmail [cite: 26]
+- [cite_start]동작 유형: 이메일 발송 [cite: 26]
+- [cite_start]최종 입력 데이터 타입: 텍스트 [cite: 26]
+
+[중간 과정]
+  [중간 노드 1]
+  - [cite_start]들어오는 데이터: API 응답 데이터 (가격 정보) [cite: 26]
+  - [cite_start]사용자에게 보여줄 질문: "언제 메일을 보낼까요?" [cite: 12]
+  - [cite_start]선택지: "가격이 목표가보다 낮을 때만" / "무조건 발송" [cite: 67]
+  - 사용자 선택: "가격이 목표가보다 낮을 때만"
+  - [cite_start]내부 노드 타입: 조건 분기 (If) [cite: 67]
+  - [cite_start]나가는 데이터: 텍스트 (가격 안내) [cite: 26]
+
+[도착 노드 세부 설정]
+- [cite_start]들어오는 데이터: 텍스트 (가격 안내) [cite: 26]
+- 설정 항목:
+  - [cite_start]질문: "받는 사람" [cite: 12]
+  - 사용자 입력: "my-email@gmail.com"
+  - [cite_start]질문: "제목" [cite: 12]
+  - 사용자 입력: "🚨 지금이 기회! 최저가 알림"
+
+---
+
+SC-039: 구글 드라이브 문서 자동 번역 및 보관
+[cite_start]한 줄 요약: 구글 드라이브에 한국어 문서가 들어오면 AI가 영어로 번역하여 새로운 폴더에 저장합니다[cite: 110].
+
+[시작 노드]
+- [cite_start]카테고리: 저장소 [cite: 26]
+- [cite_start]서비스: Google Drive [cite: 26]
+- 실행 조건:
+  - [cite_start]사용자 선택: "새로운 파일이 들어올 때" [cite: 34]
+- [cite_start]데이터 대상: "내 드라이브 > 국문_기획서" 폴더 [cite: 26]
+- [cite_start]출력 데이터 타입: 단일 파일 [cite: 26]
+
+[도착 노드]
+- [cite_start]카테고리: 저장소 [cite: 26]
+- [cite_start]서비스: Google Drive [cite: 26]
+- [cite_start]동작 유형: 파일 저장 [cite: 26]
+- [cite_start]최종 입력 데이터 타입: 단일 파일 [cite: 26]
+
+[중간 과정]
+  [중간 노드 1]
+  - [cite_start]들어오는 데이터: 단일 파일 [cite: 26]
+  - [cite_start]사용자에게 보여줄 질문: "이 파일을 어떻게 할까요?" [cite: 12]
+  - [cite_start]선택지: "영문으로 번역" / "요약하기" [cite: 38]
+  - 사용자 선택: "영문으로 번역"
+  - [cite_start]내부 노드 타입: AI 노드 [cite: 36]
+  - [cite_start]나가는 데이터: 단일 파일 (번역된 문서) [cite: 26]
+
+[도착 노드 세부 설정]
+- [cite_start]들어오는 데이터: 단일 파일 [cite: 26]
+- 설정 항목:
+  - [cite_start]질문: "어느 폴더에 저장할까요?" [cite: 12]
+  - 선택: "내 드라이브 > 영문_번역본" 폴더
+
+---
+
+SC-040: Gmail 뉴스레터 자동 분류 및 노션 보관
+[cite_start]한 줄 요약: Gmail로 오는 여러 통의 뉴스레터를 AI가 카테고리별로 분류하여 노션 데이터베이스에 하나씩 저장합니다[cite: 67, 110].
+
+[시작 노드]
+- [cite_start]카테고리: 커뮤니케이션 [cite: 26]
+- [cite_start]서비스: Gmail [cite: 26]
+- 실행 조건:
+  - 사용자 선택: "직접 실행할 때"
+- [cite_start]데이터 대상: "뉴스레터" 라벨이 붙은 메일들 [cite: 26]
+- [cite_start]출력 데이터 타입: 이메일 목록 [cite: 26]
+
+[도착 노드]
+- [cite_start]카테고리: 저장소 [cite: 26]
+- [cite_start]서비스: Notion [cite: 26]
+- [cite_start]동작 유형: 페이지 생성 [cite: 26]
+- [cite_start]최종 입력 데이터 타입: 텍스트 [cite: 26]
+
+[중간 과정]
+  [중간 노드 1]
+  - [cite_start]들어오는 데이터: 이메일 목록 [cite: 26]
+  - [cite_start]사용자에게 보여줄 질문: "메일들을 어떻게 처리할까요?" [cite: 12]
+  - [cite_start]사용자 선택: "한 건씩 차례대로" [cite: 67]
+  - [cite_start]내부 노드 타입: Loop 노드 [cite: 67]
+  - [cite_start]나가는 데이터: 단일 이메일 [cite: 26]
+
+  [중간 노드 2]
+  - [cite_start]들어오는 데이터: 단일 이메일 [cite: 26]
+  - [cite_start]사용자에게 보여줄 질문: "메일의 종류를 분류할까요?" [cite: 12]
+  - [cite_start]선택지: "AI가 주제 자동 분류" / "그대로 저장" [cite: 38]
+  - 사용자 선택: "AI가 주제 자동 분류"
+  - [cite_start]내부 노드 타입: AI 노드 [cite: 36]
+  - [cite_start]나가는 데이터: 텍스트 (분류 결과) [cite: 26]
+
+[도착 노드 세부 설정]
+- [cite_start]들어오는 데이터: 텍스트 (분류 결과) [cite: 26]
+- 설정 항목:
+  - [cite_start]질문: "저장할 데이터베이스" [cite: 12]
+  - 선택: "뉴스레터 아카이브"
+  - [cite_start]설정: 제목 = 메일 제목, 태그 = [분류 결과], 본문 = 메일 내용 [cite: 44]
+
