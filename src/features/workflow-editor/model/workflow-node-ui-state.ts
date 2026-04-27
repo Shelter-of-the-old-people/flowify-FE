@@ -5,7 +5,8 @@ import { type FlowNodeData } from "@/entities/node";
 type WorkflowNode = Node<FlowNodeData> | null | undefined;
 
 const readServiceKey = (node: WorkflowNode) => {
-  const service = node?.data.config.service;
+  const config = node?.data.config;
+  const service = config && "service" in config ? config.service : null;
   return typeof service === "string" && service.trim().length > 0
     ? service
     : null;
