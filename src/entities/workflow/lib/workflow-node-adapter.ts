@@ -53,6 +53,26 @@ const BACKEND_TYPE_TO_NODE_TYPE = Object.fromEntries(
   ]),
 ) as Record<string, NodeType>;
 
+const SERVICE_KEY_TO_NODE_TYPE = {
+  coupang: "web-scraping",
+  github: "web-scraping",
+  gmail: "communication",
+  google_calendar: "calendar",
+  google_drive: "storage",
+  google_sheets: "spreadsheet",
+  naver_news: "web-scraping",
+  notion: "storage",
+  slack: "communication",
+  youtube: "web-scraping",
+} as const satisfies Record<string, NodeType>;
+
+const NODE_TYPES_WITH_SERVICE_CONFIG = new Set<NodeType>([
+  "calendar",
+  "communication",
+  "spreadsheet",
+  "storage",
+]);
+
 type NodeDraftOptions = {
   authWarning?: boolean;
   config?: Partial<NodeConfig>;
@@ -74,11 +94,60 @@ const getFallbackNodeType = (value: string): NodeType => {
   return "llm";
 };
 
+const getServiceKeyFromConfig = (
+  config: Partial<NodeConfig> | Record<string, unknown> | undefined,
+) => {
+  const service = config && "service" in config ? config.service : null;
+  return typeof service === "string" ? service : null;
+};
+
+const getPersistedBackendType = ({
+  config,
+  role,
+  type,
+}: {
+  config: Partial<NodeConfig> | Record<string, unknown> | undefined;
+  role: NodeDefinitionResponse["role"] | undefined;
+  type: NodeType;
+}) => {
+  const backendType = toBackendNodeType(type);
+
+  if (role === "start" || role === "end") {
+    const serviceKey = getServiceKeyFromConfig(config);
+    if (serviceKey) {
+      return {
+        category: backendType.category,
+        type: serviceKey,
+      };
+    }
+  }
+
+  return backendType;
+};
+
 export const toBackendNodeType = (type: NodeType) => NODE_TYPE_TO_BACKEND[type];
+
+export const getVisualNodeTypeFromServiceKey = (
+  serviceKey: string | null | undefined,
+): NodeType | null => {
+  if (!serviceKey) {
+    return null;
+  }
+
+  return (
+    SERVICE_KEY_TO_NODE_TYPE[
+      serviceKey as keyof typeof SERVICE_KEY_TO_NODE_TYPE
+    ] ?? null
+  );
+};
 
 export const toFrontendNodeType = (type: string | null | undefined): NodeType =>
   getFallbackNodeType(
-    type ? (BACKEND_TYPE_TO_NODE_TYPE[type] ?? type) : "data-process",
+    type
+      ? (BACKEND_TYPE_TO_NODE_TYPE[type] ??
+          getVisualNodeTypeFromServiceKey(type) ??
+          type)
+      : "data-process",
   );
 
 export const toFrontendDataType = (backend: string): DataType =>
@@ -100,7 +169,7 @@ export const toNodeAddRequest = ({
   authWarning = false,
 }: NodeDraftOptions): NodeAddRequest => {
   const meta = NODE_REGISTRY[type];
-  const backendType = toBackendNodeType(type);
+  const backendType = getPersistedBackendType({ config, role, type });
   const mergedInputTypes = inputTypes ?? [...meta.defaultInputTypes];
   const mergedOutputTypes = outputTypes ?? [...meta.defaultOutputTypes];
 
@@ -151,11 +220,16 @@ export const toNodeDefinition = (
       : node.id === endNodeId
         ? "end"
         : "middle";
+  const backendType = getPersistedBackendType({
+    config: node.data.config as Partial<NodeConfig>,
+    role,
+    type: node.data.type,
+  });
 
   return {
     id: node.id,
-    category: NODE_TYPE_TO_BACKEND[node.data.type].category,
-    type: NODE_TYPE_TO_BACKEND[node.data.type].type,
+    category: backendType.category,
+    type: backendType.type,
     role,
     position: {
       x: node.position.x,
@@ -175,10 +249,21 @@ export const toNodeDefinition = (
 export const toFlowNode = (
   node: NodeDefinitionResponse,
 ): Node<FlowNodeData> => {
-  const nodeType = getFallbackNodeType(
-    BACKEND_TYPE_TO_NODE_TYPE[node.type] ?? node.type,
-  );
+  const nodeType = toFrontendNodeType(node.type);
   const meta = NODE_REGISTRY[nodeType];
+  const config = {
+    ...meta.defaultConfig,
+    ...(node.config as Record<string, unknown>),
+  } as NodeConfig;
+
+  if (
+    (node.role === "start" || node.role === "end") &&
+    NODE_TYPES_WITH_SERVICE_CONFIG.has(nodeType) &&
+    getServiceKeyFromConfig(config as unknown as Record<string, unknown>) ===
+      null
+  ) {
+    (config as unknown as Record<string, unknown>).service = node.type;
+  }
 
   return {
     id: node.id,
@@ -187,10 +272,7 @@ export const toFlowNode = (
     data: {
       type: nodeType,
       label: node.label ?? meta.label,
-      config: {
-        ...meta.defaultConfig,
-        ...(node.config as Record<string, unknown>),
-      } as NodeConfig,
+      config,
       inputTypes: node.dataType
         ? [toFrontendDataType(node.dataType)]
         : [...meta.defaultInputTypes],

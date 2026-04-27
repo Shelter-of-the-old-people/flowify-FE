@@ -26,12 +26,9 @@ import {
 import { Box, Button, Grid, Icon, Input, Text, VStack } from "@chakra-ui/react";
 import { useReactFlow, useViewport } from "@xyflow/react";
 
+import { type DataType, type FlowNodeData } from "@/entities/node";
 import {
-  type DataType,
-  type FlowNodeData,
-  type NodeType,
-} from "@/entities/node";
-import {
+  getOAuthConnectionUiState,
   useConnectOAuthTokenMutation,
   useOAuthTokensQuery,
 } from "@/entities/oauth-token";
@@ -40,6 +37,7 @@ import {
   type SourceModeResponse,
   type SourceServiceResponse,
   findAddedNodeId,
+  getVisualNodeTypeFromServiceKey,
   toBackendDataType,
   toFrontendDataType,
   toNodeAddRequest,
@@ -70,22 +68,6 @@ const CATALOG_SERVICE_ICON_MAP: Record<string, IconType> = {
   google_sheets: SiGooglesheets,
   notion: MdArticle,
   slack: SiSlack,
-};
-
-const SOURCE_SERVICE_NODE_TYPE_MAP: Record<string, NodeType> = {
-  gmail: "communication",
-  google_drive: "storage",
-  google_sheets: "spreadsheet",
-  slack: "communication",
-};
-
-const SINK_SERVICE_NODE_TYPE_MAP: Record<string, NodeType> = {
-  gmail: "communication",
-  google_calendar: "calendar",
-  google_drive: "storage",
-  google_sheets: "spreadsheet",
-  notion: "storage",
-  slack: "communication",
 };
 
 const CANONICAL_INPUT_TYPE_LABELS: Record<string, string> = {
@@ -237,29 +219,27 @@ const CatalogServiceGrid = ({
       <Grid gap={8} p={6} templateColumns="repeat(5, 1fr)">
         {services.map((service) => {
           const connected = connectedServiceKeys.has(service.key);
-          const isAuthSelectionDisabled =
-            service.auth_required && isAuthStatusLoading;
-          const authLabel = service.auth_required
-            ? isAuthStatusLoading
-              ? "인증 확인 중"
-              : isAuthStatusError
-                ? "인증 상태 확인 필요"
-                : connected
-                  ? "인증 완료"
-                  : "인증 필요"
-            : "바로 사용";
+          const authState = getOAuthConnectionUiState({
+            authRequired: service.auth_required,
+            connected,
+            isAuthStatusError,
+            isAuthStatusLoading,
+            serviceKey: service.key,
+          });
 
           return (
             <VStack
               key={service.key}
-              cursor={isAuthSelectionDisabled ? "not-allowed" : "pointer"}
+              cursor={authState.selectionDisabled ? "not-allowed" : "pointer"}
               gap={2}
               minH="96px"
-              opacity={isAuthSelectionDisabled ? 0.5 : 1}
+              opacity={authState.selectionDisabled ? 0.5 : 1}
               transition="opacity 150ms ease"
-              _hover={isAuthSelectionDisabled ? undefined : { opacity: 0.7 }}
+              _hover={
+                authState.selectionDisabled ? undefined : { opacity: 0.7 }
+              }
               onClick={() => {
-                if (isAuthSelectionDisabled) {
+                if (authState.selectionDisabled) {
                   return;
                 }
 
@@ -278,7 +258,7 @@ const CatalogServiceGrid = ({
                 {service.label}
               </Text>
               <Text color="text.secondary" fontSize="10px">
-                {authLabel}
+                {authState.label}
               </Text>
             </VStack>
           );
@@ -869,7 +849,7 @@ export const ServiceSelectionPanel = () => {
       return;
     }
 
-    const nodeType = SOURCE_SERVICE_NODE_TYPE_MAP[selectedSourceService.key];
+    const nodeType = getVisualNodeTypeFromServiceKey(selectedSourceService.key);
     if (!nodeType) {
       return;
     }
@@ -946,7 +926,7 @@ export const ServiceSelectionPanel = () => {
       return;
     }
 
-    const nodeType = SINK_SERVICE_NODE_TYPE_MAP[selectedSinkService.key];
+    const nodeType = getVisualNodeTypeFromServiceKey(selectedSinkService.key);
     if (!nodeType) {
       return;
     }

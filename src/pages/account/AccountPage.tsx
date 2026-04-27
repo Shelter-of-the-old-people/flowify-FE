@@ -13,6 +13,9 @@ import {
 } from "@chakra-ui/react";
 
 import {
+  type OAuthConnectionTone,
+  getOAuthConnectionUiState,
+  isOAuthConnectSupported,
   useConnectOAuthTokenMutation,
   useDisconnectOAuthTokenMutation,
   useOAuthTokensQuery,
@@ -24,6 +27,32 @@ import { ROUTE_PATHS, getAuthUser } from "@/shared";
 type OAuthServiceItem = {
   key: string;
   label: string;
+};
+
+const CONNECTION_TONE_STYLES: Record<
+  OAuthConnectionTone,
+  { badgeColor: string; bg: string; borderColor: string }
+> = {
+  error: {
+    badgeColor: "red.600",
+    bg: "red.50",
+    borderColor: "red.100",
+  },
+  neutral: {
+    badgeColor: "gray.500",
+    bg: "gray.50",
+    borderColor: "gray.200",
+  },
+  success: {
+    badgeColor: "green.600",
+    bg: "green.50",
+    borderColor: "green.100",
+  },
+  warning: {
+    badgeColor: "orange.600",
+    bg: "orange.50",
+    borderColor: "orange.100",
+  },
 };
 
 export default function AccountPage() {
@@ -87,6 +116,10 @@ export default function AccountPage() {
     isOAuthTokensError || isSourceCatalogError || isSinkCatalogError;
 
   const handleConnect = async (service: string) => {
+    if (!isOAuthConnectSupported(service)) {
+      return;
+    }
+
     try {
       const result = await connectToken(service);
       window.location.assign(result.authUrl);
@@ -247,15 +280,21 @@ export default function AccountPage() {
             {oauthServices.map((service) => {
               const token = tokenMap.get(service.key);
               const connected = token?.connected ?? false;
+              const authState = getOAuthConnectionUiState({
+                authRequired: true,
+                connected,
+                serviceKey: service.key,
+              });
+              const toneStyle = CONNECTION_TONE_STYLES[authState.tone];
 
               return (
                 <Box
                   key={service.key}
                   p={5}
                   border="1px solid"
-                  borderColor="gray.200"
+                  borderColor={toneStyle.borderColor}
                   borderRadius="20px"
-                  bg={connected ? "green.50" : "gray.50"}
+                  bg={toneStyle.bg}
                 >
                   <HStack justify="space-between" align="flex-start" mb={3}>
                     <Box>
@@ -263,15 +302,18 @@ export default function AccountPage() {
                         {service.label}
                       </Heading>
                       <Text fontSize="sm" color="gray.600">
-                        {connected ? "연결 완료" : "연결 필요"}
+                        {authState.label}
+                      </Text>
+                      <Text fontSize="xs" color="gray.500" mt={1}>
+                        {authState.description}
                       </Text>
                     </Box>
                     <Text
                       fontSize="xs"
                       fontWeight="semibold"
-                      color={connected ? "green.600" : "gray.500"}
+                      color={toneStyle.badgeColor}
                     >
-                      {connected ? "CONNECTED" : "DISCONNECTED"}
+                      {authState.badgeLabel}
                     </Text>
                   </HStack>
 
@@ -300,9 +342,9 @@ export default function AccountPage() {
                     <Button
                       size="sm"
                       onClick={() => void handleConnect(service.key)}
-                      disabled={isConnectPending}
+                      disabled={isConnectPending || !authState.canStartConnect}
                     >
-                      연결 시작
+                      {authState.actionLabel}
                     </Button>
                   )}
                 </Box>
