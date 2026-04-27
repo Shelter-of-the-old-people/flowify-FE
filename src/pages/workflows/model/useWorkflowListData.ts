@@ -6,6 +6,7 @@ import { WORKFLOW_LIST_PAGE_SIZE } from "./constants";
 import { type WorkflowFilterKey } from "./types";
 import {
   filterWorkflowsByStatus,
+  getWorkflowListPageContent,
   sortWorkflowsByUpdatedAtDesc,
 } from "./workflow-list";
 
@@ -24,7 +25,7 @@ export const useWorkflowListData = () => {
   const workflows = useMemo(
     () =>
       sortWorkflowsByUpdatedAtDesc(
-        data?.pages.flatMap((page) => page.content) ?? [],
+        data?.pages.flatMap(getWorkflowListPageContent) ?? [],
       ),
     [data],
   );

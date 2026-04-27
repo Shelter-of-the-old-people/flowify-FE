@@ -1,14 +1,30 @@
 import {
+  type NodeDefinitionResponse,
+  type WorkflowResponse,
+} from "@/entities/workflow";
+import {
   getDateTimestamp,
   getRelativeTimeLabel,
   getServiceBadgeKeyFromService,
 } from "@/shared";
-import {
-  type NodeDefinitionResponse,
-  type WorkflowResponse,
-} from "@/entities/workflow";
 
 import { type ServiceBadgeKey, type WorkflowFilterKey } from "./types";
+
+const isWorkflowRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null;
+
+export const isWorkflowListItem = (value: unknown): value is WorkflowResponse =>
+  isWorkflowRecord(value) && typeof value.id === "string";
+
+export const getWorkflowListPageContent = (page: {
+  content?: unknown;
+}): WorkflowResponse[] => {
+  if (!Array.isArray(page.content)) {
+    return [];
+  }
+
+  return page.content.filter(isWorkflowListItem);
+};
 
 export const sortWorkflowsByUpdatedAtDesc = (workflows: WorkflowResponse[]) =>
   [...workflows].sort(
@@ -38,8 +54,9 @@ export const getRelativeUpdateLabel = (updatedAt: string) =>
   });
 
 export const getBuildProgressLabel = (workflow: WorkflowResponse) => {
-  const totalNodes = workflow.nodes.length;
-  const configuredNodes = workflow.nodes.filter((node) => {
+  const nodes = Array.isArray(workflow.nodes) ? workflow.nodes : [];
+  const totalNodes = nodes.length;
+  const configuredNodes = nodes.filter((node) => {
     const isConfigured = node.config?.["isConfigured"];
     return isConfigured === true;
   }).length;
@@ -51,14 +68,11 @@ export const getWorkflowWarningMessages = (workflow: WorkflowResponse) =>
   workflow.warnings?.map((warning) => warning.message).filter(Boolean) ?? [];
 
 export const getEndpointNodes = (workflow: WorkflowResponse) => {
+  const nodes = Array.isArray(workflow.nodes) ? workflow.nodes : [];
   const startNode =
-    workflow.nodes.find((node) => node.role === "start") ??
-    workflow.nodes[0] ??
-    null;
+    nodes.find((node) => node.role === "start") ?? nodes[0] ?? null;
   const endNode =
-    workflow.nodes.find((node) => node.role === "end") ??
-    workflow.nodes.at(-1) ??
-    startNode;
+    nodes.find((node) => node.role === "end") ?? nodes.at(-1) ?? startNode;
 
   return { startNode, endNode };
 };
