@@ -42,13 +42,16 @@ import {
 import { type NodeType } from "@/entities/node";
 import { isDataTypeCompatible } from "@/entities/node";
 import {
-  type WorkflowNodeStatusResponse,
   findAddedNodeId,
   toNodeAddRequest,
   useAddWorkflowNodeMutation,
   useDeleteWorkflowNodeMutation,
 } from "@/entities/workflow";
-import { hydrateStore, useWorkflowStore } from "@/features/workflow-editor";
+import {
+  canStartProcessingAfterSinkSelection,
+  hydrateStore,
+  useWorkflowStore,
+} from "@/features/workflow-editor";
 import { getLeafNodeIds } from "@/shared";
 import { toaster } from "@/shared/utils/toaster/toaster";
 
@@ -245,8 +248,7 @@ export const Canvas = () => {
       canEditNodes,
       startNodeId,
       endNodeId,
-      getNodeStatus: (nodeId: string): WorkflowNodeStatusResponse | null =>
-        nodeStatuses[nodeId] ?? null,
+      getNodeStatus: (nodeId: string) => nodeStatuses[nodeId] ?? null,
       onOpenPanel: openPanel,
       onRemoveNode: handleRemoveNode,
     }),
@@ -471,13 +473,11 @@ export const Canvas = () => {
     const endNode = endNodeId
       ? (nodes.find((node) => node.id === endNodeId) ?? null)
       : null;
-    const endNodeStatus = endNodeId ? (nodeStatuses[endNodeId] ?? null) : null;
-    const showCreationMethod =
-      startNodeId !== null &&
-      endNodeId !== null &&
-      (endNodeStatus?.configured ?? endNode?.data.config.isConfigured) ===
-        true &&
-      !creationMethod;
+    const showCreationMethod = canStartProcessingAfterSinkSelection({
+      creationMethod,
+      endNode,
+      startNodeId,
+    });
 
     // 분기 1: 시작/도착 미설정 → placeholder 표시
     if (!startNodeId) {
@@ -647,7 +647,6 @@ export const Canvas = () => {
     edges,
     startNodeId,
     endNodeId,
-    nodeStatuses,
     creationMethod,
     handleSelectManual,
   ]);
