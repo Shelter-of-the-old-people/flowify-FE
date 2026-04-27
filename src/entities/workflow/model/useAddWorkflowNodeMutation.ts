@@ -4,7 +4,10 @@ import { type MutationPolicyOptions, toMutationMeta } from "@/shared/api";
 
 import { type NodeAddRequest, workflowApi } from "../api";
 
-import { syncWorkflowCache } from "./workflow-cache-utils";
+import {
+  getWorkflowDetailOrFallback,
+  syncWorkflowCache,
+} from "./workflow-cache-utils";
 
 type AddWorkflowNodeVariables = {
   workflowId: string;
@@ -18,8 +21,10 @@ export const useAddWorkflowNodeMutation = (
   >,
 ) =>
   useMutation({
-    mutationFn: ({ workflowId, body }: AddWorkflowNodeVariables) =>
-      workflowApi.addNode(workflowId, body),
+    mutationFn: async ({ workflowId, body }: AddWorkflowNodeVariables) => {
+      const workflow = await workflowApi.addNode(workflowId, body);
+      return getWorkflowDetailOrFallback(workflowId, workflow);
+    },
     retry: options?.retry,
     meta: toMutationMeta(options),
     onSuccess: async (workflow, variables, onMutateResult, context) => {
@@ -30,4 +35,3 @@ export const useAddWorkflowNodeMutation = (
       await options?.onError?.(error, variables, onMutateResult, context);
     },
   });
-

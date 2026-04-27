@@ -3,6 +3,7 @@ import { type Edge, type Node } from "@xyflow/react";
 import { type FlowNodeData } from "@/entities/node";
 import {
   type UpdateWorkflowRequest,
+  type WorkflowNodeStatusResponse,
   type WorkflowResponse,
   toEdgeDefinition,
   toFlowEdge,
@@ -18,15 +19,38 @@ export interface WorkflowEditorSaveState {
   endNodeId: string | null;
 }
 
+export type WorkflowNodeStatus = Omit<
+  WorkflowNodeStatusResponse,
+  "missingFields"
+> & {
+  missingFields: string[];
+};
+
+export type WorkflowNodeStatusMap = Record<string, WorkflowNodeStatus>;
+
 export interface WorkflowHydratedState {
   workflowId: string;
   workflowName: string;
   nodes: Node<FlowNodeData>[];
   edges: Edge[];
+  nodeStatuses: WorkflowNodeStatusMap;
   startNodeId: string | null;
   endNodeId: string | null;
   creationMethod: "manual" | null;
 }
+
+const toNodeStatusMap = (
+  nodeStatuses: WorkflowNodeStatusResponse[] | undefined,
+): WorkflowNodeStatusMap =>
+  Object.fromEntries(
+    (nodeStatuses ?? []).map((nodeStatus) => [
+      nodeStatus.nodeId,
+      {
+        ...nodeStatus,
+        missingFields: nodeStatus.missingFields ?? [],
+      },
+    ]),
+  );
 
 export const toWorkflowUpdateRequest = (
   store: WorkflowEditorSaveState,
@@ -49,6 +73,7 @@ export const hydrateStore = (
     workflowName: workflow.name,
     nodes: workflow.nodes.map(toFlowNode),
     edges: workflow.edges.map(toFlowEdge),
+    nodeStatuses: toNodeStatusMap(workflow.nodeStatuses),
     startNodeId: startNode?.id ?? null,
     endNodeId: endNode?.id ?? null,
     creationMethod: startNode ? "manual" : null,

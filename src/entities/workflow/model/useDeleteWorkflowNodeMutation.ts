@@ -4,7 +4,10 @@ import { type MutationPolicyOptions, toMutationMeta } from "@/shared/api";
 
 import { workflowApi } from "../api";
 
-import { syncWorkflowCache } from "./workflow-cache-utils";
+import {
+  getWorkflowDetailOrFallback,
+  syncWorkflowCache,
+} from "./workflow-cache-utils";
 
 type DeleteWorkflowNodeVariables = {
   workflowId: string;
@@ -18,8 +21,10 @@ export const useDeleteWorkflowNodeMutation = (
   >,
 ) =>
   useMutation({
-    mutationFn: ({ workflowId, nodeId }: DeleteWorkflowNodeVariables) =>
-      workflowApi.deleteNode(workflowId, nodeId),
+    mutationFn: async ({ workflowId, nodeId }: DeleteWorkflowNodeVariables) => {
+      const workflow = await workflowApi.deleteNode(workflowId, nodeId);
+      return getWorkflowDetailOrFallback(workflowId, workflow);
+    },
     retry: options?.retry,
     meta: toMutationMeta(options),
     onSuccess: async (workflow, variables, onMutateResult, context) => {
@@ -30,4 +35,3 @@ export const useDeleteWorkflowNodeMutation = (
       await options?.onError?.(error, variables, onMutateResult, context);
     },
   });
-

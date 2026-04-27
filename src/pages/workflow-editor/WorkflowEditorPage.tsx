@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { MdErrorOutline } from "react-icons/md";
 import { useNavigate, useParams } from "react-router";
 
@@ -56,6 +56,9 @@ const WorkflowEditorInner = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const hydrateWorkflow = useWorkflowStore((state) => state.hydrateWorkflow);
+  const syncWorkflowGraph = useWorkflowStore(
+    (state) => state.syncWorkflowGraph,
+  );
   const setEditorCapabilities = useWorkflowStore(
     (state) => state.setEditorCapabilities,
   );
@@ -64,6 +67,7 @@ const WorkflowEditorInner = () => {
   );
   const resetEditor = useWorkflowStore((state) => state.resetEditor);
   const { data: workflow, isLoading, isError } = useWorkflowQuery(id);
+  const hydratedWorkflowIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!id) {
@@ -76,8 +80,20 @@ const WorkflowEditorInner = () => {
       return;
     }
 
-    hydrateWorkflow(hydrateStore(workflow));
-  }, [hydrateWorkflow, workflow]);
+    const nextState = hydrateStore(workflow);
+
+    if (hydratedWorkflowIdRef.current !== workflow.id) {
+      hydrateWorkflow(nextState);
+      hydratedWorkflowIdRef.current = workflow.id;
+      return;
+    }
+
+    syncWorkflowGraph(nextState, {
+      preserveActivePanelNodeId: true,
+      preserveActivePlaceholder: true,
+      preserveDirty: true,
+    });
+  }, [hydrateWorkflow, syncWorkflowGraph, workflow]);
 
   useEffect(() => {
     if (!workflow) {

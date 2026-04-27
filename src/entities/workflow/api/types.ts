@@ -181,7 +181,7 @@ export interface WorkflowNodeStatusResponse {
   saveable: boolean;
   choiceable: boolean;
   executable: boolean;
-  missingFields: string[];
+  missingFields: string[] | null;
 }
 
 export interface NodeAddRequest {
