@@ -28,7 +28,6 @@ import {
 } from "@/entities/workflow";
 import {
   MAPPING_NODE_TYPE_MAP,
-  MAPPING_RULES,
   OUTPUT_DATA_LABELS,
   toChoiceMappingRules,
   toDataType,
@@ -42,7 +41,12 @@ import {
   type MappingRules,
 } from "@/features/choice-panel";
 import { PanelRenderer } from "@/features/configure-node";
-import { hydrateStore, useWorkflowStore } from "@/features/workflow-editor";
+import {
+  hydrateStore,
+  isMiddleWizardCompleted,
+  isMiddleWizardPending,
+  useWorkflowStore,
+} from "@/features/workflow-editor";
 import { useDualPanelLayout } from "@/shared";
 
 import {
@@ -252,10 +256,7 @@ export const OutputPanel = () => {
   const layout = useDualPanelLayout();
   const isOpen = Boolean(activePanelNodeId) && activePlaceholder === null;
   const mappingRules = useMemo(
-    () =>
-      mappingRulesResponse
-        ? toChoiceMappingRules(mappingRulesResponse)
-        : MAPPING_RULES,
+    () => toChoiceMappingRules(mappingRulesResponse),
     [mappingRulesResponse],
   );
 
@@ -353,12 +354,12 @@ export const OutputPanel = () => {
     [resolveNodeRole],
   );
 
-  const isStartNode = activeNode?.id === startNodeId;
-  const isEndNode = activeNode?.id === endNodeId;
-  const isMiddleNode = Boolean(activeNode) && !isStartNode && !isEndNode;
-  const isWizardMode =
-    isMiddleNode && activeNode?.data.config.isConfigured === false;
-  const isDetailMode = activeNode?.data.config.isConfigured === true;
+  const isWizardMode = isMiddleWizardPending(
+    activeNode,
+    startNodeId,
+    endNodeId,
+  );
+  const isDetailMode = isMiddleWizardCompleted(activeNode);
 
   const {
     data: serverChoiceResponse,

@@ -10,14 +10,16 @@ import {
   useMappingRulesQuery,
 } from "@/entities/workflow";
 import {
-  MAPPING_RULES,
   OUTPUT_DATA_LABELS,
   findActionById,
   readCustomInputs,
   readSelectionSummary,
   toChoiceMappingRules,
 } from "@/features/choice-panel";
-import { useWorkflowStore } from "@/features/workflow-editor";
+import {
+  isMiddleWizardCompleted,
+  useWorkflowStore,
+} from "@/features/workflow-editor";
 import { useDualPanelLayout } from "@/shared";
 
 const PANEL_TRANSITION_MS = 240;
@@ -39,10 +41,7 @@ export const InputPanel = () => {
   const isOpen = Boolean(activePanelNodeId) && activePlaceholder === null;
   const { data: mappingRulesResponse } = useMappingRulesQuery();
   const mappingRules = useMemo(
-    () =>
-      mappingRulesResponse
-        ? toChoiceMappingRules(mappingRulesResponse)
-        : MAPPING_RULES,
+    () => toChoiceMappingRules(mappingRulesResponse),
     [mappingRulesResponse],
   );
   const activeNode = activePanelNodeId
@@ -66,7 +65,7 @@ export const InputPanel = () => {
     ? (nodeStatuses[activePanelNodeId] ?? null)
     : null;
   const isConfiguredMiddleNode =
-    Boolean(activeNode?.data.config.isConfigured) && isMiddleNode;
+    isMiddleNode && isMiddleWizardCompleted(activeNode);
   const activeNodeMissingFields =
     activeNodeStatus?.missingFields.map(getNodeStatusMissingFieldLabel) ?? [];
   const selectedAction = findActionById(
