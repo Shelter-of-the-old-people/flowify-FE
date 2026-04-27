@@ -48,7 +48,7 @@ import {
   useSourceCatalogQuery,
 } from "@/entities/workflow";
 import { hydrateStore, useWorkflowStore } from "@/features/workflow-editor";
-import { getLeafNodeIds } from "@/shared";
+import { getApiErrorMessage, getLeafNodeIds } from "@/shared";
 
 import { isSinkServiceInRollout } from "../model/sink-rollout";
 import { isSourceModeInRollout } from "../model/source-rollout";
@@ -180,6 +180,8 @@ const toCanonicalInputType = (canonicalInputType: string): DataType =>
 const CatalogServiceGrid = ({
   emptyMessage,
   connectedServiceKeys,
+  isAuthStatusError,
+  isAuthStatusLoading,
   isLoading,
   onSelect,
   searchQuery,
@@ -188,6 +190,8 @@ const CatalogServiceGrid = ({
 }: {
   connectedServiceKeys: Set<string>;
   emptyMessage: string;
+  isAuthStatusError: boolean;
+  isAuthStatusLoading: boolean;
   isLoading: boolean;
   onSelect: (service: CatalogService) => void;
   searchQuery: string;
@@ -233,21 +237,34 @@ const CatalogServiceGrid = ({
       <Grid gap={8} p={6} templateColumns="repeat(5, 1fr)">
         {services.map((service) => {
           const connected = connectedServiceKeys.has(service.key);
+          const isAuthSelectionDisabled =
+            service.auth_required && isAuthStatusLoading;
           const authLabel = service.auth_required
-            ? connected
-              ? "인증 완료"
-              : "인증 필요"
+            ? isAuthStatusLoading
+              ? "인증 확인 중"
+              : isAuthStatusError
+                ? "인증 상태 확인 필요"
+                : connected
+                  ? "인증 완료"
+                  : "인증 필요"
             : "바로 사용";
 
           return (
             <VStack
               key={service.key}
-              cursor="pointer"
+              cursor={isAuthSelectionDisabled ? "not-allowed" : "pointer"}
               gap={2}
               minH="96px"
+              opacity={isAuthSelectionDisabled ? 0.5 : 1}
               transition="opacity 150ms ease"
-              _hover={{ opacity: 0.7 }}
-              onClick={() => onSelect(service)}
+              _hover={isAuthSelectionDisabled ? undefined : { opacity: 0.7 }}
+              onClick={() => {
+                if (isAuthSelectionDisabled) {
+                  return;
+                }
+
+                onSelect(service);
+              }}
             >
               <Box
                 alignItems="center"
@@ -272,11 +289,13 @@ const CatalogServiceGrid = ({
 );
 
 const AuthPrompt = ({
+  errorMessage,
   isPending,
   onAuth,
   onBack,
   serviceLabel,
 }: {
+  errorMessage: string | null;
   isPending: boolean;
   onAuth: () => void;
   onBack: () => void;
@@ -314,6 +333,11 @@ const AuthPrompt = ({
     >
       계정 인증하기
     </Button>
+    {errorMessage ? (
+      <Text color="status.error" fontSize="sm" mt={4}>
+        {errorMessage}
+      </Text>
+    ) : null}
   </WizardCard>
 );
 
@@ -607,7 +631,11 @@ export const ServiceSelectionPanel = () => {
     useAddWorkflowNodeMutation();
   const { mutateAsync: connectOAuthToken, isPending: isConnectOAuthPending } =
     useConnectOAuthTokenMutation();
-  const { data: oauthTokens } = useOAuthTokensQuery({
+  const {
+    data: oauthTokens,
+    isError: isOAuthTokensError,
+    isLoading: isOAuthTokensLoading,
+  } = useOAuthTokensQuery({
     enabled: Boolean(activePlaceholder),
   });
   const { data: sinkCatalog, isLoading: isSinkCatalogLoading } =
@@ -627,6 +655,7 @@ export const ServiceSelectionPanel = () => {
     useState<SourceServiceResponse | null>(null);
   const [selectedTargetValue, setSelectedTargetValue] = useState("");
   const [startStep, setStartStep] = useState<StartWizardStep>("service");
+  const [authErrorMessage, setAuthErrorMessage] = useState<string | null>(null);
   const syncWorkflowFromResponse = useCallback(
     (workflow: Parameters<typeof hydrateStore>[0]) => {
       syncWorkflowGraph(hydrateStore(workflow), {
@@ -731,6 +760,7 @@ export const ServiceSelectionPanel = () => {
     setSelectedSourceService(null);
     setSelectedTargetValue("");
     setStartStep("service");
+    setAuthErrorMessage(null);
     setActivePlaceholder(null);
   }, [setActivePlaceholder]);
 
@@ -812,6 +842,7 @@ export const ServiceSelectionPanel = () => {
     setSelectedSourceService(service);
     setSelectedSourceMode(null);
     setSelectedTargetValue("");
+    setAuthErrorMessage(null);
 
     if (shouldRequestAuth(service)) {
       setStartStep("auth");
@@ -883,6 +914,7 @@ export const ServiceSelectionPanel = () => {
 
   const handleSinkServiceSelect = (service: SinkServiceResponse) => {
     setSelectedSinkService(service);
+    setAuthErrorMessage(null);
 
     if (shouldRequestAuth(service)) {
       setEndStep("auth");
@@ -894,8 +926,13 @@ export const ServiceSelectionPanel = () => {
 
   const handleConnectService = (serviceKey: string) => {
     void (async () => {
-      const result = await connectOAuthToken(serviceKey);
-      window.location.assign(result.authUrl);
+      try {
+        setAuthErrorMessage(null);
+        const result = await connectOAuthToken(serviceKey);
+        window.location.assign(result.authUrl);
+      } catch (error) {
+        setAuthErrorMessage(getApiErrorMessage(error));
+      }
     })();
   };
 
@@ -1058,6 +1095,8 @@ export const ServiceSelectionPanel = () => {
                 <CatalogServiceGrid
                   connectedServiceKeys={connectedServiceKeys}
                   emptyMessage="표시할 source 서비스가 없습니다."
+                  isAuthStatusError={isOAuthTokensError}
+                  isAuthStatusLoading={isOAuthTokensLoading}
                   isLoading={isSourceCatalogLoading}
                   searchQuery={searchQuery}
                   services={filteredCatalogServices}
@@ -1070,6 +1109,7 @@ export const ServiceSelectionPanel = () => {
 
               {startStep === "auth" && selectedSourceService ? (
                 <AuthPrompt
+                  errorMessage={authErrorMessage}
                   isPending={isConnectOAuthPending}
                   serviceLabel={selectedSourceService.label}
                   onAuth={() => handleConnectService(selectedSourceService.key)}
@@ -1117,6 +1157,8 @@ export const ServiceSelectionPanel = () => {
                       ? "현재 결과 타입과 연결할 수 있는 sink 서비스가 없습니다."
                       : "먼저 결과를 만들 노드가 필요합니다."
                   }
+                  isAuthStatusError={isOAuthTokensError}
+                  isAuthStatusLoading={isOAuthTokensLoading}
                   isLoading={isSinkCatalogLoading}
                   searchQuery={searchQuery}
                   services={filteredCatalogServices}
@@ -1129,6 +1171,7 @@ export const ServiceSelectionPanel = () => {
 
               {endStep === "auth" && selectedSinkService ? (
                 <AuthPrompt
+                  errorMessage={authErrorMessage}
                   isPending={isConnectOAuthPending}
                   serviceLabel={selectedSinkService.label}
                   onAuth={() => handleConnectService(selectedSinkService.key)}
