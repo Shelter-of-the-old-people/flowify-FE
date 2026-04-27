@@ -15,6 +15,12 @@ import {
   type ProcessingMethodOption,
 } from "./types";
 
+type MappingRuleProcessingMethodResponse = NonNullable<
+  MappingRulesResponse["data_types"][string]["processing_method"]
+>;
+type MappingRuleProcessingMethodOptionResponse =
+  MappingRuleProcessingMethodResponse["options"][number];
+
 const isMappingNodeType = (value: string): value is MappingNodeType =>
   value in MAPPING_RULES.node_types;
 
@@ -70,21 +76,22 @@ const toApplicableWhen = (
 };
 
 const toProcessingMethodOption = (
-  option: MappingRulesResponse["data_types"][string]["processing_method"]["options"][number],
-  fallback: ProcessingMethodOption,
+  option: MappingRuleProcessingMethodOptionResponse,
+  fallback: ProcessingMethodOption | undefined,
+  defaultOutputDataType: MappingDataTypeKey,
 ): ProcessingMethodOption => ({
   id: option.id,
   label: option.label,
   node_type:
     option.node_type && isMappingNodeType(option.node_type)
       ? option.node_type
-      : fallback.node_type,
+      : (fallback?.node_type ?? null),
   output_data_type:
     option.output_data_type &&
     option.output_data_type in MAPPING_RULES.data_types
       ? (option.output_data_type as MappingDataTypeKey)
-      : fallback.output_data_type,
-  priority: option.priority ?? fallback.priority,
+      : (fallback?.output_data_type ?? defaultOutputDataType),
+  priority: option.priority ?? fallback?.priority ?? 99,
 });
 
 const toProcessingMethod = (
@@ -106,6 +113,7 @@ const toProcessingMethod = (
       toProcessingMethodOption(
         option,
         fallbackOptions[index] ?? fallbackOptions[0],
+        dataTypeKey,
       ),
     ),
   };

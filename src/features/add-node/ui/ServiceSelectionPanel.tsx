@@ -425,7 +425,7 @@ const SourceTargetForm = ({
       )}
 
       <Box display="flex" justifyContent="flex-end" mt={6}>
-        <Button isDisabled={!value.trim()} onClick={onSubmit}>
+        <Button disabled={!value.trim()} onClick={onSubmit}>
           다음
         </Button>
       </Box>
@@ -565,7 +565,7 @@ const SinkNodeConfirm = ({
     </VStack>
 
     <Box display="flex" justifyContent="flex-end" mt={6}>
-      <Button isDisabled={!inputType} onClick={onConfirm}>
+      <Button disabled={!inputType} onClick={onConfirm}>
         도착 노드 만들기
       </Button>
     </Box>

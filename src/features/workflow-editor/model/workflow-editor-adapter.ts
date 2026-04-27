@@ -10,7 +10,7 @@ import {
   toNodeDefinition,
 } from "@/entities/workflow";
 
-export interface WorkflowEditorStoreState {
+export interface WorkflowEditorSaveState {
   workflowName: string;
   nodes: Node<FlowNodeData>[];
   edges: Edge[];
@@ -29,7 +29,7 @@ export interface WorkflowHydratedState {
 }
 
 export const toWorkflowUpdateRequest = (
-  store: WorkflowEditorStoreState,
+  store: WorkflowEditorSaveState,
 ): UpdateWorkflowRequest => ({
   name: store.workflowName,
   nodes: store.nodes.map((node) =>

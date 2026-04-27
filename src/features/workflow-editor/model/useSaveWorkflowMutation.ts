@@ -3,13 +3,13 @@ import { useMutation } from "@tanstack/react-query";
 import { syncWorkflowCache, workflowApi } from "@/entities/workflow";
 import { type MutationPolicyOptions, toMutationMeta } from "@/shared/api";
 
-import { type WorkflowEditorStoreState } from "./workflow-editor-adapter";
+import { type WorkflowEditorSaveState } from "./workflow-editor-adapter";
 import { toWorkflowUpdateRequest } from "./workflow-editor-adapter";
 import { useWorkflowStore } from "./workflowStore";
 
 type SaveWorkflowVariables = {
   workflowId: string;
-  store: WorkflowEditorStoreState;
+  store: WorkflowEditorSaveState;
 };
 
 export const useSaveWorkflowMutation = (

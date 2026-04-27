@@ -60,8 +60,9 @@ export const SinkNodePanel = ({
     isPending: isSchemaPreviewPending,
     mutate: previewSchema,
   } = useWorkflowSchemaPreviewMutation();
+  const sinkConfig = data.config as unknown as Record<string, unknown>;
   const serviceKey =
-    typeof data.config.service === "string" ? data.config.service : null;
+    typeof sinkConfig.service === "string" ? sinkConfig.service : null;
   const inputType = data.inputTypes[0] ?? null;
   const sinkInputType = inputType ? toBackendDataType(inputType) : null;
   const selectedSinkService =
@@ -187,7 +188,7 @@ export const SinkNodePanel = ({
           {selectedSinkService && sinkSchema ? (
             <Box display="flex" flexDirection="column" gap={4}>
               {sinkSchema.fields.map((field) => {
-                const rawValue = data.config[field.key];
+                const rawValue = sinkConfig[field.key];
                 const stringValue =
                   typeof rawValue === "string" || typeof rawValue === "number"
                     ? String(rawValue)

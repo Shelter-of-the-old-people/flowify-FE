@@ -18,7 +18,21 @@ export const SOURCE_SERVICE_ROLLOUT_ALLOWLIST = {
   slack: ["channel_messages"],
 } as const satisfies Record<string, readonly string[]>;
 
+type SourceServiceRolloutKey = keyof typeof SOURCE_SERVICE_ROLLOUT_ALLOWLIST;
+
+const isSourceServiceRolloutKey = (
+  serviceKey: string,
+): serviceKey is SourceServiceRolloutKey =>
+  Object.prototype.hasOwnProperty.call(
+    SOURCE_SERVICE_ROLLOUT_ALLOWLIST,
+    serviceKey,
+  );
+
 export const isSourceModeInRollout = (serviceKey: string, modeKey: string) => {
+  if (!isSourceServiceRolloutKey(serviceKey)) {
+    return false;
+  }
+
   const allowedModes = SOURCE_SERVICE_ROLLOUT_ALLOWLIST[serviceKey];
-  return allowedModes ? allowedModes.includes(modeKey) : false;
+  return (allowedModes as readonly string[]).includes(modeKey);
 };
