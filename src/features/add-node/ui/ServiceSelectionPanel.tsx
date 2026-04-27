@@ -32,6 +32,10 @@ import {
   type NodeType,
 } from "@/entities/node";
 import {
+  useConnectOAuthTokenMutation,
+  useOAuthTokensQuery,
+} from "@/entities/oauth-token";
+import {
   type SinkServiceResponse,
   type SourceModeResponse,
   type SourceServiceResponse,
@@ -175,12 +179,14 @@ const toCanonicalInputType = (canonicalInputType: string): DataType =>
 
 const CatalogServiceGrid = ({
   emptyMessage,
+  connectedServiceKeys,
   isLoading,
   onSelect,
   searchQuery,
   services,
   setSearchQuery,
 }: {
+  connectedServiceKeys: Set<string>;
   emptyMessage: string;
   isLoading: boolean;
   onSelect: (service: CatalogService) => void;
@@ -225,43 +231,56 @@ const CatalogServiceGrid = ({
       </Text>
     ) : (
       <Grid gap={8} p={6} templateColumns="repeat(5, 1fr)">
-        {services.map((service) => (
-          <VStack
-            key={service.key}
-            cursor="pointer"
-            gap={2}
-            minH="96px"
-            transition="opacity 150ms ease"
-            _hover={{ opacity: 0.7 }}
-            onClick={() => onSelect(service)}
-          >
-            <Box
-              alignItems="center"
-              display="flex"
-              h="64px"
-              justifyContent="center"
+        {services.map((service) => {
+          const connected = connectedServiceKeys.has(service.key);
+          const authLabel = service.auth_required
+            ? connected
+              ? "인증 완료"
+              : "인증 필요"
+            : "바로 사용";
+
+          return (
+            <VStack
+              key={service.key}
+              cursor="pointer"
+              gap={2}
+              minH="96px"
+              transition="opacity 150ms ease"
+              _hover={{ opacity: 0.7 }}
+              onClick={() => onSelect(service)}
             >
-              <Icon as={getCatalogServiceIcon(service.key)} boxSize={16} />
-            </Box>
-            <Text fontSize="xs" fontWeight="medium" textAlign="center">
-              {service.label}
-            </Text>
-            <Text color="text.secondary" fontSize="10px">
-              {service.auth_required ? "인증 필요" : "바로 사용"}
-            </Text>
-          </VStack>
-        ))}
+              <Box
+                alignItems="center"
+                display="flex"
+                h="64px"
+                justifyContent="center"
+              >
+                <Icon as={getCatalogServiceIcon(service.key)} boxSize={16} />
+              </Box>
+              <Text fontSize="xs" fontWeight="medium" textAlign="center">
+                {service.label}
+              </Text>
+              <Text color="text.secondary" fontSize="10px">
+                {authLabel}
+              </Text>
+            </VStack>
+          );
+        })}
       </Grid>
     )}
   </WizardCard>
 );
 
 const AuthPrompt = ({
+  isPending,
   onAuth,
   onBack,
+  serviceLabel,
 }: {
+  isPending: boolean;
   onAuth: () => void;
   onBack: () => void;
+  serviceLabel: string;
 }) => (
   <WizardCard>
     <Box
@@ -282,27 +301,19 @@ const AuthPrompt = ({
       인증이 필요합니다
     </Text>
     <Text color="text.secondary" fontSize="md" mb={6}>
-      인증은 처음 한 번만 진행하면 됩니다.
+      {serviceLabel} 계정 연결이 필요합니다. 인증은 처음 한 번만 진행하면
+      됩니다.
     </Text>
 
-    <Box
-      alignItems="center"
-      border="1px solid"
-      borderColor="gray.200"
-      borderRadius="xl"
-      cursor="pointer"
-      display="flex"
-      justifyContent="center"
+    <Button
+      loading={isPending}
       px={16}
       py={3}
-      transition="background 150ms ease"
-      _hover={{ bg: "gray.50" }}
+      variant="outline"
       onClick={onAuth}
     >
-      <Text fontSize="md" fontWeight="semibold">
-        계정 인증하기
-      </Text>
-    </Box>
+      계정 인증하기
+    </Button>
   </WizardCard>
 );
 
@@ -594,6 +605,11 @@ export const ServiceSelectionPanel = () => {
   );
   const { mutateAsync: addWorkflowNode, isPending: isAddNodePending } =
     useAddWorkflowNodeMutation();
+  const { mutateAsync: connectOAuthToken, isPending: isConnectOAuthPending } =
+    useConnectOAuthTokenMutation();
+  const { data: oauthTokens } = useOAuthTokensQuery({
+    enabled: Boolean(activePlaceholder),
+  });
   const { data: sinkCatalog, isLoading: isSinkCatalogLoading } =
     useSinkCatalogQuery();
   const { data: sourceCatalog, isLoading: isSourceCatalogLoading } =
@@ -620,6 +636,27 @@ export const ServiceSelectionPanel = () => {
       });
     },
     [syncWorkflowGraph],
+  );
+
+  const connectedServiceKeys = useMemo(
+    () =>
+      new Set(
+        (oauthTokens ?? [])
+          .filter((token) => token.connected)
+          .map((token) => token.service),
+      ),
+    [oauthTokens],
+  );
+
+  const isServiceConnected = useCallback(
+    (serviceKey: string) => connectedServiceKeys.has(serviceKey),
+    [connectedServiceKeys],
+  );
+
+  const shouldRequestAuth = useCallback(
+    (service: CatalogService) =>
+      service.auth_required && !isServiceConnected(service.key),
+    [isServiceConnected],
   );
 
   const sourceServices = useMemo(
@@ -776,7 +813,7 @@ export const ServiceSelectionPanel = () => {
     setSelectedSourceMode(null);
     setSelectedTargetValue("");
 
-    if (service.auth_required) {
+    if (shouldRequestAuth(service)) {
       setStartStep("auth");
       return;
     }
@@ -847,12 +884,19 @@ export const ServiceSelectionPanel = () => {
   const handleSinkServiceSelect = (service: SinkServiceResponse) => {
     setSelectedSinkService(service);
 
-    if (service.auth_required) {
+    if (shouldRequestAuth(service)) {
       setEndStep("auth");
       return;
     }
 
     setEndStep("confirm");
+  };
+
+  const handleConnectService = (serviceKey: string) => {
+    void (async () => {
+      const result = await connectOAuthToken(serviceKey);
+      window.location.assign(result.authUrl);
+    })();
   };
 
   const handleCreateEndNode = () => {
@@ -1012,6 +1056,7 @@ export const ServiceSelectionPanel = () => {
             <>
               {startStep === "service" ? (
                 <CatalogServiceGrid
+                  connectedServiceKeys={connectedServiceKeys}
                   emptyMessage="표시할 source 서비스가 없습니다."
                   isLoading={isSourceCatalogLoading}
                   searchQuery={searchQuery}
@@ -1025,7 +1070,9 @@ export const ServiceSelectionPanel = () => {
 
               {startStep === "auth" && selectedSourceService ? (
                 <AuthPrompt
-                  onAuth={() => setStartStep("mode")}
+                  isPending={isConnectOAuthPending}
+                  serviceLabel={selectedSourceService.label}
+                  onAuth={() => handleConnectService(selectedSourceService.key)}
                   onBack={handleStartBack}
                 />
               ) : null}
@@ -1064,6 +1111,7 @@ export const ServiceSelectionPanel = () => {
             <>
               {endStep === "service" ? (
                 <CatalogServiceGrid
+                  connectedServiceKeys={connectedServiceKeys}
                   emptyMessage={
                     sinkInputType
                       ? "현재 결과 타입과 연결할 수 있는 sink 서비스가 없습니다."
@@ -1081,7 +1129,9 @@ export const ServiceSelectionPanel = () => {
 
               {endStep === "auth" && selectedSinkService ? (
                 <AuthPrompt
-                  onAuth={() => setEndStep("confirm")}
+                  isPending={isConnectOAuthPending}
+                  serviceLabel={selectedSinkService.label}
+                  onAuth={() => handleConnectService(selectedSinkService.key)}
                   onBack={handleEndBack}
                 />
               ) : null}
