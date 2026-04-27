@@ -14,7 +14,11 @@ import {
   useWorkflowExecutionQuery,
   useWorkflowExecutionsQuery,
 } from "@/entities";
-import { useDeleteWorkflowMutation } from "@/entities/workflow";
+import {
+  type WorkflowNodeStatusResponse,
+  type WorkflowResponse,
+  useDeleteWorkflowMutation,
+} from "@/entities/workflow";
 import {
   useSaveWorkflowMutation,
   useWorkflowStore,
@@ -28,6 +32,18 @@ import { ExecutionStatusBadge } from "./ExecutionStatusBadge";
 import { MiddleSlotButtons } from "./MiddleSlotButtons";
 import { RunStopSplitButton } from "./RunStopSplitButton";
 import { WorkflowNameField } from "./WorkflowNameField";
+
+const getExecutableBlockers = (
+  nodeStatuses:
+    | Array<Pick<WorkflowNodeStatusResponse, "executable">>
+    | undefined
+    | null,
+) => (nodeStatuses ?? []).filter((nodeStatus) => !nodeStatus.executable);
+
+const getExecutionBlockerMessage = (blockerCount: number) =>
+  blockerCount === 1
+    ? "저장 후 다시 확인한 결과 아직 실행할 수 없는 노드가 1개 있습니다."
+    : `저장 후 다시 확인한 결과 아직 실행할 수 없는 노드가 ${blockerCount}개 있습니다.`;
 
 /**
  * 에디터 하단 고정 리모컨 바.
@@ -116,10 +132,7 @@ export const EditorRemoteBar = () => {
   const isStarting = effectiveRunPhase === "starting";
   const isRunning = isStarting || isRemoteExecutionInFlight;
   const executableBlockers = useMemo(
-    () =>
-      Object.values(nodeStatuses).filter(
-        (nodeStatus) => !nodeStatus.executable,
-      ),
+    () => getExecutableBlockers(Object.values(nodeStatuses)),
     [nodeStatuses],
   );
   const hasExecutableBlock = !isDirty && executableBlockers.length > 0;
@@ -187,12 +200,12 @@ export const EditorRemoteBar = () => {
     return () => window.clearTimeout(timeoutId);
   }, [refetchExecutions, trackedExecution, trackedExecutionId]);
 
-  const saveCurrentWorkflow = async () => {
+  const saveCurrentWorkflow = async (): Promise<WorkflowResponse> => {
     if (!workflowId) {
-      return;
+      throw new Error("workflowId is required");
     }
 
-    await saveWorkflow({
+    return saveWorkflow({
       workflowId,
       store: {
         workflowName,
@@ -212,7 +225,33 @@ export const EditorRemoteBar = () => {
     if (isDirty) {
       setRunPhase("auto-saving");
       try {
-        await saveCurrentWorkflow();
+        const savedWorkflow = await saveCurrentWorkflow();
+        const latestNodeStatuses = savedWorkflow.nodeStatuses;
+
+        if (!latestNodeStatuses) {
+          setRunPhase("idle");
+          toaster.create({
+            title: "실행 준비 필요",
+            description:
+              "저장 후 최신 실행 가능 상태를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+            type: "error",
+          });
+          return;
+        }
+
+        const latestExecutableBlockers =
+          getExecutableBlockers(latestNodeStatuses);
+        if (latestExecutableBlockers.length > 0) {
+          setRunPhase("idle");
+          toaster.create({
+            title: "실행 전 설정 확인",
+            description: getExecutionBlockerMessage(
+              latestExecutableBlockers.length,
+            ),
+            type: "error",
+          });
+          return;
+        }
       } catch {
         setRunPhase("idle");
         toaster.create({
