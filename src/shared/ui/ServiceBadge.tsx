@@ -7,6 +7,7 @@ import {
   MdFolder,
   MdLanguage,
   MdNotifications,
+  MdSchool,
   MdSettings,
   MdTableChart,
 } from "react-icons/md";
@@ -21,6 +22,7 @@ type Props = {
 
 const FALLBACK_NODE_ICONS: Record<ServiceBadgeKey, IconType> = {
   calendar: MdCalendarMonth,
+  "canvas-lms": MdSchool,
   gmail: MdEmail,
   "google-drive": MdFolder,
   "google-sheets": MdTableChart,
@@ -60,6 +62,21 @@ export const ServiceBadge = ({ type }: Props) => {
               </Text>
             </Flex>
           </Box>
+        );
+      case "canvas-lms":
+        return (
+          <Flex
+            boxSize="30px"
+            align="center"
+            justify="center"
+            bg="blue.50"
+            borderRadius="lg"
+            border="1px solid"
+            borderColor="blue.100"
+            boxShadow="0 6px 12px rgba(59, 130, 246, 0.10)"
+          >
+            <Icon as={MdSchool} boxSize={4.5} color="blue.600" />
+          </Flex>
         );
       case "notion":
         return (

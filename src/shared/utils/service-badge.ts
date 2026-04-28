@@ -1,5 +1,6 @@
 export type ServiceBadgeKey =
   | "calendar"
+  | "canvas-lms"
   | "gmail"
   | "google-drive"
   | "google-sheets"
@@ -23,6 +24,9 @@ export const getServiceBadgeKeyFromService = (
     case "google-calendar":
     case "google_calendar":
       return "calendar";
+    case "canvas-lms":
+    case "canvas_lms":
+      return "canvas-lms";
     case "gmail":
       return "gmail";
     case "google-drive":

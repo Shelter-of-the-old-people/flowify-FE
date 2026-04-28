@@ -62,6 +62,16 @@ export interface SpreadsheetNodeConfig extends BaseNodeConfig {
 }
 
 export interface WebScrapingNodeConfig extends BaseNodeConfig {
+  service?:
+    | "canvas_lms"
+    | "coupang"
+    | "github"
+    | "naver_news"
+    | "youtube"
+    | null;
+  source_mode?: string | null;
+  target?: string | null;
+  canonical_input_type?: string | null;
   targetUrl: string | null;
   selector: string | null;
   outputFields: string[];

@@ -20,6 +20,7 @@ import {
 
 type SupportedServiceKey =
   | "calendar"
+  | "canvas-lms"
   | "gmail"
   | "google-drive"
   | "google-sheets"
@@ -28,6 +29,7 @@ type SupportedServiceKey =
 
 const DASHBOARD_SERVICE_PRIORITY: SupportedServiceKey[] = [
   "calendar",
+  "canvas-lms",
   "notion",
   "google-drive",
   "gmail",
@@ -37,6 +39,7 @@ const DASHBOARD_SERVICE_PRIORITY: SupportedServiceKey[] = [
 
 const DASHBOARD_SERVICE_LABELS: Record<SupportedServiceKey, string> = {
   calendar: "Google Calendar",
+  "canvas-lms": "Canvas LMS",
   gmail: "Gmail",
   "google-drive": "Google Drive",
   "google-sheets": "Google Sheets",
@@ -95,6 +98,11 @@ const getWorkflowServiceBadgeKey = (
     if (serviceBadgeKey !== "unknown") {
       return serviceBadgeKey;
     }
+  }
+
+  const typeBadgeKey = getServiceBadgeKeyFromService(node.type);
+  if (typeBadgeKey !== "unknown") {
+    return typeBadgeKey;
   }
 
   switch (node.type) {
