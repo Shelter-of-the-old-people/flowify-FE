@@ -12,7 +12,10 @@ import { immer } from "zustand/middleware/immer";
 
 import { type FlowNodeData } from "@/entities/node";
 
-import { type WorkflowHydratedState } from "./workflow-editor-adapter";
+import {
+  type WorkflowHydratedState,
+  type WorkflowNodeStatusMap,
+} from "./workflow-editor-adapter";
 
 type PlaceholderInfo = {
   id: string;
@@ -34,6 +37,7 @@ export interface WorkflowEditorCapabilities {
 interface WorkflowEditorState {
   nodes: Node<FlowNodeData>[];
   edges: Edge[];
+  nodeStatuses: WorkflowNodeStatusMap;
   activePanelNodeId: string | null;
   startNodeId: string | null;
   endNodeId: string | null;
@@ -84,6 +88,7 @@ interface WorkflowEditorActions {
 const initialState: WorkflowEditorState = {
   nodes: [],
   edges: [],
+  nodeStatuses: {},
   activePanelNodeId: null,
   startNodeId: null,
   endNodeId: null,
@@ -291,6 +296,7 @@ export const useWorkflowStore = create<
         state.workflowName = payload.workflowName;
         state.nodes = payload.nodes;
         state.edges = payload.edges;
+        state.nodeStatuses = payload.nodeStatuses;
         state.startNodeId = payload.startNodeId;
         state.endNodeId = payload.endNodeId;
         state.creationMethod = payload.creationMethod;
@@ -322,6 +328,7 @@ export const useWorkflowStore = create<
           preservedUnsavedNodePositions,
         );
         state.edges = payload.edges;
+        state.nodeStatuses = payload.nodeStatuses;
         state.startNodeId = payload.startNodeId;
         state.endNodeId = payload.endNodeId;
         state.creationMethod = payload.creationMethod;

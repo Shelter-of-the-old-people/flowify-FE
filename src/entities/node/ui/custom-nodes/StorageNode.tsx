@@ -5,8 +5,8 @@ import { getTypedConfig } from "../../model";
 import { type FlowNodeData } from "../../model/types";
 import { BaseNode } from "../BaseNode";
 
-const STORAGE_SERVICE_LABEL: Record<"google-drive" | "notion", string> = {
-  "google-drive": "Google Drive",
+const STORAGE_SERVICE_LABEL: Record<"google_drive" | "notion", string> = {
+  google_drive: "Google Drive",
   notion: "Notion",
 };
 

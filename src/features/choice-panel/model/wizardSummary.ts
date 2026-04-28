@@ -1,7 +1,6 @@
 import { type DataType } from "@/entities/node";
 
-import { MAPPING_RULES } from "./mappingRules";
-import { type MappingAction } from "./types";
+import { type MappingAction, type MappingRules } from "./types";
 
 export const OUTPUT_DATA_LABELS: Record<DataType, string> = {
   "file-list": "파일 목록",
@@ -15,11 +14,12 @@ export const OUTPUT_DATA_LABELS: Record<DataType, string> = {
 };
 
 export const findActionById = (
+  mappingRules: MappingRules,
   actionId: string | null | undefined,
 ): MappingAction | null => {
   if (!actionId) return null;
 
-  for (const dataType of Object.values(MAPPING_RULES.data_types)) {
+  for (const dataType of Object.values(mappingRules.data_types)) {
     const action = dataType.actions.find(
       (candidate) => candidate.id === actionId,
     );

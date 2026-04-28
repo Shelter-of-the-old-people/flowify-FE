@@ -47,7 +47,11 @@ import {
   useAddWorkflowNodeMutation,
   useDeleteWorkflowNodeMutation,
 } from "@/entities/workflow";
-import { hydrateStore, useWorkflowStore } from "@/features/workflow-editor";
+import {
+  canStartProcessingAfterSinkSelection,
+  hydrateStore,
+  useWorkflowStore,
+} from "@/features/workflow-editor";
 import { getLeafNodeIds } from "@/shared";
 import { toaster } from "@/shared/utils/toaster/toaster";
 
@@ -170,6 +174,7 @@ const defaultEdgeOptions: DefaultEdgeOptions = {
 export const Canvas = () => {
   const nodes = useWorkflowStore((state) => state.nodes);
   const edges = useWorkflowStore((state) => state.edges);
+  const nodeStatuses = useWorkflowStore((state) => state.nodeStatuses);
   const onNodesChange = useWorkflowStore((state) => state.onNodesChange);
   const onEdgesChange = useWorkflowStore((state) => state.onEdgesChange);
   const onConnect = useWorkflowStore((state) => state.onConnect);
@@ -243,10 +248,18 @@ export const Canvas = () => {
       canEditNodes,
       startNodeId,
       endNodeId,
+      getNodeStatus: (nodeId: string) => nodeStatuses[nodeId] ?? null,
       onOpenPanel: openPanel,
       onRemoveNode: handleRemoveNode,
     }),
-    [canEditNodes, endNodeId, handleRemoveNode, openPanel, startNodeId],
+    [
+      canEditNodes,
+      endNodeId,
+      handleRemoveNode,
+      nodeStatuses,
+      openPanel,
+      startNodeId,
+    ],
   );
 
   const handleNodesChange = useCallback(
@@ -460,11 +473,11 @@ export const Canvas = () => {
     const endNode = endNodeId
       ? (nodes.find((node) => node.id === endNodeId) ?? null)
       : null;
-    const showCreationMethod =
-      startNodeId !== null &&
-      endNodeId !== null &&
-      endNode?.data.config.isConfigured === true &&
-      !creationMethod;
+    const showCreationMethod = canStartProcessingAfterSinkSelection({
+      creationMethod,
+      endNode,
+      startNodeId,
+    });
 
     // 분기 1: 시작/도착 미설정 → placeholder 표시
     if (!startNodeId) {

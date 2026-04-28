@@ -21,14 +21,15 @@ import {
   toNodeAddRequest,
   useAddWorkflowNodeMutation,
   useDeleteWorkflowNodeMutation,
+  useMappingRulesQuery,
   useSelectWorkflowChoiceMutation,
   useUpdateWorkflowNodeMutation,
   useWorkflowChoicesQuery,
 } from "@/entities/workflow";
 import {
   MAPPING_NODE_TYPE_MAP,
-  MAPPING_RULES,
   OUTPUT_DATA_LABELS,
+  toChoiceMappingRules,
   toDataType,
   toMappingKey,
 } from "@/features/choice-panel";
@@ -37,9 +38,15 @@ import {
   type FollowUp,
   type MappingAction,
   type MappingDataTypeKey,
+  type MappingRules,
 } from "@/features/choice-panel";
 import { PanelRenderer } from "@/features/configure-node";
-import { hydrateStore, useWorkflowStore } from "@/features/workflow-editor";
+import {
+  hydrateStore,
+  isMiddleWizardCompleted,
+  isMiddleWizardPending,
+  useWorkflowStore,
+} from "@/features/workflow-editor";
 import { useDualPanelLayout } from "@/shared";
 
 import {
@@ -68,9 +75,10 @@ const NODE_GAP_X = 96;
 const PANEL_TRANSITION_MS = 240;
 
 const isMappingDataTypeKey = (
+  mappingRules: MappingRules,
   value: string | null | undefined,
 ): value is MappingDataTypeKey =>
-  Boolean(value && value in MAPPING_RULES.data_types);
+  Boolean(value && value in mappingRules.data_types);
 
 type WizardNodeSnapshot = {
   authWarning?: boolean;
@@ -173,9 +181,10 @@ const mergeChoiceResponses = (
 };
 
 const buildLocalChoiceResponse = (
+  mappingRules: MappingRules,
   dataTypeKey: MappingDataTypeKey,
 ): WizardChoiceResponse => {
-  const config = MAPPING_RULES.data_types[dataTypeKey];
+  const config = mappingRules.data_types[dataTypeKey];
 
   if (config.requires_processing_method && config.processing_method) {
     return {
@@ -195,9 +204,10 @@ const buildLocalChoiceResponse = (
 };
 
 const buildLocalActionResponse = (
+  mappingRules: MappingRules,
   dataTypeKey: MappingDataTypeKey,
 ): WizardChoiceResponse => {
-  const config = MAPPING_RULES.data_types[dataTypeKey];
+  const config = mappingRules.data_types[dataTypeKey];
 
   return {
     question: `${config.label}을 어떻게 처리할까요?`,
@@ -242,8 +252,13 @@ export const OutputPanel = () => {
     mutateAsync: selectWorkflowChoice,
     isPending: isSelectChoicePending,
   } = useSelectWorkflowChoiceMutation();
+  const { data: mappingRulesResponse } = useMappingRulesQuery();
   const layout = useDualPanelLayout();
   const isOpen = Boolean(activePanelNodeId) && activePlaceholder === null;
+  const mappingRules = useMemo(
+    () => toChoiceMappingRules(mappingRulesResponse),
+    [mappingRulesResponse],
+  );
 
   const [wizardStep, setWizardStep] = useState<WizardStep | null>(null);
   const [initialDataTypeKey, setInitialDataTypeKey] =
@@ -339,12 +354,12 @@ export const OutputPanel = () => {
     [resolveNodeRole],
   );
 
-  const isStartNode = activeNode?.id === startNodeId;
-  const isEndNode = activeNode?.id === endNodeId;
-  const isMiddleNode = Boolean(activeNode) && !isStartNode && !isEndNode;
-  const isWizardMode =
-    isMiddleNode && activeNode?.data.config.isConfigured === false;
-  const isDetailMode = activeNode?.data.config.isConfigured === true;
+  const isWizardMode = isMiddleWizardPending(
+    activeNode,
+    startNodeId,
+    endNodeId,
+  );
+  const isDetailMode = isMiddleWizardCompleted(activeNode);
 
   const {
     data: serverChoiceResponse,
@@ -358,8 +373,10 @@ export const OutputPanel = () => {
 
   const initialLocalChoiceResponse = useMemo(
     () =>
-      initialDataTypeKey ? buildLocalChoiceResponse(initialDataTypeKey) : null,
-    [initialDataTypeKey],
+      initialDataTypeKey
+        ? buildLocalChoiceResponse(mappingRules, initialDataTypeKey)
+        : null,
+    [initialDataTypeKey, mappingRules],
   );
   const initialChoiceResponse = useMemo(
     () =>
@@ -368,8 +385,10 @@ export const OutputPanel = () => {
   );
   const currentActionChoiceResponse = useMemo(
     () =>
-      currentDataTypeKey ? buildLocalActionResponse(currentDataTypeKey) : null,
-    [currentDataTypeKey],
+      currentDataTypeKey
+        ? buildLocalActionResponse(mappingRules, currentDataTypeKey)
+        : null,
+    [currentDataTypeKey, mappingRules],
   );
   const activeActionChoiceResponse = useMemo(() => {
     if (!currentActionChoiceResponse) {
@@ -674,14 +693,18 @@ export const OutputPanel = () => {
       });
 
       const nextDataTypeKey = isMappingDataTypeKey(
+        mappingRules,
         selectionResult.outputDataType,
       )
         ? selectionResult.outputDataType
-        : isMappingDataTypeKey(option.output_data_type)
+        : isMappingDataTypeKey(mappingRules, option.output_data_type)
           ? option.output_data_type
           : currentDataTypeKey;
 
-      const nextActions = buildLocalActionResponse(nextDataTypeKey);
+      const nextActions = buildLocalActionResponse(
+        mappingRules,
+        nextDataTypeKey,
+      );
 
       const nextNodeType = selectionResult.nodeType
         ? toChoiceNodeType(selectionResult.nodeType)
@@ -730,10 +753,11 @@ export const OutputPanel = () => {
       });
 
       const nextDataTypeKey = isMappingDataTypeKey(
+        mappingRules,
         selectionResult.outputDataType,
       )
         ? selectionResult.outputDataType
-        : isMappingDataTypeKey(action.output_data_type)
+        : isMappingDataTypeKey(mappingRules, action.output_data_type)
           ? action.output_data_type
           : currentDataTypeKey;
 

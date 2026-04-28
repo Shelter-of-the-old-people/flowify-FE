@@ -7,7 +7,7 @@ import { useWorkflowStore } from "@/features/workflow-editor";
 
 import { NODE_PANEL_REGISTRY } from "../model";
 
-import { GenericNodePanel } from "./panels";
+import { GenericNodePanel, SinkNodePanel } from "./panels";
 
 interface PanelErrorBoundaryState {
   hasError: boolean;
@@ -46,11 +46,14 @@ export const PanelRenderer = ({ readOnly = false }: { readOnly?: boolean }) => {
   const activeNode = useWorkflowStore(
     (s) => s.nodes.find((node) => node.id === s.activePanelNodeId) ?? null,
   );
+  const endNodeId = useWorkflowStore((s) => s.endNodeId);
 
   if (!activeNode) return null;
 
   const PanelComponent =
-    NODE_PANEL_REGISTRY[activeNode.data.type] ?? GenericNodePanel;
+    activeNode.id === endNodeId
+      ? SinkNodePanel
+      : (NODE_PANEL_REGISTRY[activeNode.data.type] ?? GenericNodePanel);
 
   return (
     <PanelErrorBoundary>

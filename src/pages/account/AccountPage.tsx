@@ -13,27 +13,69 @@ import {
 } from "@chakra-ui/react";
 
 import {
+  type OAuthConnectionTone,
+  getOAuthConnectionUiState,
+  isOAuthConnectSupported,
   useConnectOAuthTokenMutation,
   useDisconnectOAuthTokenMutation,
   useOAuthTokensQuery,
+  useSinkCatalogQuery,
+  useSourceCatalogQuery,
 } from "@/entities";
-import {
-  ROUTE_PATHS,
-  getAuthUser,
-} from "@/shared";
+import { ROUTE_PATHS, getAuthUser } from "@/shared";
 
-const OAUTH_SERVICES = [
-  { key: "communication", label: "Communication" },
-  { key: "storage", label: "Storage" },
-  { key: "spreadsheet", label: "Spreadsheet" },
-  { key: "calendar", label: "Calendar" },
-  { key: "notification", label: "Notification" },
-] as const;
+type OAuthServiceItem = {
+  key: string;
+  label: string;
+};
+
+const CONNECTION_TONE_STYLES: Record<
+  OAuthConnectionTone,
+  { badgeColor: string; bg: string; borderColor: string }
+> = {
+  error: {
+    badgeColor: "red.600",
+    bg: "red.50",
+    borderColor: "red.100",
+  },
+  neutral: {
+    badgeColor: "gray.500",
+    bg: "gray.50",
+    borderColor: "gray.200",
+  },
+  success: {
+    badgeColor: "green.600",
+    bg: "green.50",
+    borderColor: "green.100",
+  },
+  warning: {
+    badgeColor: "orange.600",
+    bg: "orange.50",
+    borderColor: "orange.100",
+  },
+};
 
 export default function AccountPage() {
   const navigate = useNavigate();
   const authUser = getAuthUser();
-  const { data: tokens, isLoading, isError, refetch } = useOAuthTokensQuery();
+  const {
+    data: tokens,
+    isLoading: isOAuthTokensLoading,
+    isError: isOAuthTokensError,
+    refetch: refetchOAuthTokens,
+  } = useOAuthTokensQuery();
+  const {
+    data: sourceCatalog,
+    isLoading: isSourceCatalogLoading,
+    isError: isSourceCatalogError,
+    refetch: refetchSourceCatalog,
+  } = useSourceCatalogQuery();
+  const {
+    data: sinkCatalog,
+    isLoading: isSinkCatalogLoading,
+    isError: isSinkCatalogError,
+    refetch: refetchSinkCatalog,
+  } = useSinkCatalogQuery();
   const { mutateAsync: connectToken, isPending: isConnectPending } =
     useConnectOAuthTokenMutation();
   const { mutateAsync: disconnectToken, isPending: isDisconnectPending } =
@@ -43,8 +85,41 @@ export default function AccountPage() {
     () => new Map((tokens ?? []).map((token) => [token.service, token])),
     [tokens],
   );
+  const oauthServices = useMemo(() => {
+    const serviceMap = new Map<string, OAuthServiceItem>();
+
+    for (const service of [
+      ...(sourceCatalog?.services ?? []),
+      ...(sinkCatalog?.services ?? []),
+    ]) {
+      if (!service.auth_required) {
+        continue;
+      }
+
+      serviceMap.set(service.key, {
+        key: service.key,
+        label: service.label,
+      });
+    }
+
+    return Array.from(serviceMap.values()).sort((left, right) =>
+      left.label.localeCompare(right.label),
+    );
+  }, [sinkCatalog?.services, sourceCatalog?.services]);
+  const isCatalogLoading = isSourceCatalogLoading || isSinkCatalogLoading;
+  const isConnectionSectionLoading =
+    isOAuthTokensLoading ||
+    isCatalogLoading ||
+    isConnectPending ||
+    isDisconnectPending;
+  const isConnectionSectionError =
+    isOAuthTokensError || isSourceCatalogError || isSinkCatalogError;
 
   const handleConnect = async (service: string) => {
+    if (!isOAuthConnectSupported(service)) {
+      return;
+    }
+
     try {
       const result = await connectToken(service);
       window.location.assign(result.authUrl);
@@ -56,10 +131,18 @@ export default function AccountPage() {
   const handleDisconnect = async (service: string) => {
     try {
       await disconnectToken(service);
-      await refetch();
+      await refetchOAuthTokens();
     } catch {
       // 화면의 기본 상태 문구로 충분히 안내한다.
     }
+  };
+
+  const handleRetryConnectionSection = () => {
+    void Promise.all([
+      refetchOAuthTokens(),
+      refetchSourceCatalog(),
+      refetchSinkCatalog(),
+    ]);
   };
 
   return (
@@ -178,36 +261,40 @@ export default function AccountPage() {
               서비스별 연결 상태를 확인하고 다시 연결하거나 해제할 수 있습니다.
             </Text>
           </Box>
-          {isLoading || isConnectPending || isDisconnectPending ? (
-            <Spinner size="sm" />
-          ) : null}
+          {isConnectionSectionLoading ? <Spinner size="sm" /> : null}
         </HStack>
 
-        {isError ? (
+        {isConnectionSectionError ? (
           <VStack align="stretch" gap={3}>
             <Text color="red.500">연결 목록을 불러오지 못했습니다.</Text>
             <Button
               alignSelf="flex-start"
               variant="outline"
-              onClick={() => void refetch()}
+              onClick={handleRetryConnectionSection}
             >
               다시 시도
             </Button>
           </VStack>
         ) : (
           <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>
-            {OAUTH_SERVICES.map((service) => {
+            {oauthServices.map((service) => {
               const token = tokenMap.get(service.key);
               const connected = token?.connected ?? false;
+              const authState = getOAuthConnectionUiState({
+                authRequired: true,
+                connected,
+                serviceKey: service.key,
+              });
+              const toneStyle = CONNECTION_TONE_STYLES[authState.tone];
 
               return (
                 <Box
                   key={service.key}
                   p={5}
                   border="1px solid"
-                  borderColor="gray.200"
+                  borderColor={toneStyle.borderColor}
                   borderRadius="20px"
-                  bg={connected ? "green.50" : "gray.50"}
+                  bg={toneStyle.bg}
                 >
                   <HStack justify="space-between" align="flex-start" mb={3}>
                     <Box>
@@ -215,15 +302,18 @@ export default function AccountPage() {
                         {service.label}
                       </Heading>
                       <Text fontSize="sm" color="gray.600">
-                        {connected ? "연결 완료" : "연결 필요"}
+                        {authState.label}
+                      </Text>
+                      <Text fontSize="xs" color="gray.500" mt={1}>
+                        {authState.description}
                       </Text>
                     </Box>
                     <Text
                       fontSize="xs"
                       fontWeight="semibold"
-                      color={connected ? "green.600" : "gray.500"}
+                      color={toneStyle.badgeColor}
                     >
-                      {connected ? "CONNECTED" : "DISCONNECTED"}
+                      {authState.badgeLabel}
                     </Text>
                   </HStack>
 
@@ -252,14 +342,19 @@ export default function AccountPage() {
                     <Button
                       size="sm"
                       onClick={() => void handleConnect(service.key)}
-                      disabled={isConnectPending}
+                      disabled={isConnectPending || !authState.canStartConnect}
                     >
-                      연결 시작
+                      {authState.actionLabel}
                     </Button>
                   )}
                 </Box>
               );
             })}
+            {oauthServices.length === 0 && !isCatalogLoading ? (
+              <Text color="gray.600" fontSize="sm">
+                연결 가능한 외부 서비스가 없습니다.
+              </Text>
+            ) : null}
           </SimpleGrid>
         )}
       </Box>

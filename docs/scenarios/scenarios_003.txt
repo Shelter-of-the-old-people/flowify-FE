@@ -1,0 +1,420 @@
+
+
+SC-021: 고객 문의 메일 감성 분석 및 자동 대응
+[cite_start]한 줄 요약: Gmail로 들어온 고객 문의의 분위기를 AI가 파악하여, 불만 사항은 즉시 팀에 알리고 긍정적인 내용은 감사 답장을 준비합니다[cite: 67].
+
+[시작 노드]
+- [cite_start]카테고리: 커뮤니케이션 [cite: 26]
+- [cite_start]서비스: Gmail [cite: 26]
+- 실행 조건:
+  - 질문: "언제 실행할까요?"
+  - [cite_start]선택지: "새 메일이 도착했을 때" / "특정 보낸 사람의 메일이 올 때" [cite: 34]
+  - [cite_start]사용자 선택: "새 메일이 도착했을 때" [cite: 34]
+- [cite_start]데이터 대상: 받은편지함 [cite: 26]
+- [cite_start]출력 데이터 타입: 단일 이메일 [cite: 26]
+
+[도착 노드]
+- [cite_start]카테고리: 커뮤니케이션 [cite: 26]
+- [cite_start]서비스: Slack [cite: 26]
+- [cite_start]동작 유형: 메시지 전송 [cite: 26]
+- [cite_start]최종 입력 데이터 타입: 텍스트 [cite: 26]
+
+[중간 과정]
+  [중간 노드 1]
+  - [cite_start]들어오는 데이터: 단일 이메일 (내용) [cite: 26]
+  - [cite_start]사용자에게 보여줄 질문: "이 메일의 분위기를 어떻게 파악할까요?" [cite: 39]
+  - [cite_start]선택지: "긍정/부정 분류" / "급박함 정도 분석" / "그대로 전달" [cite: 38]
+  - [cite_start]사용자 선택: "긍정/부정 분류" [cite: 67]
+  - [cite_start]내부 노드 타입: AI 노드 [cite: 26]
+  - [cite_start]나가는 데이터: 텍스트 (분석 결과) [cite: 26]
+
+  [중간 노드 2]
+  - [cite_start]들어오는 데이터: 텍스트 (분석 결과) [cite: 26]
+  - [cite_start]사용자에게 보여줄 질문: "분석 결과에 따라 처리 방법을 나눌까요?" [cite: 67]
+  - [cite_start]선택지: "분위기별로 다르게 진행" / "모두 동일하게 진행" [cite: 67]
+  - [cite_start]사용자 선택: "분위기별로 다르게 진행" [cite: 67]
+  - [cite_start]내부 노드 타입: 조건 분기 노드 (If/Switch) [cite: 67]
+  - 분기 설정:
+    - [cite_start]질문: "어떤 분위기를 구분할까요?" [cite: 67]
+    - [cite_start]사용자 선택: "부정(불만)", "긍정(감사)" [cite: 67]
+  - [cite_start]나가는 데이터: 분기별 단일 이메일 데이터 [cite: 26]
+
+[도착 노드 세부 설정]
+- [cite_start]들어오는 데이터: 단일 이메일 (분기된 결과) [cite: 26]
+- 설정 항목:
+  - [cite_start]질문: "부정적인 메일은 어디로 알릴까요?" [cite: 67]
+  - [cite_start]선택: #긴급-CS-대응 채널 [cite: 26]
+  - [cite_start]질문: "긍정적인 메일은 어떻게 할까요?" [cite: 67]
+  - [cite_start]설정: "답장 초안을 작성하여 Gmail 임시 보관함에 저장" [cite: 26]
+
+---
+
+SC-022: 법인카드 영수증 파일 자동 정리 및 보고
+[cite_start]한 줄 요약: Google Drive에 업로드된 여러 영수증 이미지에서 금액과 사용처를 추출하여 Google Sheets에 한 줄씩 기록합니다[cite: 67, 110].
+
+[시작 노드]
+- [cite_start]카테고리: 저장소 [cite: 26]
+- [cite_start]서비스: Google Drive [cite: 26]
+- 실행 조건:
+  - [cite_start]질문: "언제 실행할까요?" [cite: 34]
+  - [cite_start]사용자 선택: "특정 폴더에 파일이 들어올 때" [cite: 34]
+- [cite_start]데이터 대상: "내 드라이브 > 지출_영수증" 폴더 [cite: 26]
+- [cite_start]출력 데이터 타입: 파일 목록 [cite: 26]
+
+[도착 노드]
+- [cite_start]카테고리: 스프레드시트 [cite: 26]
+- [cite_start]서비스: Google Sheets [cite: 26]
+- [cite_start]동작 유형: 행 추가 [cite: 26]
+- [cite_start]최종 입력 데이터 타입: 스프레드시트 데이터 [cite: 26]
+
+[중간 과정]
+  [중간 노드 1]
+  - [cite_start]들어오는 데이터: 파일 목록 [cite: 26]
+  - [cite_start]사용자에게 보여줄 질문: "파일들을 어떻게 처리할까요?" [cite: 67]
+  - [cite_start]선택지: "하나씩 순서대로" / "한꺼번에 합쳐서" [cite: 67]
+  - [cite_start]사용자 선택: "하나씩 순서대로" [cite: 67]
+  - [cite_start]내부 노드 타입: Loop 노드 [cite: 67]
+  - [cite_start]나가는 데이터: 단일 파일 [cite: 26]
+
+  [중간 노드 2]
+  - [cite_start]들어오는 데이터: 단일 파일 (영수증 이미지) [cite: 26]
+  - [cite_start]사용자에게 보여줄 질문: "이미지에서 어떤 정보를 찾을까요?" [cite: 38]
+  - [cite_start]선택지: "금액과 업체명 추출" / "결제 일자 확인" / "전체 내용 읽기" [cite: 38]
+  - [cite_start]사용자 선택: "금액과 업체명 추출" [cite: 39]
+  - [cite_start]내부 노드 타입: AI 노드 [cite: 26]
+  - [cite_start]나가는 데이터: 텍스트 (추출된 정보) [cite: 26]
+
+[도착 노드 세부 설정]
+- [cite_start]들어오는 데이터: 텍스트 (추출된 정보) [cite: 26]
+- 설정 항목:
+  - [cite_start]질문: "어느 장부에 기록할까요?" [cite: 26]
+  - [cite_start]선택: "2026_지출결의서" 시트 [cite: 26]
+  - [cite_start]설정: 날짜 = [업로드일], 항목 = [추출된 업체명], 금액 = [추출된 금액] [cite: 42]
+
+---
+
+SC-023: GitHub 새 코드 리뷰 요청 알림 및 요약
+[cite_start]한 줄 요약: GitHub에 새로운 코드 리뷰 요청(PR)이 올라오면, AI가 변경 사항을 요약하여 Slack 개발 채널에 전달합니다[cite: 110].
+
+[시작 노드]
+- [cite_start]카테고리: 개발 생산성 (웹 수집 기반) [cite: 110]
+- [cite_start]서비스: GitHub [cite: 26]
+- 실행 조건:
+  - [cite_start]질문: "언제 실행할까요?" [cite: 34]
+  - [cite_start]사용자 선택: "새로운 리뷰 요청(PR)이 등록될 때" [cite: 110]
+- [cite_start]데이터 대상: "Main" 저장소 [cite: 26]
+- [cite_start]출력 데이터 타입: API 응답 데이터 (코드 변경 내역) [cite: 26]
+
+[도착 노드]
+- [cite_start]카테고리: 커뮤니케이션 [cite: 26]
+- [cite_start]서비스: Slack [cite: 26]
+- [cite_start]동작 유형: 메시지 전송 [cite: 26]
+- [cite_start]최종 입력 데이터 타입: 텍스트 [cite: 26]
+
+[중간 과정]
+  [중간 노드 1]
+  - [cite_start]들어오는 데이터: API 응답 데이터 (코드 내역) [cite: 26]
+  - [cite_start]사용자에게 보여줄 질문: "방대한 코드 변경 사항을 어떻게 보여줄까요?" [cite: 37]
+  - [cite_start]선택지: "핵심 변경점 요약" / "오류 가능성 체크" / "그대로 전달" [cite: 38]
+  - [cite_start]사용자 선택: "핵심 변경점 요약" [cite: 39]
+  - [cite_start]내부 노드 타입: AI 노드 [cite: 26]
+  - AI 설정:
+    - [cite_start]질문: "어떤 언어로 요약할까요?" [cite: 39]
+    - [cite_start]사용자 선택: "한국어로 개발자스럽게" [cite: 39]
+  - [cite_start]나가는 데이터: 텍스트 (요약된 리뷰 내역) [cite: 26]
+
+[도착 노드 세부 설정]
+- [cite_start]들어오는 데이터: 텍스트 (요약 결과) [cite: 26]
+- 설정 항목:
+  - [cite_start]질문: "어디로 알릴까요?" [cite: 26]
+  - [cite_start]선택: #dev-코드리뷰 채널 [cite: 26]
+  - [cite_start]질문: "메시지에 포함할 항목" [cite: 26]
+  - [cite_start]사용자 선택: "요약 내용 + PR 바로가기 링크" [cite: 46]
+
+---
+
+SC-024: 네이버 뉴스 기반 경쟁사 동향 주간 리포트
+[cite_start]한 줄 요약: 매주 정해진 시간에 경쟁사 관련 뉴스를 수집하고 AI가 주요 이슈를 분석하여 Notion 페이지에 정리합니다[cite: 110].
+
+[시작 노드]
+- [cite_start]카테고리: 웹 수집 [cite: 26]
+- [cite_start]서비스: 네이버 뉴스 [cite: 26]
+- 실행 조건:
+  - [cite_start]질문: "언제 실행할까요?" [cite: 34]
+  - [cite_start]사용자 선택: "매주 특정 요일에" [cite: 34]
+  - [cite_start]사용자 입력: "금요일 오후 5시" [cite: 34]
+- [cite_start]데이터 대상: "경쟁사 이름" 검색 결과 상위 10건 [cite: 26]
+- [cite_start]출력 데이터 타입: API 응답 데이터 (뉴스 목록) [cite: 26]
+
+[도착 노드]
+- [cite_start]카테고리: 저장소 [cite: 26]
+- [cite_start]서비스: Notion [cite: 26]
+- [cite_start]동작 유형: 페이지 생성 [cite: 26]
+- [cite_start]최종 입력 데이터 타입: 텍스트 [cite: 26]
+
+[중간 과정]
+  [중간 노드 1]
+  - [cite_start]들어오는 데이터: API 응답 데이터 (뉴스 10건) [cite: 26]
+  - [cite_start]사용자에게 보여줄 질문: "여러 뉴스를 어떻게 정리할까요?" [cite: 67]
+  - [cite_start]선택지: "전체를 하나의 리포트로 작성" / "개별 뉴스로 저장" [cite: 67]
+  - [cite_start]사용자 선택: "전체를 하나의 리포트로 작성" [cite: 38]
+  - [cite_start]내부 노드 타입: AI 노드 (다중 소스 참조) [cite: 53]
+  - AI 설정:
+    - [cite_start]질문: "리포트에 무엇을 포함할까요?" [cite: 39]
+    - [cite_start]선택지: "위협 요소와 기회 분석" / "단순 요약" [cite: 38]
+    - [cite_start]사용자 선택: "위협 요소와 기회 분석" [cite: 39]
+  - [cite_start]나가는 데이터: 텍스트 (분석 리포트) [cite: 26]
+
+[도착 노드 세부 설정]
+- [cite_start]들어오는 데이터: 텍스트 (분석 리포트) [cite: 26]
+- 설정 항목:
+  - [cite_start]질문: "어느 페이지 아래에 만들까요?" [cite: 26]
+  - [cite_start]선택: "전략 기획실 > 시장 동향" 페이지 [cite: 26]
+  - [cite_start]질문: "페이지 제목 형식" [cite: 26]
+  - [cite_start]사용자 입력: "[주간] 경쟁사 분석 리포트 ([날짜])" [cite: 42]
+
+---
+
+SC-025: 구글 시트 교육 명단 기반 수료증 자동 발송
+[cite_start]한 줄 요약: 교육 수료자 명단이 담긴 시트를 한 행씩 읽어, AI가 개인별 축하 문구를 작성하고 이메일로 수료증을 보냅니다[cite: 67].
+
+[시작 노드]
+- [cite_start]카테고리: 스프레드시트 [cite: 26]
+- [cite_start]서비스: Google Sheets [cite: 26]
+- 실행 조건:
+  - [cite_start]사용자 선택: "직접 실행할 때" [cite: 34]
+- [cite_start]데이터 대상: "교육_수료자_명단" 시트 전체 [cite: 26]
+- [cite_start]출력 데이터 타입: 스프레드시트 데이터 (이름, 과정명, 점수) [cite: 26]
+
+[도착 노드]
+- [cite_start]카테고리: 커뮤니케이션 [cite: 26]
+- [cite_start]서비스: Gmail [cite: 26]
+- [cite_start]동작 유형: 이메일 발송 [cite: 26]
+- [cite_start]최종 입력 데이터 타입: 텍스트 [cite: 26]
+
+[중간 과정]
+  [중간 노드 1]
+  - [cite_start]들어오는 데이터: 스프레드시트 데이터 (여러 행) [cite: 26]
+  - [cite_start]사용자에게 보여줄 질문: "명단을 어떻게 처리할까요?" [cite: 67]
+  - [cite_start]사용자 선택: "한 사람씩 차례대로" [cite: 67]
+  - [cite_start]내부 노드 타입: Loop 노드 [cite: 67]
+  - [cite_start]나가는 데이터: 스프레드시트 데이터 (단일 행) [cite: 26]
+
+  [중간 노드 2]
+  - [cite_start]들어오는 데이터: 스프레드시트 데이터 (한 명의 정보) [cite: 26]
+  - [cite_start]사용자에게 보여줄 질문: "이 수료자에게 어떤 메시지를 보낼까요?" [cite: 39]
+  - [cite_start]선택지: "성적에 따른 맞춤 칭찬" / "일반적인 축하 문구" [cite: 38]
+  - [cite_start]사용자 선택: "성적에 따른 맞춤 칭찬" [cite: 39]
+  - [cite_start]내부 노드 타입: AI 노드 [cite: 26]
+  - [cite_start]나가는 데이터: 텍스트 (개인화된 메일 본문) [cite: 26]
+
+[도착 노드 세부 설정]
+- [cite_start]들어오는 데이터: 텍스트 (메일 본문) [cite: 26]
+- 설정 항목:
+  - [cite_start]질문: "누구에게 보낼까요?" [cite: 26]
+  - [cite_start]사용자 선택: "시트의 '이메일' 항목 사용" [cite: 42]
+  - [cite_start]질문: "메일 제목" [cite: 26]
+  - [cite_start]사용자 입력: "[축하] [과정명] 수료를 축하드립니다!" [cite: 46]
+
+---
+
+SC-026: 유튜브 영상 댓글의 긍정/부정 비율 분석
+[cite_start]한 줄 요약: 내 유튜브 영상에 달린 댓글들을 모두 수집하여 긍정과 부정의 비율을 계산하고 시트에 정리합니다[cite: 67].
+
+[시작 노드]
+- [cite_start]카테고리: 웹 수집 [cite: 26]
+- [cite_start]서비스: 유튜브 [cite: 26]
+- 실행 조건:
+  - [cite_start]사용자 선택: "직접 실행할 때" [cite: 34]
+- [cite_start]데이터 대상: "특정 영상 URL"의 댓글 전체 [cite: 26]
+- [cite_start]출력 데이터 타입: API 응답 데이터 (댓글 목록) [cite: 26]
+
+[도착 노드]
+- [cite_start]카테고리: 스프레드시트 [cite: 26]
+- [cite_start]서비스: Google Sheets [cite: 26]
+- [cite_start]동작 유형: 행 추가 [cite: 26]
+- [cite_start]최종 입력 데이터 타입: 스프레드시트 데이터 [cite: 26]
+
+[중간 과정]
+  [중간 노드 1]
+  - [cite_start]들어오는 데이터: API 응답 데이터 (댓글들) [cite: 26]
+  - [cite_start]사용자에게 보여줄 질문: "댓글들을 어떻게 분석할까요?" [cite: 67]
+  - [cite_start]사용자 선택: "하나씩 꼼꼼하게 분석" [cite: 67]
+  - [cite_start]내부 노드 타입: Loop 노드 [cite: 67]
+  - [cite_start]나가는 데이터: 텍스트 (개별 댓글 내용) [cite: 26]
+
+  [중간 노드 2]
+  - [cite_start]들어오는 데이터: 텍스트 (개별 댓글) [cite: 26]
+  - [cite_start]사용자에게 보여줄 질문: "댓글의 성격은?" [cite: 39]
+  - [cite_start]선택지: "긍정/중립/부정 분류" [cite: 38]
+  - [cite_start]내부 노드 타입: AI 노드 [cite: 26]
+  - [cite_start]나가는 데이터: 텍스트 (분류 태그) [cite: 26]
+
+[도착 노드 세부 설정]
+- [cite_start]들어오는 데이터: 텍스트 (분류 태그) [cite: 26]
+- 설정 항목:
+  - [cite_start]질문: "결과를 어디에 기록할까요?" [cite: 26]
+  - [cite_start]선택: "콘텐츠_피드백_통계" 시트 [cite: 26]
+  - [cite_start]설정: 댓글내용 = [원문], 분석결과 = [AI 태그] [cite: 42]
+
+---
+
+SC-027: 구글 드라이브 학습 자료 다국어 번역 및 백업
+[cite_start]한 줄 요약: 드라이브에 올린 한국어 문서를 AI가 영어와 일본어로 번역하여 각각 다른 폴더에 저장합니다[cite: 67].
+
+[시작 노드]
+- [cite_start]카테고리: 저장소 [cite: 26]
+- [cite_start]서비스: Google Drive [cite: 26]
+- 실행 조건:
+  - [cite_start]사용자 선택: "새로운 파일이 들어올 때" [cite: 34]
+- [cite_start]데이터 대상: "내 드라이브 > 원문_자료" 폴더 [cite: 26]
+- [cite_start]출력 데이터 타입: 단일 파일 [cite: 26]
+
+[도착 노드]
+- [cite_start]카테고리: 저장소 [cite: 26]
+- [cite_start]서비스: Google Drive [cite: 26]
+- [cite_start]동작 유형: 파일 저장 [cite: 26]
+- [cite_start]최종 입력 데이터 타입: 단일 파일 [cite: 26]
+
+[중간 과정]
+  [중간 노드 1]
+  - [cite_start]들어오는 데이터: 단일 파일 (한국어 문서) [cite: 26]
+  - [cite_start]사용자에게 보여줄 질문: "어떤 언어로 번역할까요?" [cite: 39]
+  - [cite_start]선택지: "영어와 일본어 둘 다" / "영어만" / "일본어만" [cite: 67]
+  - [cite_start]사용자 선택: "영어와 일본어 둘 다" [cite: 67]
+  - [cite_start]내부 노드 타입: 조건 분기 노드 (병렬 실행) [cite: 67]
+  - [cite_start]나가는 데이터: 분기별 단일 파일 [cite: 26]
+
+  [중간 노드 2-A] 영어 경로
+  - [cite_start]내부 노드 타입: AI 노드 [cite: 26]
+  - [cite_start]사용자 설정: "문서 내용을 전문적인 영어로 번역" [cite: 39]
+  - [cite_start]나가는 데이터: 단일 파일 (영어본) [cite: 26]
+
+  [중간 노드 2-B] 일본어 경로
+  - [cite_start]내부 노드 타입: AI 노드 [cite: 26]
+  - [cite_start]사용자 설정: "문서 내용을 자연스러운 일본어로 번역" [cite: 39]
+  - [cite_start]나가는 데이터: 단일 파일 (일본어본) [cite: 26]
+
+[도착 노드 세부 설정]
+- [cite_start]들어오는 데이터: 단일 파일 (번역본) [cite: 26]
+- 설정 항목:
+  - [cite_start]질문: "영어 파일 저장 위치" [cite: 26]
+  - [cite_start]선택: "내 드라이브 > English_Docs" [cite: 26]
+  - [cite_start]질문: "일본어 파일 저장 위치" [cite: 26]
+  - [cite_start]선택: "내 드라이브 > Japanese_Docs" [cite: 26]
+
+---
+
+SC-028: 오늘의 날씨 및 일정 브리핑 Slack 알림
+[cite_start]한 줄 요약: 매일 아침 9시, 오늘 일정을 확인하고 AI가 날씨에 어울리는 업무 인사를 곁들여 Slack으로 알려줍니다[cite: 34].
+
+[시작 노드]
+- [cite_start]카테고리: 캘린더 [cite: 26]
+- [cite_start]서비스: Google Calendar [cite: 26]
+- 실행 조건:
+  - [cite_start]사용자 선택: "매일 특정 시간에" [cite: 34]
+  - [cite_start]사용자 입력: "오전 9시" [cite: 34]
+- [cite_start]데이터 대상: "업무" 캘린더 [cite: 26]
+- [cite_start]출력 데이터 타입: 일정 데이터 [cite: 26]
+
+[도착 노드]
+- [cite_start]카테고리: 커뮤니케이션 [cite: 26]
+- [cite_start]서비스: Slack [cite: 26]
+- [cite_start]동작 유형: 메시지 전송 [cite: 26]
+- [cite_start]최종 입력 데이터 타입: 텍스트 [cite: 26]
+
+[중간 과정]
+  [중간 노드 1]
+  - [cite_start]들어오는 데이터: 일정 데이터 (오늘의 할 일들) [cite: 26]
+  - [cite_start]사용자에게 보여줄 질문: "일정을 어떻게 요약할까요?" [cite: 39]
+  - [cite_start]선택지: "친절한 비서처럼 요약" / "리스트로 간결하게" [cite: 38]
+  - [cite_start]사용자 선택: "친절한 비서처럼 요약" [cite: 39]
+  - [cite_start]내부 노드 타입: AI 노드 [cite: 26]
+  - [cite_start]나가는 데이터: 텍스트 (브리핑 메시지) [cite: 26]
+
+[도착 노드 세부 설정]
+- [cite_start]들어오는 데이터: 텍스트 (브리핑 메시지) [cite: 26]
+- 설정 항목:
+  - [cite_start]질문: "어디로 보낼까요?" [cite: 26]
+  - [cite_start]선택: #개인-오늘-할일 [cite: 26]
+  - [cite_start]질문: "추가 메시지" [cite: 26]
+  - [cite_start]사용자 입력: "좋은 하루 되세요! ✨" [cite: 46]
+
+---
+
+SC-029: 쿠팡 상품 가격 하락 시 시트 업데이트
+[cite_start]한 줄 요약: 등록한 쿠팡 상품의 가격을 주기적으로 확인하여, 이전보다 저렴해졌을 때만 시트의 가격 정보를 갱신합니다[cite: 67].
+
+[시작 노드]
+- [cite_start]카테고리: 웹 수집 [cite: 26]
+- [cite_start]서비스: 쿠팡 [cite: 26]
+- 실행 조건:
+  - [cite_start]사용자 선택: "매일 특정 시간에" [cite: 34]
+  - [cite_start]사용자 입력: "오전 10시" [cite: 34]
+- [cite_start]데이터 대상: "특정 상품 URL"의 가격 정보 [cite: 26]
+- [cite_start]출력 데이터 타입: API 응답 데이터 (현재 가격) [cite: 26]
+
+[도착 노드]
+- [cite_start]카테고리: 스프레드시트 [cite: 26]
+- [cite_start]서비스: Google Sheets [cite: 26]
+- [cite_start]동작 유형: 데이터 업데이트 [cite: 26]
+- [cite_start]최종 입력 데이터 타입: 스프레드시트 데이터 [cite: 26]
+
+[중간 과정]
+  [중간 노드 1]
+  - [cite_start]들어오는 데이터: API 응답 데이터 (현재 가격) [cite: 26]
+  - [cite_start]사용자에게 보여줄 질문: "언제 시트에 기록할까요?" [cite: 67]
+  - [cite_start]선택지: "가격이 바뀌었을 때만" / "무조건 기록" [cite: 67]
+  - [cite_start]사용자 선택: "가격이 바뀌었을 때만" [cite: 67]
+  - [cite_start]내부 노드 타입: 조건 분기 노드 (If) [cite: 67]
+  - 분기 설정:
+    - [cite_start]질문: "기록 기준 설정" [cite: 67]
+    - [cite_start]선택: 현재 가격이 기존 기록보다 낮을 때 [cite: 67]
+  - [cite_start]나가는 데이터: API 응답 데이터 (가격) [cite: 26]
+
+[도착 노드 세부 설정]
+- [cite_start]들어오는 데이터: API 응답 데이터 [cite: 26]
+- 설정 항목:
+  - [cite_start]질문: "대상 시트" [cite: 26]
+  - [cite_start]선택: "최저가_추적_리스트" [cite: 26]
+  - [cite_start]설정: 상품명 = [상품명], 현재가 = [현재 가격], 업데이트일 = [오늘 날짜] [cite: 42]
+
+---
+
+SC-030: 여러 뉴스 기사를 하나의 요약문으로 합치기
+[cite_start]한 줄 요약: 검색된 여러 건의 뉴스 기사를 AI가 한데 모아 하나의 흐름을 가진 요약문으로 만들어 메일로 보냅니다[cite: 53].
+
+[시작 노드]
+- [cite_start]카테고리: 웹 수집 [cite: 26]
+- [cite_start]서비스: 네이버 뉴스 [cite: 26]
+- 실행 조건:
+  - [cite_start]사용자 선택: "직접 실행할 때" [cite: 34]
+- [cite_start]데이터 대상: 키워드 "Flowify" 검색 결과 5건 [cite: 26]
+- [cite_start]출력 데이터 타입: API 응답 데이터 (뉴스 목록) [cite: 26]
+
+[도착 노드]
+- [cite_start]카테고리: 커뮤니케이션 [cite: 26]
+- [cite_start]서비스: Gmail [cite: 26]
+- [cite_start]동작 유형: 이메일 발송 [cite: 26]
+- [cite_start]최종 입력 데이터 타입: 텍스트 [cite: 26]
+
+[중간 과정]
+  [중간 노드 1]
+  - [cite_start]들어오는 데이터: API 응답 데이터 (뉴스 5건) [cite: 26]
+  - [cite_start]사용자에게 보여줄 질문: "데이터를 어떻게 처리할까요?" [cite: 67]
+  - [cite_start]선택지: "전체를 하나의 내용으로 합치기" / "하나씩 따로 처리" [cite: 67]
+  - [cite_start]사용자 선택: "전체를 하나의 내용으로 합치기" [cite: 67]
+  - [cite_start]내부 노드 타입: AI 노드 (다중 데이터 참조) [cite: 53]
+  - AI 설정:
+    - [cite_start]질문: "어떤 형식으로 합칠까요?" [cite: 39]
+    - [cite_start]사용자 선택: "전체 흐름을 요약한 뉴스레터 형식" [cite: 39]
+  - [cite_start]나가는 데이터: 텍스트 (최종 요약본) [cite: 26]
+
+[도착 노드 세부 설정]
+- [cite_start]들어오는 데이터: 텍스트 (최종 요약본) [cite: 26]
+- 설정 항목:
+  - [cite_start]질문: "메일 제목" [cite: 26]
+  - [cite_start]사용자 입력: "[요약] Flowify 관련 최신 뉴스 모음" [cite: 46]
+  - [cite_start]질문: "받는 사람" [cite: 26]
+  - [cite_start]사용자 입력: "me@company.com" [cite: 46]
+

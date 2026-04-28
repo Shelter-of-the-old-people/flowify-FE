@@ -2,56 +2,123 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
 import { type ReactNode } from "react";
-import { MdArrowBack, MdCancel, MdSearch } from "react-icons/md";
+import { type IconType } from "react-icons";
+import {
+  MdArrowBack,
+  MdArticle,
+  MdCancel,
+  MdFolder,
+  MdSearch,
+} from "react-icons/md";
+import {
+  SiGmail,
+  SiGooglecalendar,
+  SiGoogledrive,
+  SiGooglesheets,
+  SiSlack,
+} from "react-icons/si";
 
-import { Box, Grid, Icon, Input, Text, VStack } from "@chakra-ui/react";
+import { Box, Button, Grid, Icon, Input, Text, VStack } from "@chakra-ui/react";
 import { useReactFlow, useViewport } from "@xyflow/react";
 
-import { NODE_REGISTRY } from "@/entities/node";
-import { type FlowNodeData, type NodeMeta } from "@/entities/node";
+import { type DataType, type FlowNodeData } from "@/entities/node";
 import {
+  getOAuthConnectionUiState,
+  useConnectOAuthTokenMutation,
+  useOAuthTokensQuery,
+} from "@/entities/oauth-token";
+import {
+  type SinkServiceResponse,
+  type SourceModeResponse,
+  type SourceServiceResponse,
   findAddedNodeId,
+  getVisualNodeTypeFromServiceKey,
+  toBackendDataType,
+  toFrontendDataType,
   toNodeAddRequest,
   useAddWorkflowNodeMutation,
-  useDeleteWorkflowNodeMutation,
+  useSinkCatalogQuery,
+  useSourceCatalogQuery,
 } from "@/entities/workflow";
 import { hydrateStore, useWorkflowStore } from "@/features/workflow-editor";
+import { getApiErrorMessage, getLeafNodeIds } from "@/shared";
 
-import { CATEGORY_SERVICE_MAP } from "../model/serviceMap";
-import { type ServiceOption } from "../model/serviceMap";
-import {
-  SERVICE_REQUIREMENTS,
-  type ServiceRequirement,
-} from "../model/serviceRequirements";
+import { isSinkServiceInRollout } from "../model/sink-rollout";
+import { isSourceModeInRollout } from "../model/source-rollout";
 
-type WizardStep = "category" | "service" | "requirement" | "auth";
+type StartWizardStep = "service" | "auth" | "mode" | "target" | "confirm";
+type EndWizardStep = "service" | "auth" | "confirm";
+type CatalogService = SourceServiceResponse | SinkServiceResponse;
 
-const allNodeEntries = Object.values(NODE_REGISTRY);
 const WIZARD_CARD_BORDER = "#f2f2f2";
 const START_END_PANEL_GAP = 48;
 const PLACEHOLDER_NODE_WIDTH = 100;
-const START_END_NODE_WIDTH = 172;
 const START_END_NODE_HEIGHT = 176;
+const EMPTY_TARGET_SENTINEL = "";
 
-const parseSourceNodeId = (placeholderId: string): string | undefined => {
-  if (
-    placeholderId === "placeholder-start" ||
-    placeholderId === "placeholder-end"
-  ) {
-    return undefined;
-  }
-
-  return placeholderId.replace("placeholder-", "");
+const CATALOG_SERVICE_ICON_MAP: Record<string, IconType> = {
+  gmail: SiGmail,
+  google_calendar: SiGooglecalendar,
+  google_drive: SiGoogledrive,
+  google_sheets: SiGooglesheets,
+  notion: MdArticle,
+  slack: SiSlack,
 };
+
+const CANONICAL_INPUT_TYPE_LABELS: Record<string, string> = {
+  API_RESPONSE: "구조화된 API 응답",
+  EMAIL_LIST: "이메일 목록",
+  FILE_LIST: "파일 목록",
+  SCHEDULE_DATA: "일정 데이터",
+  SINGLE_EMAIL: "단일 이메일",
+  SINGLE_FILE: "단일 파일",
+  SPREADSHEET_DATA: "스프레드시트 데이터",
+  TEXT: "텍스트",
+};
+
+const DATA_TYPE_LABELS: Record<DataType, string> = {
+  "api-response": "API 응답",
+  "email-list": "이메일 목록",
+  "file-list": "파일 목록",
+  "schedule-data": "일정 데이터",
+  "single-email": "단일 이메일",
+  "single-file": "단일 파일",
+  spreadsheet: "스프레드시트 데이터",
+  text: "텍스트",
+};
+
+const TARGET_SCHEMA_LABELS: Record<string, string> = {
+  channel_picker: "채널",
+  day_picker: "요일",
+  email_picker: "이메일",
+  file_picker: "파일",
+  folder_picker: "폴더",
+  label_picker: "라벨",
+  page_picker: "페이지",
+  sheet_picker: "시트",
+  text_input: "대상",
+  time_picker: "시간",
+};
+
+const DAY_PICKER_OPTIONS = [
+  { label: "월요일", value: "monday" },
+  { label: "화요일", value: "tuesday" },
+  { label: "수요일", value: "wednesday" },
+  { label: "목요일", value: "thursday" },
+  { label: "금요일", value: "friday" },
+  { label: "토요일", value: "saturday" },
+  { label: "일요일", value: "sunday" },
+] as const;
 
 const WizardCard = ({
   children,
-  minWidth = "520px",
   maxWidth,
+  minWidth = "520px",
 }: {
   children: ReactNode;
   minWidth?: string;
@@ -63,248 +130,459 @@ const WizardCard = ({
     borderColor={WIZARD_CARD_BORDER}
     borderRadius="20px"
     boxShadow="0 4px 4px rgba(0,0,0,0.25)"
-    p={12}
-    minW={minWidth}
     maxW={maxWidth}
+    minW={minWidth}
     overflow="hidden"
+    p={12}
   >
     {children}
   </Box>
 );
 
-const CategoryGrid = ({
+const getCatalogServiceIcon = (serviceKey: string) =>
+  CATALOG_SERVICE_ICON_MAP[serviceKey] ?? MdFolder;
+
+const getTargetSchemaType = (targetSchema: Record<string, unknown>) =>
+  typeof targetSchema.type === "string" ? targetSchema.type : "text_input";
+
+const getTargetSchemaLabel = (targetSchema: Record<string, unknown>) =>
+  TARGET_SCHEMA_LABELS[getTargetSchemaType(targetSchema)] ?? "대상";
+
+const getTargetSchemaPlaceholder = (targetSchema: Record<string, unknown>) =>
+  typeof targetSchema.placeholder === "string"
+    ? targetSchema.placeholder
+    : `${getTargetSchemaLabel(targetSchema)} 입력`;
+
+const hasTargetSchema = (targetSchema: Record<string, unknown>) =>
+  Object.keys(targetSchema).length > 0;
+
+const toCanonicalInputType = (canonicalInputType: string): DataType =>
+  toFrontendDataType(canonicalInputType);
+
+const CatalogServiceGrid = ({
+  emptyMessage,
+  connectedServiceKeys,
+  isAuthStatusError,
+  isAuthStatusLoading,
+  isLoading,
+  onSelect,
   searchQuery,
-  setSearchQuery,
-  onSelect,
-}: {
-  searchQuery: string;
-  setSearchQuery: (query: string) => void;
-  onSelect: (meta: NodeMeta) => void;
-}) => {
-  const filtered = searchQuery
-    ? allNodeEntries.filter((meta) => meta.label.includes(searchQuery))
-    : allNodeEntries;
-
-  return (
-    <WizardCard minWidth="820px" maxWidth="820px">
-      <Box position="relative" mb={6}>
-        <Input
-          placeholder="검색"
-          bg="white"
-          border="1px solid"
-          borderColor="gray.500"
-          borderRadius="full"
-          pl={12}
-          pr={12}
-          py={2}
-          fontSize="md"
-          fontWeight="bold"
-          value={searchQuery}
-          onChange={(event) => setSearchQuery(event.target.value)}
-        />
-        <Box
-          position="absolute"
-          top="50%"
-          right={6}
-          transform="translateY(-50%)"
-          pointerEvents="none"
-        >
-          <Icon as={MdSearch} boxSize={8} color="gray.600" />
-        </Box>
-      </Box>
-
-      <Grid templateColumns="repeat(7, 1fr)" gap={12} p={6}>
-        {filtered.map((meta) => (
-          <VStack
-            key={meta.type}
-            gap={1}
-            cursor="pointer"
-            minH="80px"
-            _hover={{ opacity: 0.7 }}
-            transition="opacity 150ms ease"
-            onClick={() => onSelect(meta)}
-          >
-            <Box
-              display="flex"
-              flexDirection="column"
-              alignItems="center"
-              justifyContent="center"
-              h="64px"
-            >
-              <Icon as={meta.iconComponent} boxSize={16} color={meta.color} />
-            </Box>
-            <Text fontSize="xs" fontWeight="medium" textAlign="center">
-              {meta.label}
-            </Text>
-          </VStack>
-        ))}
-      </Grid>
-    </WizardCard>
-  );
-};
-
-const ServiceGrid = ({
-  selectedMeta,
   services,
-  onSelect,
-  onBack,
+  setSearchQuery,
 }: {
-  selectedMeta: NodeMeta;
-  services: ServiceOption[];
-  onSelect: (service: ServiceOption) => void;
-  onBack: () => void;
+  connectedServiceKeys: Set<string>;
+  emptyMessage: string;
+  isAuthStatusError: boolean;
+  isAuthStatusLoading: boolean;
+  isLoading: boolean;
+  onSelect: (service: CatalogService) => void;
+  searchQuery: string;
+  services: CatalogService[];
+  setSearchQuery: (query: string) => void;
 }) => (
-  <WizardCard minWidth="520px" maxWidth="720px">
-    <Text fontSize="md" fontWeight="medium" color="text.secondary" mb={6}>
-      {selectedMeta.label} 카테고리의 서비스를 선택해주세요.
-    </Text>
-
-    <Grid templateColumns="repeat(auto-fill, minmax(80px, 1fr))" gap={8} p={4}>
-      {services.map((service) => (
-        <VStack
-          key={service.value}
-          gap={1}
-          cursor="pointer"
-          minH="80px"
-          _hover={{ opacity: 0.7 }}
-          transition="opacity 150ms ease"
-          onClick={() => onSelect(service)}
-        >
-          <Box
-            display="flex"
-            alignItems="center"
-            justifyContent="center"
-            h="64px"
-          >
-            <Icon as={service.iconComponent} boxSize={16} />
-          </Box>
-          <Text fontSize="xs" fontWeight="medium" textAlign="center">
-            {service.label}
-          </Text>
-        </VStack>
-      ))}
-    </Grid>
-
-    <Box
-      mt={4}
-      cursor="pointer"
-      onClick={onBack}
-      display="inline-flex"
-      alignItems="center"
-      gap={1}
-      color="gray.500"
-      _hover={{ color: "black" }}
-      transition="color 150ms ease"
-    >
-      <Icon as={MdArrowBack} boxSize={5} />
-      <Text fontSize="sm">뒤로</Text>
-    </Box>
-  </WizardCard>
-);
-
-const RequirementList = ({
-  title,
-  requirements,
-  onSelect,
-  onBack,
-}: {
-  title: string;
-  requirements: ServiceRequirement[];
-  onSelect: (requirement: ServiceRequirement) => void;
-  onBack: () => void;
-}) => (
-  <WizardCard>
-    <Box
-      mb={4}
-      cursor="pointer"
-      display="inline-flex"
-      alignItems="center"
-      onClick={onBack}
-      color="gray.500"
-      _hover={{ color: "black" }}
-      transition="color 150ms ease"
-    >
-      <Icon as={MdArrowBack} boxSize={5} mr={1} />
-      <Text fontSize="sm">뒤로</Text>
+  <WizardCard minWidth="820px" maxWidth="820px">
+    <Box position="relative" mb={6}>
+      <Input
+        bg="white"
+        border="1px solid"
+        borderColor="gray.500"
+        borderRadius="full"
+        fontSize="md"
+        fontWeight="bold"
+        placeholder="서비스 검색"
+        pl={12}
+        pr={12}
+        py={2}
+        value={searchQuery}
+        onChange={(event) => setSearchQuery(event.target.value)}
+      />
+      <Box
+        pointerEvents="none"
+        position="absolute"
+        right={6}
+        top="50%"
+        transform="translateY(-50%)"
+      >
+        <Icon as={MdSearch} boxSize={8} color="gray.600" />
+      </Box>
     </Box>
 
-    <Text fontSize="xl" fontWeight="bold" mb={6}>
-      {title}
-    </Text>
+    {isLoading ? (
+      <Text color="text.secondary" px={6} py={10} textAlign="center">
+        서비스를 불러오는 중입니다.
+      </Text>
+    ) : services.length === 0 ? (
+      <Text color="text.secondary" px={6} py={10} textAlign="center">
+        {emptyMessage}
+      </Text>
+    ) : (
+      <Grid gap={8} p={6} templateColumns="repeat(5, 1fr)">
+        {services.map((service) => {
+          const connected = connectedServiceKeys.has(service.key);
+          const authState = getOAuthConnectionUiState({
+            authRequired: service.auth_required,
+            connected,
+            isAuthStatusError,
+            isAuthStatusLoading,
+            serviceKey: service.key,
+          });
 
-    <Box display="flex" flexDirection="column" gap={4}>
-      {requirements.map((requirement) => (
-        <Box
-          key={requirement.id}
-          display="flex"
-          gap={3}
-          alignItems="center"
-          cursor="pointer"
-          px={6}
-          py={4}
-          borderRadius="3xl"
-          _hover={{ bg: "gray.50" }}
-          transition="background 150ms ease"
-          onClick={() => onSelect(requirement)}
-        >
-          <Box display="flex" alignItems="center" justifyContent="center" p={3}>
-            <Icon as={requirement.iconComponent} boxSize={6} />
-          </Box>
-          <Text fontSize="md" fontWeight="bold">
-            {requirement.label}
-          </Text>
-        </Box>
-      ))}
-    </Box>
+          return (
+            <VStack
+              key={service.key}
+              cursor={authState.selectionDisabled ? "not-allowed" : "pointer"}
+              gap={2}
+              minH="96px"
+              opacity={authState.selectionDisabled ? 0.5 : 1}
+              transition="opacity 150ms ease"
+              _hover={
+                authState.selectionDisabled ? undefined : { opacity: 0.7 }
+              }
+              onClick={() => {
+                if (authState.selectionDisabled) {
+                  return;
+                }
+
+                onSelect(service);
+              }}
+            >
+              <Box
+                alignItems="center"
+                display="flex"
+                h="64px"
+                justifyContent="center"
+              >
+                <Icon as={getCatalogServiceIcon(service.key)} boxSize={16} />
+              </Box>
+              <Text fontSize="xs" fontWeight="medium" textAlign="center">
+                {service.label}
+              </Text>
+              <Text color="text.secondary" fontSize="10px">
+                {authState.label}
+              </Text>
+            </VStack>
+          );
+        })}
+      </Grid>
+    )}
   </WizardCard>
 );
 
 const AuthPrompt = ({
+  errorMessage,
+  isPending,
   onAuth,
   onBack,
+  serviceLabel,
 }: {
+  errorMessage: string | null;
+  isPending: boolean;
   onAuth: () => void;
   onBack: () => void;
+  serviceLabel: string;
 }) => (
   <WizardCard>
     <Box
-      mb={4}
+      alignItems="center"
+      color="gray.500"
       cursor="pointer"
       display="inline-flex"
-      alignItems="center"
-      onClick={onBack}
-      color="gray.500"
-      _hover={{ color: "black" }}
+      mb={4}
       transition="color 150ms ease"
+      _hover={{ color: "black" }}
+      onClick={onBack}
     >
       <Icon as={MdArrowBack} boxSize={5} mr={1} />
       <Text fontSize="sm">뒤로</Text>
     </Box>
 
     <Text fontSize="xl" fontWeight="bold" mb={3}>
-      인증이 필요합니다.
+      인증이 필요합니다
     </Text>
-    <Text fontSize="md" mb={6} color="text.secondary">
-      인증은 처음 한 번만 진행하면 됩니다.
+    <Text color="text.secondary" fontSize="md" mb={6}>
+      {serviceLabel} 계정 연결이 필요합니다. 인증은 처음 한 번만 진행하면
+      됩니다.
     </Text>
 
-    <Box
-      border="1px solid"
-      borderColor="gray.200"
-      borderRadius="xl"
-      display="flex"
-      alignItems="center"
-      justifyContent="center"
+    <Button
+      loading={isPending}
       px={16}
       py={3}
-      cursor="pointer"
-      _hover={{ bg: "gray.50" }}
-      transition="background 150ms ease"
+      variant="outline"
       onClick={onAuth}
     >
-      <Text fontSize="md" fontWeight="semibold">
-        계정 인증하기
+      계정 인증하기
+    </Button>
+    {errorMessage ? (
+      <Text color="status.error" fontSize="sm" mt={4}>
+        {errorMessage}
       </Text>
+    ) : null}
+  </WizardCard>
+);
+
+const SourceModeList = ({
+  onBack,
+  onSelect,
+  service,
+}: {
+  onBack: () => void;
+  onSelect: (mode: SourceModeResponse) => void;
+  service: SourceServiceResponse;
+}) => (
+  <WizardCard minWidth="560px" maxWidth="760px">
+    <Box
+      alignItems="center"
+      color="gray.500"
+      cursor="pointer"
+      display="inline-flex"
+      mb={4}
+      transition="color 150ms ease"
+      _hover={{ color: "black" }}
+      onClick={onBack}
+    >
+      <Icon as={MdArrowBack} boxSize={5} mr={1} />
+      <Text fontSize="sm">뒤로</Text>
+    </Box>
+
+    <Text fontSize="xl" fontWeight="bold" mb={2}>
+      {service.label}
+    </Text>
+    <Text color="text.secondary" fontSize="sm" mb={6}>
+      어떤 방식으로 데이터를 가져올지 선택해주세요.
+    </Text>
+
+    <Box display="flex" flexDirection="column" gap={3}>
+      {service.source_modes.map((mode) => (
+        <Box
+          key={mode.key}
+          borderRadius="3xl"
+          cursor="pointer"
+          px={6}
+          py={5}
+          transition="background 150ms ease"
+          _hover={{ bg: "gray.50" }}
+          onClick={() => onSelect(mode)}
+        >
+          <Text fontSize="md" fontWeight="bold" mb={1}>
+            {mode.label}
+          </Text>
+          <Text color="text.secondary" fontSize="sm">
+            {CANONICAL_INPUT_TYPE_LABELS[mode.canonical_input_type] ??
+              mode.canonical_input_type}
+            {" · "}
+            {mode.trigger_kind}
+          </Text>
+        </Box>
+      ))}
+    </Box>
+  </WizardCard>
+);
+
+const SourceTargetForm = ({
+  mode,
+  onBack,
+  onChange,
+  onSubmit,
+  value,
+}: {
+  mode: SourceModeResponse;
+  onBack: () => void;
+  onChange: (value: string) => void;
+  onSubmit: () => void;
+  value: string;
+}) => {
+  const schemaType = getTargetSchemaType(mode.target_schema);
+
+  return (
+    <WizardCard minWidth="520px" maxWidth="640px">
+      <Box
+        alignItems="center"
+        color="gray.500"
+        cursor="pointer"
+        display="inline-flex"
+        mb={4}
+        transition="color 150ms ease"
+        _hover={{ color: "black" }}
+        onClick={onBack}
+      >
+        <Icon as={MdArrowBack} boxSize={5} mr={1} />
+        <Text fontSize="sm">뒤로</Text>
+      </Box>
+
+      <Text fontSize="xl" fontWeight="bold" mb={2}>
+        대상 선택
+      </Text>
+      <Text color="text.secondary" fontSize="sm" mb={6}>
+        {getTargetSchemaLabel(mode.target_schema)} 정보를 입력해주세요.
+      </Text>
+
+      {schemaType === "day_picker" ? (
+        <Box display="flex" flexDirection="column" gap={3}>
+          {DAY_PICKER_OPTIONS.map((option) => (
+            <Button
+              key={option.value}
+              justifyContent="flex-start"
+              variant={value === option.value ? "solid" : "outline"}
+              onClick={() => onChange(option.value)}
+            >
+              {option.label}
+            </Button>
+          ))}
+        </Box>
+      ) : (
+        <Input
+          placeholder={getTargetSchemaPlaceholder(mode.target_schema)}
+          type={schemaType === "time_picker" ? "time" : "text"}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+        />
+      )}
+
+      <Box display="flex" justifyContent="flex-end" mt={6}>
+        <Button disabled={!value.trim()} onClick={onSubmit}>
+          다음
+        </Button>
+      </Box>
+    </WizardCard>
+  );
+};
+
+const StartNodeConfirm = ({
+  mode,
+  onBack,
+  onConfirm,
+  service,
+  targetValue,
+}: {
+  mode: SourceModeResponse;
+  onBack: () => void;
+  onConfirm: () => void;
+  service: SourceServiceResponse;
+  targetValue: string;
+}) => (
+  <WizardCard minWidth="520px" maxWidth="640px">
+    <Box
+      alignItems="center"
+      color="gray.500"
+      cursor="pointer"
+      display="inline-flex"
+      mb={4}
+      transition="color 150ms ease"
+      _hover={{ color: "black" }}
+      onClick={onBack}
+    >
+      <Icon as={MdArrowBack} boxSize={5} mr={1} />
+      <Text fontSize="sm">뒤로</Text>
+    </Box>
+
+    <Text fontSize="xl" fontWeight="bold" mb={2}>
+      시작 노드 확인
+    </Text>
+    <Text color="text.secondary" fontSize="sm" mb={6}>
+      선택한 source 설정으로 시작 노드를 생성합니다.
+    </Text>
+
+    <VStack align="stretch" gap={3}>
+      <Box bg="gray.50" borderRadius="2xl" px={5} py={4}>
+        <Text color="text.secondary" fontSize="sm">
+          서비스
+        </Text>
+        <Text fontSize="md" fontWeight="semibold">
+          {service.label}
+        </Text>
+      </Box>
+      <Box bg="gray.50" borderRadius="2xl" px={5} py={4}>
+        <Text color="text.secondary" fontSize="sm">
+          source mode
+        </Text>
+        <Text fontSize="md" fontWeight="semibold">
+          {mode.label}
+        </Text>
+      </Box>
+      <Box bg="gray.50" borderRadius="2xl" px={5} py={4}>
+        <Text color="text.secondary" fontSize="sm">
+          canonical type
+        </Text>
+        <Text fontSize="md" fontWeight="semibold">
+          {CANONICAL_INPUT_TYPE_LABELS[mode.canonical_input_type] ??
+            mode.canonical_input_type}
+        </Text>
+      </Box>
+      {targetValue ? (
+        <Box bg="gray.50" borderRadius="2xl" px={5} py={4}>
+          <Text color="text.secondary" fontSize="sm">
+            target
+          </Text>
+          <Text fontSize="md" fontWeight="semibold">
+            {targetValue}
+          </Text>
+        </Box>
+      ) : null}
+    </VStack>
+
+    <Box display="flex" justifyContent="flex-end" mt={6}>
+      <Button onClick={onConfirm}>시작 노드 만들기</Button>
+    </Box>
+  </WizardCard>
+);
+
+const SinkNodeConfirm = ({
+  inputType,
+  onBack,
+  onConfirm,
+  service,
+}: {
+  inputType: DataType | null;
+  onBack: () => void;
+  onConfirm: () => void;
+  service: SinkServiceResponse;
+}) => (
+  <WizardCard minWidth="520px" maxWidth="640px">
+    <Box
+      alignItems="center"
+      color="gray.500"
+      cursor="pointer"
+      display="inline-flex"
+      mb={4}
+      transition="color 150ms ease"
+      _hover={{ color: "black" }}
+      onClick={onBack}
+    >
+      <Icon as={MdArrowBack} boxSize={5} mr={1} />
+      <Text fontSize="sm">뒤로</Text>
+    </Box>
+
+    <Text fontSize="xl" fontWeight="bold" mb={2}>
+      도착 노드 확인
+    </Text>
+    <Text color="text.secondary" fontSize="sm" mb={6}>
+      먼저 어디로 보낼지만 정하고, 상세 설정은 마지막 단계에서 완료합니다.
+    </Text>
+
+    <VStack align="stretch" gap={3}>
+      <Box bg="gray.50" borderRadius="2xl" px={5} py={4}>
+        <Text color="text.secondary" fontSize="sm">
+          sink 서비스
+        </Text>
+        <Text fontSize="md" fontWeight="semibold">
+          {service.label}
+        </Text>
+      </Box>
+      <Box bg="gray.50" borderRadius="2xl" px={5} py={4}>
+        <Text color="text.secondary" fontSize="sm">
+          현재 결과 타입
+        </Text>
+        <Text fontSize="md" fontWeight="semibold">
+          {inputType ? DATA_TYPE_LABELS[inputType] : "결과 타입 확인 필요"}
+        </Text>
+      </Box>
+    </VStack>
+
+    <Box display="flex" justifyContent="flex-end" mt={6}>
+      <Button disabled={!inputType} onClick={onConfirm}>
+        도착 노드 만들기
+      </Button>
     </Box>
   </WizardCard>
 );
@@ -318,31 +596,46 @@ export const ServiceSelectionPanel = () => {
   const activePlaceholder = useWorkflowStore(
     (state) => state.activePlaceholder,
   );
-  const workflowId = useWorkflowStore((state) => state.workflowId);
+  const edges = useWorkflowStore((state) => state.edges);
+  const endNodeId = useWorkflowStore((state) => state.endNodeId);
   const nodes = useWorkflowStore((state) => state.nodes);
+  const startNodeId = useWorkflowStore((state) => state.startNodeId);
+  const workflowId = useWorkflowStore((state) => state.workflowId);
   const syncWorkflowGraph = useWorkflowStore(
     (state) => state.syncWorkflowGraph,
   );
   const setActivePlaceholder = useWorkflowStore(
     (state) => state.setActivePlaceholder,
   );
-  const updateNodeConfig = useWorkflowStore((state) => state.updateNodeConfig);
   const { mutateAsync: addWorkflowNode, isPending: isAddNodePending } =
     useAddWorkflowNodeMutation();
-  const { mutateAsync: deleteWorkflowNode, isPending: isDeleteNodePending } =
-    useDeleteWorkflowNodeMutation();
+  const { mutateAsync: connectOAuthToken, isPending: isConnectOAuthPending } =
+    useConnectOAuthTokenMutation();
+  const {
+    data: oauthTokens,
+    isError: isOAuthTokensError,
+    isLoading: isOAuthTokensLoading,
+  } = useOAuthTokensQuery({
+    enabled: Boolean(activePlaceholder),
+  });
+  const { data: sinkCatalog, isLoading: isSinkCatalogLoading } =
+    useSinkCatalogQuery();
+  const { data: sourceCatalog, isLoading: isSourceCatalogLoading } =
+    useSourceCatalogQuery();
   const { flowToScreenPosition } = useReactFlow();
   const viewport = useViewport();
 
-  const [step, setStep] = useState<WizardStep>("category");
+  const [endStep, setEndStep] = useState<EndWizardStep>("service");
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedMeta, setSelectedMeta] = useState<NodeMeta | null>(null);
-  const [selectedService, setSelectedService] = useState<ServiceOption | null>(
-    null,
-  );
-  const [placedNodeId, setPlacedNodeId] = useState<string | null>(null);
-  const [selectedRequirementPreset, setSelectedRequirementPreset] =
-    useState<Record<string, unknown> | null>(null);
+  const [selectedSinkService, setSelectedSinkService] =
+    useState<SinkServiceResponse | null>(null);
+  const [selectedSourceMode, setSelectedSourceMode] =
+    useState<SourceModeResponse | null>(null);
+  const [selectedSourceService, setSelectedSourceService] =
+    useState<SourceServiceResponse | null>(null);
+  const [selectedTargetValue, setSelectedTargetValue] = useState("");
+  const [startStep, setStartStep] = useState<StartWizardStep>("service");
+  const [authErrorMessage, setAuthErrorMessage] = useState<string | null>(null);
   const syncWorkflowFromResponse = useCallback(
     (workflow: Parameters<typeof hydrateStore>[0]) => {
       syncWorkflowGraph(hydrateStore(workflow), {
@@ -354,13 +647,100 @@ export const ServiceSelectionPanel = () => {
     [syncWorkflowGraph],
   );
 
+  const connectedServiceKeys = useMemo(
+    () =>
+      new Set(
+        (oauthTokens ?? [])
+          .filter((token) => token.connected)
+          .map((token) => token.service),
+      ),
+    [oauthTokens],
+  );
+
+  const isServiceConnected = useCallback(
+    (serviceKey: string) => connectedServiceKeys.has(serviceKey),
+    [connectedServiceKeys],
+  );
+
+  const shouldRequestAuth = useCallback(
+    (service: CatalogService) =>
+      service.auth_required && !isServiceConnected(service.key),
+    [isServiceConnected],
+  );
+
+  const sourceServices = useMemo(
+    () =>
+      (sourceCatalog?.services ?? [])
+        .map((service) => ({
+          ...service,
+          source_modes: service.source_modes.filter((mode) =>
+            isSourceModeInRollout(service.key, mode.key),
+          ),
+        }))
+        .filter((service) => service.source_modes.length > 0),
+    [sourceCatalog?.services],
+  );
+
+  const endSourceNode = useMemo(() => {
+    const nodeIds = nodes
+      .map((node) => node.id)
+      .filter((id) => id !== endNodeId);
+    const leafIds = getLeafNodeIds(nodeIds, edges);
+    const leafNodes = leafIds
+      .map((leafId) => nodes.find((node) => node.id === leafId) ?? null)
+      .filter((node): node is (typeof nodes)[number] => node !== null);
+
+    return (
+      leafNodes
+        .sort((left, right) =>
+          left.position.x === right.position.x
+            ? left.position.y - right.position.y
+            : left.position.x - right.position.x,
+        )
+        .at(-1) ??
+      (startNodeId
+        ? (nodes.find((node) => node.id === startNodeId) ?? null)
+        : null)
+    );
+  }, [edges, endNodeId, nodes, startNodeId]);
+
+  const sinkInputType = endSourceNode?.data.outputTypes[0] ?? null;
+  const sinkInputTypeKey = sinkInputType
+    ? toBackendDataType(sinkInputType)
+    : null;
+  const sinkServices = useMemo(
+    () =>
+      (sinkCatalog?.services ?? []).filter(
+        (service) =>
+          isSinkServiceInRollout(service.key) &&
+          Boolean(
+            sinkInputTypeKey &&
+            service.accepted_input_types.includes(sinkInputTypeKey),
+          ),
+      ),
+    [sinkCatalog?.services, sinkInputTypeKey],
+  );
+
+  const filteredCatalogServices = useMemo(() => {
+    const targetServices =
+      activePlaceholder?.id === "placeholder-end"
+        ? sinkServices
+        : sourceServices;
+
+    return targetServices.filter((service) =>
+      service.label.toLowerCase().includes(searchQuery.toLowerCase()),
+    );
+  }, [activePlaceholder?.id, searchQuery, sinkServices, sourceServices]);
+
   const resetWizard = useCallback(() => {
-    setStep("category");
+    setEndStep("service");
     setSearchQuery("");
-    setSelectedMeta(null);
-    setSelectedService(null);
-    setPlacedNodeId(null);
-    setSelectedRequirementPreset(null);
+    setSelectedSinkService(null);
+    setSelectedSourceMode(null);
+    setSelectedSourceService(null);
+    setSelectedTargetValue("");
+    setStartStep("service");
+    setAuthErrorMessage(null);
     setActivePlaceholder(null);
   }, [setActivePlaceholder]);
 
@@ -369,7 +749,9 @@ export const ServiceSelectionPanel = () => {
   }, [resetWizard]);
 
   useEffect(() => {
-    if (!activePlaceholder) return;
+    if (!activePlaceholder) {
+      return;
+    }
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape" && activePlaceholder) {
@@ -392,17 +774,16 @@ export const ServiceSelectionPanel = () => {
     }
 
     const overlayElement = overlayRef.current;
-    if (!overlayElement || !wrapperElement) return;
+    if (!overlayElement || !wrapperElement) {
+      return;
+    }
 
     const overlayRect = overlayElement.getBoundingClientRect();
     const wrapperRect = wrapperElement.getBoundingClientRect();
-    const anchorWidth = placedNodeId
-      ? START_END_NODE_WIDTH
-      : PLACEHOLDER_NODE_WIDTH;
     const anchorCenterY =
       activePlaceholder.position.y + START_END_NODE_HEIGHT / 2;
     const anchorScreenPosition = flowToScreenPosition({
-      x: activePlaceholder.position.x + anchorWidth,
+      x: activePlaceholder.position.x + PLACEHOLDER_NODE_WIDTH,
       y: anchorCenterY,
     });
 
@@ -421,32 +802,79 @@ export const ServiceSelectionPanel = () => {
   }, [
     activePlaceholder,
     flowToScreenPosition,
-    placedNodeId,
     viewport.x,
     viewport.y,
     viewport.zoom,
   ]);
 
-  const placeNode = useCallback(
-    async (meta: NodeMeta, service?: ServiceOption) => {
-      if (!activePlaceholder || !workflowId) return null;
-      const sourceNodeId = parseSourceNodeId(activePlaceholder.id);
+  if (!canEditNodes || !activePlaceholder) {
+    return null;
+  }
 
+  const isStartPlaceholder = activePlaceholder.id === "placeholder-start";
+  const isEndPlaceholder = activePlaceholder.id === "placeholder-end";
+
+  if (!isStartPlaceholder && !isEndPlaceholder) {
+    return null;
+  }
+
+  const handleSourceServiceSelect = (service: SourceServiceResponse) => {
+    setSelectedSourceService(service);
+    setSelectedSourceMode(null);
+    setSelectedTargetValue("");
+    setAuthErrorMessage(null);
+
+    if (shouldRequestAuth(service)) {
+      setStartStep("auth");
+      return;
+    }
+
+    setStartStep("mode");
+  };
+
+  const handleSourceModeSelect = (mode: SourceModeResponse) => {
+    setSelectedSourceMode(mode);
+    setSelectedTargetValue("");
+
+    if (hasTargetSchema(mode.target_schema)) {
+      setStartStep("target");
+      return;
+    }
+
+    setStartStep("confirm");
+  };
+
+  const handleCreateStartNode = () => {
+    if (!selectedSourceMode || !selectedSourceService || !workflowId) {
+      return;
+    }
+
+    const nodeType = getVisualNodeTypeFromServiceKey(selectedSourceService.key);
+    if (!nodeType) {
+      return;
+    }
+
+    const outputType = toCanonicalInputType(
+      selectedSourceMode.canonical_input_type,
+    );
+
+    void (async () => {
       const nextWorkflow = await addWorkflowNode({
         workflowId,
         body: toNodeAddRequest({
-          type: meta.type,
+          type: nodeType,
           position: activePlaceholder.position,
-          role:
-            activePlaceholder.id === "placeholder-start"
-              ? "start"
-              : activePlaceholder.id === "placeholder-end"
-                ? "end"
-                : "middle",
-          prevNodeId: sourceNodeId,
-          config: service
-            ? ({ service: service.value } as Partial<FlowNodeData["config"]>)
-            : undefined,
+          role: "start",
+          config: {
+            canonical_input_type: selectedSourceMode.canonical_input_type,
+            service: selectedSourceService.key,
+            source_mode: selectedSourceMode.key,
+            target: hasTargetSchema(selectedSourceMode.target_schema)
+              ? selectedTargetValue.trim()
+              : EMPTY_TARGET_SENTINEL,
+            trigger_kind: selectedSourceMode.trigger_kind,
+          } as Partial<FlowNodeData["config"]>,
+          outputTypes: [outputType],
         }),
       });
 
@@ -456,220 +884,295 @@ export const ServiceSelectionPanel = () => {
       );
 
       if (!addedNodeId || !addedNode) {
-        return null;
+        return;
       }
 
       syncWorkflowFromResponse(nextWorkflow);
-      return addedNodeId;
-    },
-    [
-      activePlaceholder,
-      addWorkflowNode,
-      nodes,
-      syncWorkflowFromResponse,
-      workflowId,
-    ],
-  );
-
-  if (!canEditNodes || !activePlaceholder) return null;
-
-  const isStartOrEndPlaceholder =
-    activePlaceholder.id === "placeholder-start" ||
-    activePlaceholder.id === "placeholder-end";
-
-  if (!isStartOrEndPlaceholder) return null;
-
-  const requirementGroup = selectedMeta
-    ? SERVICE_REQUIREMENTS[selectedMeta.type]
-    : undefined;
-
-  const handleCategorySelect = (meta: NodeMeta) => {
-    const serviceGroup = CATEGORY_SERVICE_MAP[meta.type];
-    if (serviceGroup && serviceGroup.services.length > 0) {
-      setSelectedMeta(meta);
-      setStep("service");
-      return;
-    }
-
-    void (async () => {
-      const nodeId = await placeNode(meta);
-      if (!nodeId) return;
-
-      const nextRequirementGroup = SERVICE_REQUIREMENTS[meta.type];
-      if (nextRequirementGroup) {
-        setSelectedMeta(meta);
-        setPlacedNodeId(nodeId);
-        setStep("requirement");
-        return;
-      }
-
-      updateNodeConfig(nodeId, {});
       resetWizard();
     })();
   };
 
-  const handleServiceSelect = (service: ServiceOption) => {
-    if (!selectedMeta) return;
+  const handleSinkServiceSelect = (service: SinkServiceResponse) => {
+    setSelectedSinkService(service);
+    setAuthErrorMessage(null);
+
+    if (shouldRequestAuth(service)) {
+      setEndStep("auth");
+      return;
+    }
+
+    setEndStep("confirm");
+  };
+
+  const handleConnectService = (serviceKey: string) => {
+    void (async () => {
+      try {
+        setAuthErrorMessage(null);
+        const result = await connectOAuthToken(serviceKey);
+        window.location.assign(result.authUrl);
+      } catch (error) {
+        setAuthErrorMessage(getApiErrorMessage(error));
+      }
+    })();
+  };
+
+  const handleCreateEndNode = () => {
+    if (
+      !selectedSinkService ||
+      !workflowId ||
+      !endSourceNode ||
+      !sinkInputType
+    ) {
+      return;
+    }
+
+    const nodeType = getVisualNodeTypeFromServiceKey(selectedSinkService.key);
+    if (!nodeType) {
+      return;
+    }
 
     void (async () => {
-      const nodeId = await placeNode(selectedMeta, service);
-      if (!nodeId) return;
+      const nextWorkflow = await addWorkflowNode({
+        workflowId,
+        body: toNodeAddRequest({
+          type: nodeType,
+          position: activePlaceholder.position,
+          role: "end",
+          prevNodeId: endSourceNode.id,
+          config: {
+            service: selectedSinkService.key,
+          } as Partial<FlowNodeData["config"]>,
+          inputTypes: [sinkInputType],
+          outputTypes: [],
+        }),
+      });
 
-      setSelectedService(service);
-      setPlacedNodeId(nodeId);
+      const addedNodeId = findAddedNodeId(nodes, nextWorkflow.nodes);
+      const addedNode = nextWorkflow.nodes.find(
+        (node) => node.id === addedNodeId,
+      );
 
-      if (SERVICE_REQUIREMENTS[selectedMeta.type]) {
-        setStep("requirement");
+      if (!addedNodeId || !addedNode) {
         return;
       }
 
-      updateNodeConfig(nodeId, {});
+      syncWorkflowFromResponse(nextWorkflow);
       resetWizard();
     })();
   };
 
-  const handleRequirementSelect = (requirement: ServiceRequirement) => {
-    if (!placedNodeId || !selectedMeta) return;
-
-    const serviceGroup = CATEGORY_SERVICE_MAP[selectedMeta.type];
-    if (serviceGroup?.requiresAuth) {
-      setSelectedRequirementPreset(requirement.configPreset);
-      setStep("auth");
-      return;
-    }
-
-    updateNodeConfig(placedNodeId, requirement.configPreset);
-    resetWizard();
-  };
-
-  const handleAuth = () => {
-    if (!placedNodeId || !selectedRequirementPreset) return;
-
-    updateNodeConfig(placedNodeId, selectedRequirementPreset);
-    resetWizard();
-  };
-
-  const handleBackToCategory = () => {
-    setSelectedMeta(null);
-    setSelectedService(null);
-    setStep("category");
-  };
-
-  const handleBackFromRequirement = () => {
-    void (async () => {
-      if (placedNodeId && workflowId) {
-        const nextWorkflow = await deleteWorkflowNode({
-          workflowId,
-          nodeId: placedNodeId,
-        });
-        setPlacedNodeId(null);
-        syncWorkflowFromResponse(nextWorkflow);
-      }
-
-      if (selectedService) {
-        setSelectedService(null);
-        setStep("service");
+  const handleStartBack = () => {
+    switch (startStep) {
+      case "service":
+        resetWizard();
         return;
-      }
+      case "auth":
+        setSelectedSourceService(null);
+        setStartStep("service");
+        return;
+      case "mode":
+        setSelectedSourceMode(null);
+        setStartStep("service");
+        return;
+      case "target":
+        setSelectedTargetValue("");
+        setStartStep("mode");
+        return;
+      case "confirm":
+        if (
+          selectedSourceMode &&
+          hasTargetSchema(selectedSourceMode.target_schema)
+        ) {
+          setStartStep("target");
+          return;
+        }
 
-      setSelectedMeta(null);
-      setStep("category");
-    })();
+        setStartStep("mode");
+    }
   };
 
-  const handleBackToRequirement = () => {
-    setSelectedRequirementPreset(null);
-    setStep("requirement");
+  const handleEndBack = () => {
+    switch (endStep) {
+      case "service":
+        resetWizard();
+        return;
+      case "auth":
+        setSelectedSinkService(null);
+        setEndStep("service");
+        return;
+      case "confirm":
+        setEndStep("service");
+    }
   };
 
   const getGuidelineTitle = (): string => {
-    switch (step) {
-      case "category":
-        return "어디에서 어디로 갈까요?";
+    if (isStartPlaceholder) {
+      switch (startStep) {
+        case "service":
+          return "어디에서 데이터를 가져올까요?";
+        case "auth":
+          return "이 source는 인증이 필요합니다.";
+        case "mode":
+          return "어떤 방식으로 가져올까요?";
+        case "target":
+          return "대상을 선택해주세요.";
+        case "confirm":
+          return "시작 노드 설정을 확인해주세요.";
+      }
+    }
+
+    switch (endStep) {
       case "service":
-        return "서비스를 선택해주세요.";
-      case "requirement":
-        return "어떻게 사용하시겠어요?";
+        return "어디로 결과를 보낼까요?";
       case "auth":
-        return "인증은 가장 처음 한 번만 진행됩니다.";
+        return "이 sink는 인증이 필요합니다.";
+      case "confirm":
+        return "도착 노드 설정을 확인해주세요.";
     }
   };
 
   return (
     <Box
-      ref={overlayRef}
-      position="absolute"
       inset={0}
+      position="absolute"
+      ref={overlayRef}
       zIndex={20}
       onClick={handleOverlayClose}
     >
       <Box
+        left={0}
+        onClick={(event) => event.stopPropagation()}
         position="absolute"
         ref={wrapperRef}
-        left={0}
         top={0}
-        onClick={(event) => event.stopPropagation()}
         visibility="hidden"
       >
         <Text
           fontSize="24px"
           fontWeight="bold"
-          textAlign="center"
-          pb="24px"
           lineHeight="shorter"
+          pb="24px"
+          textAlign="center"
         >
           {getGuidelineTitle()}
         </Text>
 
         <Box position="relative">
           <Box
-            position="absolute"
-            top={5}
-            right={5}
             cursor="pointer"
+            position="absolute"
+            right={5}
+            top={5}
             zIndex={1}
             onClick={handleOverlayClose}
           >
             <Icon as={MdCancel} boxSize={7} color="gray.600" />
           </Box>
 
-          <Box>
-            {step === "category" ? (
-              <CategoryGrid
-                searchQuery={searchQuery}
-                setSearchQuery={setSearchQuery}
-                onSelect={handleCategorySelect}
-              />
-            ) : null}
+          {isStartPlaceholder ? (
+            <>
+              {startStep === "service" ? (
+                <CatalogServiceGrid
+                  connectedServiceKeys={connectedServiceKeys}
+                  emptyMessage="표시할 source 서비스가 없습니다."
+                  isAuthStatusError={isOAuthTokensError}
+                  isAuthStatusLoading={isOAuthTokensLoading}
+                  isLoading={isSourceCatalogLoading}
+                  searchQuery={searchQuery}
+                  services={filteredCatalogServices}
+                  setSearchQuery={setSearchQuery}
+                  onSelect={(service) =>
+                    handleSourceServiceSelect(service as SourceServiceResponse)
+                  }
+                />
+              ) : null}
 
-            {step === "service" && selectedMeta ? (
-              <ServiceGrid
-                selectedMeta={selectedMeta}
-                services={CATEGORY_SERVICE_MAP[selectedMeta.type]!.services}
-                onSelect={handleServiceSelect}
-                onBack={handleBackToCategory}
-              />
-            ) : null}
+              {startStep === "auth" && selectedSourceService ? (
+                <AuthPrompt
+                  errorMessage={authErrorMessage}
+                  isPending={isConnectOAuthPending}
+                  serviceLabel={selectedSourceService.label}
+                  onAuth={() => handleConnectService(selectedSourceService.key)}
+                  onBack={handleStartBack}
+                />
+              ) : null}
 
-            {step === "requirement" && requirementGroup ? (
-              <RequirementList
-                title={requirementGroup.title}
-                requirements={requirementGroup.requirements}
-                onSelect={handleRequirementSelect}
-                onBack={handleBackFromRequirement}
-              />
-            ) : null}
+              {startStep === "mode" && selectedSourceService ? (
+                <SourceModeList
+                  service={selectedSourceService}
+                  onBack={handleStartBack}
+                  onSelect={handleSourceModeSelect}
+                />
+              ) : null}
 
-            {step === "auth" ? (
-              <AuthPrompt
-                onAuth={handleAuth}
-                onBack={handleBackToRequirement}
-              />
-            ) : null}
-          </Box>
+              {startStep === "target" && selectedSourceMode ? (
+                <SourceTargetForm
+                  mode={selectedSourceMode}
+                  value={selectedTargetValue}
+                  onBack={handleStartBack}
+                  onChange={setSelectedTargetValue}
+                  onSubmit={() => setStartStep("confirm")}
+                />
+              ) : null}
+
+              {startStep === "confirm" &&
+              selectedSourceMode &&
+              selectedSourceService ? (
+                <StartNodeConfirm
+                  mode={selectedSourceMode}
+                  service={selectedSourceService}
+                  targetValue={selectedTargetValue}
+                  onBack={handleStartBack}
+                  onConfirm={handleCreateStartNode}
+                />
+              ) : null}
+            </>
+          ) : (
+            <>
+              {endStep === "service" ? (
+                <CatalogServiceGrid
+                  connectedServiceKeys={connectedServiceKeys}
+                  emptyMessage={
+                    sinkInputType
+                      ? "현재 결과 타입과 연결할 수 있는 sink 서비스가 없습니다."
+                      : "먼저 결과를 만들 노드가 필요합니다."
+                  }
+                  isAuthStatusError={isOAuthTokensError}
+                  isAuthStatusLoading={isOAuthTokensLoading}
+                  isLoading={isSinkCatalogLoading}
+                  searchQuery={searchQuery}
+                  services={filteredCatalogServices}
+                  setSearchQuery={setSearchQuery}
+                  onSelect={(service) =>
+                    handleSinkServiceSelect(service as SinkServiceResponse)
+                  }
+                />
+              ) : null}
+
+              {endStep === "auth" && selectedSinkService ? (
+                <AuthPrompt
+                  errorMessage={authErrorMessage}
+                  isPending={isConnectOAuthPending}
+                  serviceLabel={selectedSinkService.label}
+                  onAuth={() => handleConnectService(selectedSinkService.key)}
+                  onBack={handleEndBack}
+                />
+              ) : null}
+
+              {endStep === "confirm" && selectedSinkService ? (
+                <SinkNodeConfirm
+                  inputType={sinkInputType}
+                  service={selectedSinkService}
+                  onBack={handleEndBack}
+                  onConfirm={handleCreateEndNode}
+                />
+              ) : null}
+            </>
+          )}
         </Box>
-        {isAddNodePending || isDeleteNodePending ? (
-          <Text mt={4} textAlign="center" color="gray.500">
+
+        {isAddNodePending ? (
+          <Text color="gray.500" mt={4} textAlign="center">
             노드 변경 내용을 반영하는 중입니다.
           </Text>
         ) : null}

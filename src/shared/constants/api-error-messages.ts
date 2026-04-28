@@ -14,6 +14,7 @@ export const API_ERROR_MESSAGES = {
   NODE_NOT_FOUND: "노드를 찾을 수 없습니다.",
   INVALID_NODE_CONFIG: "노드 설정이 올바르지 않습니다.",
   EXECUTION_IN_PROGRESS: "이미 실행 중인 워크플로우입니다.",
+  PREFLIGHT_VALIDATION_FAILED: "실행 전에 필수 설정을 완료해 주세요.",
   TOKEN_EXPIRED: "인증이 만료되었습니다. 다시 로그인해 주세요.",
   OAUTH_CONNECTION_FAILED: "서비스 연결에 실패했습니다.",
 } as const;

@@ -4,6 +4,130 @@ import { type TriggerConfig, type Workflow } from "../model";
 
 export type WorkflowListResponse = PageResponse<WorkflowResponse>;
 
+export interface EditorCatalogMeta {
+  version: string;
+  updated_at: string;
+}
+
+export interface SourceModeResponse {
+  key: string;
+  label: string;
+  canonical_input_type: string;
+  trigger_kind: string;
+  target_schema: Record<string, unknown>;
+}
+
+export interface SourceServiceResponse {
+  key: string;
+  label: string;
+  auth_required: boolean;
+  source_modes: SourceModeResponse[];
+}
+
+export interface SourceCatalogResponse {
+  _meta: EditorCatalogMeta;
+  services: SourceServiceResponse[];
+}
+
+export interface SinkSchemaFieldResponse {
+  key: string;
+  label: string;
+  type: string;
+  required: boolean;
+  options?: string[];
+}
+
+export interface SinkSchemaResponse {
+  fields: SinkSchemaFieldResponse[];
+}
+
+export interface SinkServiceResponse {
+  key: string;
+  label: string;
+  auth_required: boolean;
+  accepted_input_types: string[];
+  config_schema_scope: string;
+  config_schema: SinkSchemaResponse;
+}
+
+export interface SinkCatalogResponse {
+  _meta: EditorCatalogMeta;
+  services: SinkServiceResponse[];
+}
+
+export interface MappingRulesMetaResponse {
+  version: string;
+  description: string;
+  updated_at: string;
+}
+
+export interface MappingNodeTypeInfoResponse {
+  label: string;
+  description: string;
+}
+
+export interface MappingRuleOptionResponse {
+  id: string;
+  label: string;
+  type?: string | null;
+  node_type?: string | null;
+  output_data_type?: string | null;
+  priority?: number | null;
+}
+
+export interface MappingRuleApplicableWhenResponse {
+  [key: string]: unknown;
+}
+
+export interface MappingRuleFollowUpResponse {
+  question: string;
+  options?: MappingRuleOptionResponse[];
+  options_source?: string | null;
+  multi_select?: boolean | null;
+  description?: string | null;
+}
+
+export interface MappingRuleActionResponse extends MappingRuleOptionResponse {
+  description?: string;
+  applicable_when?: MappingRuleApplicableWhenResponse;
+  follow_up?: MappingRuleFollowUpResponse;
+  branch_config?: MappingRuleFollowUpResponse;
+}
+
+export interface MappingRuleProcessingMethodResponse {
+  question: string;
+  options: MappingRuleOptionResponse[];
+}
+
+export interface MappingRuleDataTypeResponse {
+  label: string;
+  description: string;
+  requires_processing_method: boolean;
+  processing_method?: MappingRuleProcessingMethodResponse;
+  actions: MappingRuleActionResponse[];
+}
+
+export interface MappingRulesResponse {
+  _meta: MappingRulesMetaResponse;
+  data_types: Record<string, MappingRuleDataTypeResponse>;
+  node_types: Record<string, MappingNodeTypeInfoResponse>;
+  service_fields: Record<string, string[]>;
+}
+
+export interface SchemaPreviewFieldResponse {
+  key: string;
+  label: string;
+  value_type: string;
+  required: boolean;
+}
+
+export interface SchemaPreviewResponse {
+  schema_type: string;
+  is_list: boolean;
+  fields: SchemaPreviewFieldResponse[];
+  display_hints: Record<string, string>;
+}
+
 export interface CreateWorkflowRequest {
   name: string;
   description?: string;
@@ -48,6 +172,16 @@ export interface WorkflowResponse extends Omit<Workflow, "nodes" | "edges"> {
   nodes: NodeDefinitionResponse[];
   edges: EdgeDefinitionResponse[];
   warnings?: ValidationWarning[];
+  nodeStatuses?: WorkflowNodeStatusResponse[];
+}
+
+export interface WorkflowNodeStatusResponse {
+  nodeId: string;
+  configured: boolean;
+  saveable: boolean;
+  choiceable: boolean;
+  executable: boolean;
+  missingFields: string[] | null;
 }
 
 export interface NodeAddRequest {
@@ -71,6 +205,11 @@ export interface NodeUpdateRequest {
   outputDataType?: string | null;
   role?: NodeDefinitionRole;
   authWarning?: boolean;
+}
+
+export interface SchemaPreviewRequest {
+  nodes: NodeDefinitionResponse[];
+  edges: EdgeDefinitionResponse[];
 }
 
 export interface NodeChoiceSelectRequest {
