@@ -1,0 +1,27 @@
+services:
+  spring-boot:
+    image: choihorim/flowify-backend:latest
+    ports:
+      - "8080:8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      MONGODB_URL: ${MONGODB_URL}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173}
+      FASTAPI_URL: ${FASTAPI_URL:-http://host.docker.internal:8000}
+      SERVER_PORT: ${SERVER_PORT:-8080}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      JWT_SECRET: ${JWT_SECRET}
+      ENCRYPTION_SECRET_KEY: ${ENCRYPTION_SECRET_KEY}
+      INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-http://localhost:8080/api/auth/google/callback}
+      FRONT_REDIRECT_URI: ${FRONT_REDIRECT_URI:-http://localhost:5173/auth/callback}
+      GOOGLE_DRIVE_REDIRECT_URI: ${GOOGLE_DRIVE_REDIRECT_URI:-http://localhost:8080/api/oauth-tokens/google_drive/callback}
+      SLACK_CLIENT_ID: "${SLACK_CLIENT_ID}"
+      SLACK_CLIENT_SECRET: "${SLACK_CLIENT_SECRET}"
+      SLACK_REDIRECT_URI: "${SLACK_REDIRECT_URI:-http://localhost:8080/api/oauth-tokens/slack/callback}"
+      NOTION_INTEGRATION_TOKEN: ${NOTION_INTEGRATION_TOKEN:-}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      CANVAS_API_URL: ${CANVAS_API_URL:-https://canvas.kumoh.ac.kr}
+      CANVAS_TOKEN: ${CANVAS_TOKEN:-}
