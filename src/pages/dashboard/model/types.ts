@@ -32,5 +32,8 @@ export type DashboardServiceCard = {
   id: string;
   label: string;
   badgeKey: ServiceBadgeKey;
+  serviceKey: string;
   statusLabel: string;
+  actionKind: "connect" | "disconnect";
+  actionLabel: string;
 };

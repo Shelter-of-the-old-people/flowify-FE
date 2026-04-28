@@ -1,4 +1,7 @@
-import { type OAuthTokenSummary } from "@/entities/oauth-token";
+import {
+  type OAuthTokenSummary,
+  isOAuthConnectSupported,
+} from "@/entities/oauth-token";
 import {
   type NodeDefinitionResponse,
   type WorkflowResponse,
@@ -27,15 +30,11 @@ type SupportedServiceKey =
   | "notion"
   | "slack";
 
-const DASHBOARD_SERVICE_PRIORITY: SupportedServiceKey[] = [
-  "calendar",
-  "canvas-lms",
-  "notion",
-  "google-drive",
-  "gmail",
-  "google-sheets",
-  "slack",
-];
+type RecommendedDashboardService = {
+  serviceKey: string;
+  badgeKey: SupportedServiceKey;
+  label: string;
+};
 
 const DASHBOARD_SERVICE_LABELS: Record<SupportedServiceKey, string> = {
   calendar: "Google Calendar",
@@ -46,6 +45,29 @@ const DASHBOARD_SERVICE_LABELS: Record<SupportedServiceKey, string> = {
   notion: "Notion",
   slack: "Slack",
 };
+
+const RECOMMENDED_DASHBOARD_SERVICES: RecommendedDashboardService[] = [
+  {
+    serviceKey: "canvas_lms",
+    badgeKey: "canvas-lms",
+    label: "Canvas LMS",
+  },
+  {
+    serviceKey: "google_drive",
+    badgeKey: "google-drive",
+    label: "Google Drive",
+  },
+  {
+    serviceKey: "notion",
+    badgeKey: "notion",
+    label: "Notion",
+  },
+  {
+    serviceKey: "slack",
+    badgeKey: "slack",
+    label: "Slack",
+  },
+];
 
 export const DASHBOARD_METRICS: DashboardMetric[] = [
   {
@@ -142,7 +164,7 @@ const getBuildProgressLabel = (workflow: WorkflowResponse) => {
     return isConfigured === true;
   }).length;
 
-  return `${configuredNodes}/${totalNodes} 구축`;
+  return `${configuredNodes}/${totalNodes} 구성`;
 };
 
 const getWorkflowWarningMessages = (workflow: WorkflowResponse) =>
@@ -220,25 +242,30 @@ export const getConnectedServiceCards = (tokens: OAuthTokenSummary[]) =>
             ? token.service
             : getServiceLabelFromBadgeKey(badgeKey),
         badgeKey,
+        serviceKey: token.service,
         statusLabel: "연결됨",
+        actionKind: "disconnect",
+        actionLabel: "연결 해제",
       };
     });
 
 export const getRecommendedServiceCards = (tokens: OAuthTokenSummary[]) => {
-  const connectedKeys = new Set(
-    tokens
-      .filter((token) => token.connected)
-      .map((token) => getServiceBadgeKeyFromService(token.service)),
+  const connectedServiceKeys = new Set(
+    tokens.filter((token) => token.connected).map((token) => token.service),
   );
 
-  return DASHBOARD_SERVICE_PRIORITY.filter((serviceKey) => {
-    return !connectedKeys.has(serviceKey);
-  })
-    .slice(0, 4)
-    .map<DashboardServiceCard>((serviceKey) => ({
-      id: `recommended-${serviceKey}`,
-      label: DASHBOARD_SERVICE_LABELS[serviceKey],
-      badgeKey: serviceKey,
-      statusLabel: "인증 전",
-    }));
+  return RECOMMENDED_DASHBOARD_SERVICES.filter(({ serviceKey }) => {
+    return (
+      isOAuthConnectSupported(serviceKey) &&
+      !connectedServiceKeys.has(serviceKey)
+    );
+  }).map<DashboardServiceCard>(({ serviceKey, badgeKey, label }) => ({
+    id: `recommended-${serviceKey}`,
+    label,
+    badgeKey,
+    serviceKey,
+    statusLabel: "인증 전",
+    actionKind: "connect",
+    actionLabel: "연결 시작",
+  }));
 };
