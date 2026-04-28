@@ -615,6 +615,7 @@ export const ServiceSelectionPanel = () => {
     data: oauthTokens,
     isError: isOAuthTokensError,
     isLoading: isOAuthTokensLoading,
+    refetch: refetchOAuthTokens,
   } = useOAuthTokensQuery({
     enabled: Boolean(activePlaceholder),
   });
@@ -909,7 +910,20 @@ export const ServiceSelectionPanel = () => {
       try {
         setAuthErrorMessage(null);
         const result = await connectOAuthToken(serviceKey);
-        window.location.assign(result.authUrl);
+        if (result.kind === "redirect") {
+          window.location.assign(result.authUrl);
+          return;
+        }
+
+        await refetchOAuthTokens();
+
+        if (selectedSourceService?.key === result.service) {
+          setStartStep("mode");
+        }
+
+        if (selectedSinkService?.key === result.service) {
+          setEndStep("confirm");
+        }
       } catch (error) {
         setAuthErrorMessage(getApiErrorMessage(error));
       }

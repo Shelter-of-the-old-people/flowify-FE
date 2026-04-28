@@ -122,7 +122,12 @@ export default function AccountPage() {
 
     try {
       const result = await connectToken(service);
-      window.location.assign(result.authUrl);
+      if (result.kind === "redirect") {
+        window.location.assign(result.authUrl);
+        return;
+      }
+
+      await refetchOAuthTokens();
     } catch {
       // 화면의 기본 상태 문구로 충분히 안내한다.
     }
