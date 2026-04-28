@@ -21,18 +21,12 @@ import { SidebarUserMenu } from "./SidebarUserMenu";
 
 type AppSidebarProps = {
   isExpanded: boolean;
-  isLogoutMenuOpen: boolean;
   onToggleExpanded: () => void;
-  onToggleLogoutMenu: () => void;
-  onCloseLogoutMenu: () => void;
 };
 
 export const AppSidebar = ({
   isExpanded,
-  isLogoutMenuOpen,
   onToggleExpanded,
-  onToggleLogoutMenu,
-  onCloseLogoutMenu,
 }: AppSidebarProps) => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -54,8 +48,6 @@ export const AppSidebar = ({
   }, [location.pathname]);
 
   const handleRouteClick = (path?: string) => {
-    onCloseLogoutMenu();
-
     if (path) {
       navigate(path);
     }
@@ -65,7 +57,6 @@ export const AppSidebar = ({
     item: (typeof sidebarPrimaryItems)[number],
   ) => {
     if (item.id === "create-workflow") {
-      onCloseLogoutMenu();
       void createWorkflow();
       return;
     }
@@ -88,7 +79,6 @@ export const AppSidebar = ({
       overflow="visible"
       flexShrink={0}
       alignSelf="stretch"
-      onMouseLeave={onCloseLogoutMenu}
     >
       <Flex direction="column" gap={3}>
         <Flex direction="column" gap={1}>
@@ -130,12 +120,8 @@ export const AppSidebar = ({
           item.kind === "user" ? (
             <SidebarUserMenu
               key={item.id}
-              icon={item.icon}
               label={item.label}
               isExpanded={isExpanded}
-              isOpen={isLogoutMenuOpen}
-              onToggle={onToggleLogoutMenu}
-              onClose={onCloseLogoutMenu}
             />
           ) : (
             <SidebarNavItem
