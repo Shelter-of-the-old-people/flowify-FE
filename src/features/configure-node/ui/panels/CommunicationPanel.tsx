@@ -38,7 +38,7 @@ export const CommunicationPanel = ({
   const handleServiceChange = (
     service: NonNullable<CommunicationNodeConfig["service"]>,
   ) => {
-    updateNodeConfig(nodeId, { service });
+    updateNodeConfig(nodeId, { service, isConfigured: true });
   };
 
   return (
