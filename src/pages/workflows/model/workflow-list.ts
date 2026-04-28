@@ -1,5 +1,6 @@
 import {
   type NodeDefinitionResponse,
+  type WorkflowListResponse,
   type WorkflowResponse,
 } from "@/entities/workflow";
 import {
@@ -10,21 +11,9 @@ import {
 
 import { type ServiceBadgeKey, type WorkflowFilterKey } from "./types";
 
-const isWorkflowRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null;
-
-export const isWorkflowListItem = (value: unknown): value is WorkflowResponse =>
-  isWorkflowRecord(value) && typeof value.id === "string";
-
 export const getWorkflowListPageContent = (page: {
-  content?: unknown;
-}): WorkflowResponse[] => {
-  if (!Array.isArray(page.content)) {
-    return [];
-  }
-
-  return page.content.filter(isWorkflowListItem);
-};
+  content?: WorkflowListResponse["content"];
+}): WorkflowResponse[] => page.content ?? [];
 
 export const sortWorkflowsByUpdatedAtDesc = (workflows: WorkflowResponse[]) =>
   [...workflows].sort(
