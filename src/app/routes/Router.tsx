@@ -31,6 +31,10 @@ export const Router = () => {
           path={ROUTE_PATHS.AUTH_CALLBACK}
           element={<AuthCallbackPage />}
         />
+        <Route
+          path={ROUTE_PATHS.OAUTH_CALLBACK}
+          element={<AuthCallbackPage />}
+        />
 
         <Route element={<ProtectedRoute />}>
           <Route element={<AppShellLayout />}>

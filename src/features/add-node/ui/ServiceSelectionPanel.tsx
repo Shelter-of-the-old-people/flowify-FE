@@ -47,7 +47,12 @@ import {
   useSourceCatalogQuery,
 } from "@/entities/workflow";
 import { hydrateStore, useWorkflowStore } from "@/features/workflow-editor";
-import { getApiErrorMessage, getLeafNodeIds } from "@/shared";
+import {
+  getApiErrorMessage,
+  getCurrentRelativeUrl,
+  getLeafNodeIds,
+  storeOAuthConnectReturnPath,
+} from "@/shared";
 
 import { isSinkServiceInRollout } from "../model/sink-rollout";
 import { isSourceModeInRollout } from "../model/source-rollout";
@@ -913,6 +918,7 @@ export const ServiceSelectionPanel = () => {
         setAuthErrorMessage(null);
         const result = await connectOAuthToken(serviceKey);
         if (result.kind === "redirect") {
+          storeOAuthConnectReturnPath(getCurrentRelativeUrl());
           window.location.assign(result.authUrl);
           return;
         }
