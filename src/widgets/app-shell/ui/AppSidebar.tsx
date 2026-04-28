@@ -120,7 +120,6 @@ export const AppSidebar = ({
           item.kind === "user" ? (
             <SidebarUserMenu
               key={item.id}
-              icon={item.icon}
               label={item.label}
               isExpanded={isExpanded}
             />

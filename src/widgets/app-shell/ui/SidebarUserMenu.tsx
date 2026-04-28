@@ -1,26 +1,35 @@
 import { useState } from "react";
-import { type IconType } from "react-icons";
 import { useNavigate } from "react-router";
 
-import { Box, Button, Icon, Menu, Portal, Text } from "@chakra-ui/react";
+import {
+  Avatar,
+  Box,
+  Button,
+  HStack,
+  Menu,
+  Portal,
+  Text,
+  VStack,
+} from "@chakra-ui/react";
 
 import { useLogout } from "@/features/auth/logout";
-import { ROUTE_PATHS } from "@/shared";
+import { ROUTE_PATHS, getAuthUser } from "@/shared";
 
 type SidebarUserMenuProps = {
-  icon: IconType;
   label: string;
   isExpanded: boolean;
 };
 
 export const SidebarUserMenu = ({
-  icon,
   label,
   isExpanded,
 }: SidebarUserMenuProps) => {
   const { isPending, logout } = useLogout();
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
+  const authUser = getAuthUser();
+  const displayName = authUser?.name || label;
+  const displayEmail = authUser?.email ?? "저장된 사용자 정보가 없습니다.";
 
   return (
     <Menu.Root
@@ -46,9 +55,16 @@ export const SidebarUserMenu = ({
           bg={isOpen ? "gray.100" : "transparent"}
           _hover={{ bg: "gray.100" }}
           _expanded={{ bg: "gray.100", color: "gray.900" }}
-          aria-label={isExpanded ? `${label} 메뉴` : `${label} 메뉴 열기`}
+          aria-label={
+            isExpanded
+              ? `${displayName} 계정 메뉴`
+              : `${displayName} 계정 메뉴 열기`
+          }
         >
-          <Icon as={icon} boxSize="20px" flexShrink={0} />
+          <Avatar.Root size="xs" flexShrink={0}>
+            <Avatar.Fallback name={displayName} />
+            <Avatar.Image src={authUser?.picture ?? undefined} />
+          </Avatar.Root>
           <Box
             maxW={isExpanded ? "120px" : "0px"}
             opacity={isExpanded ? 1 : 0}
@@ -56,7 +72,7 @@ export const SidebarUserMenu = ({
             transition="max-width 220ms ease, opacity 180ms ease"
           >
             <Text fontSize="sm" fontWeight="medium" whiteSpace="nowrap">
-              {label}
+              {displayName}
             </Text>
           </Box>
         </Button>
@@ -71,6 +87,21 @@ export const SidebarUserMenu = ({
             borderColor="gray.200"
             boxShadow="0 10px 30px rgba(15, 23, 42, 0.12)"
           >
+            <HStack px={2.5} py={2} gap={3} align="center">
+              <Avatar.Root size="sm" flexShrink={0}>
+                <Avatar.Fallback name={displayName} />
+                <Avatar.Image src={authUser?.picture ?? undefined} />
+              </Avatar.Root>
+              <VStack align="flex-start" gap={0} minW={0}>
+                <Text fontSize="sm" fontWeight="semibold" truncate>
+                  {displayName}
+                </Text>
+                <Text fontSize="xs" color="gray.500" truncate>
+                  {displayEmail}
+                </Text>
+              </VStack>
+            </HStack>
+            <Menu.Separator />
             <Menu.Item
               value="account"
               onSelect={() => {
