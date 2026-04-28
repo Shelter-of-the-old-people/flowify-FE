@@ -54,6 +54,7 @@ const BACKEND_TYPE_TO_NODE_TYPE = Object.fromEntries(
 ) as Record<string, NodeType>;
 
 const SERVICE_KEY_TO_NODE_TYPE = {
+  canvas_lms: "web-scraping",
   coupang: "web-scraping",
   github: "web-scraping",
   gmail: "communication",
@@ -71,6 +72,7 @@ const NODE_TYPES_WITH_SERVICE_CONFIG = new Set<NodeType>([
   "communication",
   "spreadsheet",
   "storage",
+  "web-scraping",
 ]);
 
 type NodeDraftOptions = {

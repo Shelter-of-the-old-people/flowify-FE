@@ -92,6 +92,11 @@ export const getServiceBadgeKey = (
     }
   }
 
+  const typeBadgeKey = getServiceBadgeKeyFromService(node.type);
+  if (typeBadgeKey !== "unknown") {
+    return typeBadgeKey;
+  }
+
   switch (node.type) {
     case "calendar":
       return "calendar";

@@ -5,15 +5,44 @@ import { getTypedConfig } from "../../model";
 import { type FlowNodeData } from "../../model/types";
 import { BaseNode } from "../BaseNode";
 
+const WEB_SCRAPING_SOURCE_MODE_LABELS: Record<string, string> = {
+  course_files: "특정 과목 강의자료 전체",
+  course_new_file: "과목의 새 강의자료",
+  term_all_files: "학기 전체 과목 자료",
+};
+
+const getWebScrapingSummary = (config: FlowNodeData["config"]) => {
+  const typedConfig = getTypedConfig("web-scraping", config);
+
+  if (typedConfig.service) {
+    const parts = [
+      typedConfig.source_mode
+        ? (WEB_SCRAPING_SOURCE_MODE_LABELS[typedConfig.source_mode] ??
+          typedConfig.source_mode)
+        : null,
+      typedConfig.target ? `대상: ${typedConfig.target}` : null,
+    ].filter((value): value is string => Boolean(value));
+
+    if (parts.length > 0) {
+      return parts.join(" / ");
+    }
+  }
+
+  if (typedConfig.targetUrl) {
+    return typedConfig.targetUrl;
+  }
+
+  return "URL 미설정";
+};
+
 export const WebScrapingNode = ({
   id,
   data,
   selected,
 }: NodeProps<Node<FlowNodeData>>) => {
-  const config = getTypedConfig("web-scraping", data.config);
   return (
     <BaseNode id={id} data={data} selected={selected}>
-      <Text>{config.targetUrl ?? "URL 미설정"}</Text>
+      <Text>{getWebScrapingSummary(data.config)}</Text>
     </BaseNode>
   );
 };

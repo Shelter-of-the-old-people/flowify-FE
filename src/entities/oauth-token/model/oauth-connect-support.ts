@@ -1,4 +1,10 @@
-export const OAUTH_CONNECT_SUPPORTED_SERVICES = ["slack"] as const;
+export const OAUTH_CONNECT_SUPPORTED_SERVICES = [
+  "slack",
+  "google_drive",
+  "notion",
+  "github",
+  "canvas_lms",
+] as const;
 
 export const isOAuthConnectSupported = (serviceKey: string) =>
   OAUTH_CONNECT_SUPPORTED_SERVICES.includes(

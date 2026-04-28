@@ -1,4 +1,5 @@
 export const SOURCE_SERVICE_ROLLOUT_ALLOWLIST = {
+  canvas_lms: ["course_files", "course_new_file", "term_all_files"],
   google_drive: [
     "single_file",
     "file_changed",

@@ -22,7 +22,12 @@ import {
   useSinkCatalogQuery,
   useSourceCatalogQuery,
 } from "@/entities";
-import { ROUTE_PATHS, getAuthUser } from "@/shared";
+import {
+  ROUTE_PATHS,
+  getAuthUser,
+  getCurrentRelativeUrl,
+  storeOAuthConnectReturnPath,
+} from "@/shared";
 
 type OAuthServiceItem = {
   key: string;
@@ -122,7 +127,13 @@ export default function AccountPage() {
 
     try {
       const result = await connectToken(service);
-      window.location.assign(result.authUrl);
+      if (result.kind === "redirect") {
+        storeOAuthConnectReturnPath(getCurrentRelativeUrl());
+        window.location.assign(result.authUrl);
+        return;
+      }
+
+      await refetchOAuthTokens();
     } catch {
       // 화면의 기본 상태 문구로 충분히 안내한다.
     }

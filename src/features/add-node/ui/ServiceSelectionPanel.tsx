@@ -13,6 +13,7 @@ import {
   MdArticle,
   MdCancel,
   MdFolder,
+  MdSchool,
   MdSearch,
 } from "react-icons/md";
 import {
@@ -46,7 +47,12 @@ import {
   useSourceCatalogQuery,
 } from "@/entities/workflow";
 import { hydrateStore, useWorkflowStore } from "@/features/workflow-editor";
-import { getApiErrorMessage, getLeafNodeIds } from "@/shared";
+import {
+  getApiErrorMessage,
+  getCurrentRelativeUrl,
+  getLeafNodeIds,
+  storeOAuthConnectReturnPath,
+} from "@/shared";
 
 import { isSinkServiceInRollout } from "../model/sink-rollout";
 import { isSourceModeInRollout } from "../model/source-rollout";
@@ -62,6 +68,7 @@ const START_END_NODE_HEIGHT = 176;
 const EMPTY_TARGET_SENTINEL = "";
 
 const CATALOG_SERVICE_ICON_MAP: Record<string, IconType> = {
+  canvas_lms: MdSchool,
   gmail: SiGmail,
   google_calendar: SiGooglecalendar,
   google_drive: SiGoogledrive,
@@ -615,6 +622,7 @@ export const ServiceSelectionPanel = () => {
     data: oauthTokens,
     isError: isOAuthTokensError,
     isLoading: isOAuthTokensLoading,
+    refetch: refetchOAuthTokens,
   } = useOAuthTokensQuery({
     enabled: Boolean(activePlaceholder),
   });
@@ -909,7 +917,21 @@ export const ServiceSelectionPanel = () => {
       try {
         setAuthErrorMessage(null);
         const result = await connectOAuthToken(serviceKey);
-        window.location.assign(result.authUrl);
+        if (result.kind === "redirect") {
+          storeOAuthConnectReturnPath(getCurrentRelativeUrl());
+          window.location.assign(result.authUrl);
+          return;
+        }
+
+        await refetchOAuthTokens();
+
+        if (selectedSourceService?.key === result.service) {
+          setStartStep("mode");
+        }
+
+        if (selectedSinkService?.key === result.service) {
+          setEndStep("confirm");
+        }
       } catch (error) {
         setAuthErrorMessage(getApiErrorMessage(error));
       }

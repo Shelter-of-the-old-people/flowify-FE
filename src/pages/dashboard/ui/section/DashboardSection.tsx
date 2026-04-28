@@ -111,8 +111,12 @@ export const DashboardSection = () => {
     isWorkflowsError,
     isServicesLoading,
     isServicesError,
+    isServiceActionPending,
+    pendingServiceKey,
     handleReloadWorkflows,
     handleReloadServices,
+    handleConnectService,
+    handleDisconnectService,
   } = useDashboardData();
   const {
     expandedIssueId,
@@ -203,7 +207,17 @@ export const DashboardSection = () => {
           connectedServices.length > 0 ? (
             <Flex wrap="wrap" gap={6}>
               {connectedServices.map((service) => (
-                <ServiceConnectionCard key={service.id} service={service} />
+                <ServiceConnectionCard
+                  key={service.id}
+                  service={service}
+                  isPending={
+                    isServiceActionPending &&
+                    pendingServiceKey === service.serviceKey
+                  }
+                  onAction={() =>
+                    void handleDisconnectService(service.serviceKey)
+                  }
+                />
               ))}
             </Flex>
           ) : (
@@ -223,7 +237,15 @@ export const DashboardSection = () => {
           recommendedServices.length > 0 ? (
             <Flex wrap="wrap" gap={6}>
               {recommendedServices.map((service) => (
-                <ServiceConnectionCard key={service.id} service={service} />
+                <ServiceConnectionCard
+                  key={service.id}
+                  service={service}
+                  isPending={
+                    isServiceActionPending &&
+                    pendingServiceKey === service.serviceKey
+                  }
+                  onAction={() => void handleConnectService(service.serviceKey)}
+                />
               ))}
             </Flex>
           ) : (

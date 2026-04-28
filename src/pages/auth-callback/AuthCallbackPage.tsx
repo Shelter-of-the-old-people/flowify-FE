@@ -3,13 +3,15 @@ import { useLocation, useNavigate } from "react-router";
 
 import { Box, Button, Spinner, Text, VStack } from "@chakra-ui/react";
 
+import { authApi } from "@/entities";
 import {
   ROUTE_PATHS,
   clearAuthSession,
+  consumeOAuthConnectReturnPath,
   storeAuthUser,
   storeTokens,
 } from "@/shared";
-import { authApi } from "@/entities";
+
 import {
   authCallbackFallbackMessage,
   resolveAuthExchangeError,
@@ -27,10 +29,25 @@ export default function AuthCallbackPage() {
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
     const exchangeCode = searchParams.get("exchange_code");
+    const connected = searchParams.get("connected");
+    const service = searchParams.get("service");
 
     let isMounted = true;
 
     const finalizeLogin = async () => {
+      if (service) {
+        if (connected === "true") {
+          navigate(consumeOAuthConnectReturnPath(), { replace: true });
+          return;
+        }
+
+        if (isMounted) {
+          setCallbackState("error");
+          setErrorMessage(resolveRedirectError(searchParams));
+        }
+        return;
+      }
+
       const redirectErrorMessage = resolveRedirectError(searchParams);
       if (redirectErrorMessage) {
         clearAuthSession();
@@ -112,7 +129,9 @@ export default function AuthCallbackPage() {
           <Text fontSize="lg" fontWeight="semibold">
             로그인 실패
           </Text>
-          <Text color="gray.600">{errorMessage ?? authCallbackFallbackMessage}</Text>
+          <Text color="gray.600">
+            {errorMessage ?? authCallbackFallbackMessage}
+          </Text>
           <Button
             bg="gray.900"
             color="white"
