@@ -180,6 +180,7 @@ export const removeWorkflowDomainCache = async (workflowId: string) => {
   queryClient.removeQueries({
     queryKey: executionKeys.workflow(workflowId),
   });
+  pruneWorkflowListCaches(workflowId);
   await invalidateWorkflowLists();
 };
 
