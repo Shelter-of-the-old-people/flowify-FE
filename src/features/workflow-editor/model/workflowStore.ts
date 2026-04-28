@@ -59,6 +59,7 @@ interface WorkflowEditorActions {
     id: string,
     config: Partial<FlowNodeData["config"]>,
   ) => void;
+  replaceNodeConfig: (id: string, config: FlowNodeData["config"]) => void;
   openPanel: (nodeId: string) => void;
   closePanel: () => void;
   setWorkflowMeta: (id: string, name: string) => void;
@@ -199,11 +200,28 @@ export const useWorkflowStore = create<
         const node = state.nodes.find((currentNode) => currentNode.id === id);
         if (!node) return;
 
+        const nextIsConfigured =
+          typeof config.isConfigured === "boolean"
+            ? config.isConfigured
+            : node.data.config.isConfigured;
+
         node.data.config = {
           ...node.data.config,
           ...config,
-          isConfigured: true,
+          isConfigured: nextIsConfigured,
         } as FlowNodeData["config"];
+
+        if (!state._isSyncing) {
+          state.isDirty = true;
+        }
+      }),
+
+    replaceNodeConfig: (id, config) =>
+      set((state) => {
+        const node = state.nodes.find((currentNode) => currentNode.id === id);
+        if (!node) return;
+
+        node.data.config = config;
 
         if (!state._isSyncing) {
           state.isDirty = true;
