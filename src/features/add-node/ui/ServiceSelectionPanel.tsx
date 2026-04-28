@@ -13,6 +13,7 @@ import {
   MdArticle,
   MdCancel,
   MdFolder,
+  MdSchool,
   MdSearch,
 } from "react-icons/md";
 import {
@@ -62,6 +63,7 @@ const START_END_NODE_HEIGHT = 176;
 const EMPTY_TARGET_SENTINEL = "";
 
 const CATALOG_SERVICE_ICON_MAP: Record<string, IconType> = {
+  canvas_lms: MdSchool,
   gmail: SiGmail,
   google_calendar: SiGooglecalendar,
   google_drive: SiGoogledrive,
