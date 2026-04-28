@@ -6,7 +6,10 @@ import {
   useDisconnectOAuthTokenMutation,
   useOAuthTokensQuery,
 } from "@/entities/oauth-token";
-import { useWorkflowListQuery } from "@/entities/workflow";
+import {
+  getWorkflowListContent,
+  useWorkflowListQuery,
+} from "@/entities/workflow";
 import { getCurrentRelativeUrl, storeOAuthConnectReturnPath } from "@/shared";
 
 import {
@@ -31,7 +34,8 @@ export const useDashboardData = () => {
   );
 
   const workflows = useMemo(
-    () => sortWorkflowsByUpdatedAtDesc(workflowQuery.data?.content ?? []),
+    () =>
+      sortWorkflowsByUpdatedAtDesc(getWorkflowListContent(workflowQuery.data)),
     [workflowQuery.data],
   );
 
