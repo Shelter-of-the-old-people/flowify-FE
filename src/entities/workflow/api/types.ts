@@ -175,6 +175,8 @@ export interface WorkflowResponse extends Omit<Workflow, "nodes" | "edges"> {
   nodeStatuses?: WorkflowNodeStatusResponse[];
 }
 
+export type RawWorkflowListResponse = WorkflowListResponse | WorkflowResponse[];
+
 export interface WorkflowNodeStatusResponse {
   nodeId: string;
   configured: boolean;
