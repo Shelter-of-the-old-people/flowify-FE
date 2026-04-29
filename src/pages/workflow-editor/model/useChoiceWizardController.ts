@@ -1,19 +1,11 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { NODE_REGISTRY } from "@/entities/node";
-import {
-  type DataType,
-  type FlowNodeData,
-  type NodeType,
-} from "@/entities/node";
+import { type FlowNodeData, type NodeType } from "@/entities/node";
 import {
   type ChoiceBranchConfig,
   type ChoiceFollowUp,
   type WorkflowResponse,
-  findAddedNodeId,
-  toBackendDataType,
-  toBackendNodeType,
-  toNodeAddRequest,
   useAddWorkflowNodeMutation,
   useDeleteWorkflowNodeMutation,
   useMappingRulesQuery,
@@ -26,7 +18,6 @@ import {
   resolveActionChoiceResponse,
   resolveInitialChoiceResponse,
   toChoiceMappingRules,
-  toDataType,
   toMappingKey,
 } from "@/features/choice-panel";
 import { type MappingDataTypeKey } from "@/features/choice-panel";
@@ -41,19 +32,15 @@ import {
   deriveProcessingMethodSelectionIntent,
 } from "./choiceSelectionPipeline";
 import { logChoiceWizardEvent } from "./choiceWizardLogger";
+import {
+  type WizardNodeSnapshot,
+  canSafelyDeleteChoiceWizardLeaf,
+  createChoiceWizardNodePersistence,
+  toSnapshotDataTypeKey,
+} from "./choiceWizardNodePersistence";
 
 type WizardStep = "processing-method" | "action" | "follow-up";
 type WizardChoiceOption = ResolvedChoiceOption;
-
-type WizardNodeSnapshot = {
-  authWarning?: boolean;
-  config: FlowNodeData["config"];
-  inputTypes: DataType[];
-  outputTypes: DataType[];
-  position: { x: number; y: number };
-  role: "start" | "middle" | "end";
-  type: NodeType;
-};
 
 const DEFAULT_FLOW_NODE_WIDTH = 172;
 const NODE_GAP_X = 96;
@@ -265,164 +252,26 @@ export const useChoiceWizardController = () => {
     },
     [syncWorkflowGraph],
   );
-
-  const syncUpdatedNode = useCallback(
-    (workflow: WorkflowResponse, nodeId: string) => {
-      const nextNode = workflow.nodes.find((node) => node.id === nodeId);
-      if (!nextNode) {
-        throw new Error("node was not updated");
-      }
-
-      syncWorkflowFromResponse(workflow);
-      return nextNode.id;
-    },
-    [syncWorkflowFromResponse],
-  );
-
-  const canSafelyDeleteWizardLeaf = useCallback(
-    (nodeId: string) => {
-      if (!sessionOwnedLeafNodeIds.includes(nodeId)) {
-        return false;
-      }
-
-      if (nodeId === stagingNodeId) {
-        return false;
-      }
-
-      if (resolveNodeRole(nodeId) !== "middle") {
-        return false;
-      }
-
-      return !edges.some((edge) => edge.source === nodeId);
-    },
-    [edges, resolveNodeRole, sessionOwnedLeafNodeIds, stagingNodeId],
-  );
-
-  const updatePersistedNode = useCallback(
-    async ({
-      node,
-      type,
-      config,
-      inputDataTypeKey,
-      outputDataTypeKey,
-      position,
-      role,
-    }: {
-      node: (typeof nodes)[number];
-      type: NodeType;
-      config: FlowNodeData["config"];
-      inputDataTypeKey?: MappingDataTypeKey | null;
-      outputDataTypeKey?: MappingDataTypeKey | null;
-      position?: { x: number; y: number };
-      role?: "start" | "middle" | "end";
-    }) => {
-      if (!workflowId) {
-        throw new Error("workflowId is required");
-      }
-
-      const nextWorkflow = await updateWorkflowNode({
-        workflowId,
-        nodeId: node.id,
-        body: {
-          category: toBackendNodeType(type).category,
-          type: toBackendNodeType(type).type,
-          config: config as unknown as Record<string, unknown>,
-          position: position ?? node.position,
-          dataType:
-            inputDataTypeKey !== undefined
-              ? inputDataTypeKey
-                ? toBackendDataType(toDataType(inputDataTypeKey))
-                : null
-              : node.data.inputTypes[0]
-                ? toBackendDataType(node.data.inputTypes[0])
-                : null,
-          outputDataType:
-            outputDataTypeKey !== undefined
-              ? outputDataTypeKey
-                ? toBackendDataType(toDataType(outputDataTypeKey))
-                : null
-              : node.data.outputTypes[0]
-                ? toBackendDataType(node.data.outputTypes[0])
-                : null,
-          role: role ?? resolveNodeRole(node.id),
-          authWarning: node.data.authWarning ?? false,
-        },
-      });
-
-      return syncUpdatedNode(nextWorkflow, node.id);
-    },
-    [resolveNodeRole, syncUpdatedNode, updateWorkflowNode, workflowId],
-  );
-
-  const placeWorkflowNode = useCallback(
-    async ({
-      type,
-      sourceNodeId,
-      position,
-      inputDataTypeKey,
-      outputDataTypeKey,
-      config,
-    }: {
-      type: NodeType;
-      sourceNodeId: string;
-      position: { x: number; y: number };
-      inputDataTypeKey?: MappingDataTypeKey | null;
-      outputDataTypeKey: MappingDataTypeKey | null;
-      config?: Partial<FlowNodeData["config"]>;
-    }) => {
-      if (!workflowId) {
-        throw new Error("workflowId is required");
-      }
-
-      const previousNodes = useWorkflowStore.getState().nodes;
-      const nextWorkflow = await addWorkflowNode({
-        workflowId,
-        body: toNodeAddRequest({
-          type,
-          position,
-          prevNodeId: sourceNodeId,
-          config,
-          inputTypes: inputDataTypeKey
-            ? [toDataType(inputDataTypeKey)]
-            : undefined,
-          outputTypes: outputDataTypeKey
-            ? [toDataType(outputDataTypeKey)]
-            : undefined,
+  const { placeWorkflowNode, removeWorkflowNode, updatePersistedNode } =
+    useMemo(
+      () =>
+        createChoiceWizardNodePersistence({
+          addWorkflowNode,
+          deleteWorkflowNode,
+          resolveNodeRole,
+          syncWorkflowFromResponse,
+          updateWorkflowNode,
+          workflowId,
         }),
-      });
-
-      const addedNodeId =
-        findAddedNodeId(previousNodes, nextWorkflow.nodes) ??
-        nextWorkflow.nodes.at(-1)?.id ??
-        null;
-      const addedNode = nextWorkflow.nodes.find(
-        (node) => node.id === addedNodeId,
-      );
-
-      if (!addedNodeId || !addedNode) {
-        return null;
-      }
-
-      syncWorkflowFromResponse(nextWorkflow);
-      return addedNodeId;
-    },
-    [addWorkflowNode, syncWorkflowFromResponse, workflowId],
-  );
-
-  const removeWorkflowNode = useCallback(
-    async (nodeId: string) => {
-      if (!workflowId) {
-        throw new Error("workflowId is required");
-      }
-
-      const nextWorkflow = await deleteWorkflowNode({
+      [
+        addWorkflowNode,
+        deleteWorkflowNode,
+        resolveNodeRole,
+        syncWorkflowFromResponse,
+        updateWorkflowNode,
         workflowId,
-        nodeId,
-      });
-      syncWorkflowFromResponse(nextWorkflow);
-    },
-    [deleteWorkflowNode, syncWorkflowFromResponse, workflowId],
-  );
+      ],
+    );
 
   useEffect(() => {
     if (!isWizardMode || !activeNode || !parentNode || initialDataTypeKey) {
@@ -724,7 +573,15 @@ export const useChoiceWizardController = () => {
 
     try {
       if (actionNodeId && actionNode) {
-        if (!canSafelyDeleteWizardLeaf(actionNode.id)) {
+        if (
+          !canSafelyDeleteChoiceWizardLeaf({
+            edges,
+            nodeId: actionNode.id,
+            resolveNodeRole,
+            sessionOwnedLeafNodeIds,
+            stagingNodeId,
+          })
+        ) {
           setWizardError(
             "이미 후속 연결이 생겨 이전 단계로 되돌리지 못합니다.",
           );
@@ -741,12 +598,12 @@ export const useChoiceWizardController = () => {
         node: stagingNode,
         type: baseStagingSnapshot.type,
         config: baseStagingSnapshot.config,
-        inputDataTypeKey: baseStagingSnapshot.inputTypes[0]
-          ? toMappingKey(baseStagingSnapshot.inputTypes[0])
-          : null,
-        outputDataTypeKey: baseStagingSnapshot.outputTypes[0]
-          ? toMappingKey(baseStagingSnapshot.outputTypes[0])
-          : null,
+        inputDataTypeKey: toSnapshotDataTypeKey(
+          baseStagingSnapshot.inputTypes[0],
+        ),
+        outputDataTypeKey: toSnapshotDataTypeKey(
+          baseStagingSnapshot.outputTypes[0],
+        ),
         position: baseStagingSnapshot.position,
         role: baseStagingSnapshot.role,
       });
@@ -766,11 +623,14 @@ export const useChoiceWizardController = () => {
     actionNode,
     actionNodeId,
     baseStagingSnapshot,
-    canSafelyDeleteWizardLeaf,
+    edges,
     initialDataTypeKey,
     openPanel,
+    resolveNodeRole,
     removeWorkflowNode,
+    sessionOwnedLeafNodeIds,
     stagingNode,
+    stagingNodeId,
     updatePersistedNode,
   ]);
 
