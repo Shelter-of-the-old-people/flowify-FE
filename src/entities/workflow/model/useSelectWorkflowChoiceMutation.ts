@@ -3,13 +3,18 @@ import { useMutation } from "@tanstack/react-query";
 import { type MutationPolicyOptions, toMutationMeta } from "@/shared/api";
 import { queryClient } from "@/shared/libs";
 
-import { type SelectWorkflowChoiceCommand, workflowApi } from "../api";
+import {
+  type SelectWorkflowChoiceCommand,
+  type SelectWorkflowChoiceTransportMeta,
+  workflowApi,
+} from "../api";
 
 import { workflowKeys } from "./query-keys";
 
 type SelectWorkflowChoiceVariables = SelectWorkflowChoiceCommand & {
   workflowId: string;
   prevNodeId: string;
+  transport?: SelectWorkflowChoiceTransportMeta;
 };
 
 export const useSelectWorkflowChoiceMutation = (
@@ -23,14 +28,18 @@ export const useSelectWorkflowChoiceMutation = (
       workflowId,
       prevNodeId,
       optionId,
-      dataType,
       context,
+      transport,
     }: SelectWorkflowChoiceVariables) =>
-      workflowApi.selectChoice(workflowId, prevNodeId, {
-        optionId,
-        dataType,
-        context,
-      }),
+      workflowApi.selectChoice(
+        workflowId,
+        prevNodeId,
+        {
+          optionId,
+          context,
+        },
+        transport,
+      ),
     retry: options?.retry,
     meta: toMutationMeta(options),
     onSuccess: async (data, variables, onMutateResult, context) => {

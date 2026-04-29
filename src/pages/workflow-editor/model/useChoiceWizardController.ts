@@ -545,7 +545,9 @@ export const useChoiceWizardController = () => {
           workflowId,
           prevNodeId: rootParentNodeId,
           optionId: option.id,
-          dataType: currentDataTypeKey,
+          transport: {
+            dataType: currentDataTypeKey,
+          },
         });
 
         const selectionIntent = deriveProcessingMethodSelectionIntent({
@@ -633,7 +635,9 @@ export const useChoiceWizardController = () => {
           workflowId,
           prevNodeId: rootParentNodeId,
           optionId: action.id,
-          dataType: currentDataTypeKey,
+          transport: {
+            dataType: currentDataTypeKey,
+          },
         });
 
         const selectionIntent = deriveActionSelectionIntent({

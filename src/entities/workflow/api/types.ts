@@ -216,8 +216,11 @@ export interface SchemaPreviewRequest {
 
 export interface SelectWorkflowChoiceCommand {
   optionId: string;
-  dataType?: string;
   context?: Record<string, unknown>;
+}
+
+export interface SelectWorkflowChoiceTransportMeta {
+  dataType?: string;
 }
 
 export interface SelectWorkflowChoiceRequestPayload {
