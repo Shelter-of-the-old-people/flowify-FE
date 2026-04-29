@@ -23,7 +23,6 @@ import {
   useWorkflowChoicesQuery,
 } from "@/entities/workflow";
 import {
-  MAPPING_NODE_TYPE_MAP,
   type ResolvedChoiceOption,
   type ResolvedChoiceResponse,
   buildFallbackChoiceResponse,
@@ -42,6 +41,11 @@ import {
   useWorkflowStore,
 } from "@/features/workflow-editor";
 
+import {
+  deriveActionSelectionIntent,
+  deriveProcessingMethodSelectionIntent,
+} from "./choiceSelectionPipeline";
+
 type WizardStep = "processing-method" | "action" | "follow-up";
 type WizardChoiceOption = ResolvedChoiceOption;
 type WizardChoiceResponse = ResolvedChoiceResponse;
@@ -58,12 +62,6 @@ type WizardNodeSnapshot = {
 
 const DEFAULT_FLOW_NODE_WIDTH = 172;
 const NODE_GAP_X = 96;
-
-const isMappingDataTypeKey = (
-  mappingRules: MappingRules,
-  value: string | null | undefined,
-): value is MappingDataTypeKey =>
-  Boolean(value && value in mappingRules.data_types);
 
 const mergeChoiceResponses = (
   primary: ChoiceResponse | null | undefined,
@@ -85,11 +83,6 @@ const buildLocalActionResponse = (
   dataTypeKey: MappingDataTypeKey,
 ): WizardChoiceResponse =>
   buildFallbackChoiceResponse(mappingRules, dataTypeKey, "action");
-
-const toChoiceNodeType = (value: string | null | undefined): NodeType =>
-  value && value in MAPPING_NODE_TYPE_MAP
-    ? MAPPING_NODE_TYPE_MAP[value as keyof typeof MAPPING_NODE_TYPE_MAP]
-    : "data-process";
 export const useChoiceWizardController = () => {
   const nodes = useWorkflowStore((state) => state.nodes);
   const edges = useWorkflowStore((state) => state.edges);
@@ -536,48 +529,36 @@ export const useChoiceWizardController = () => {
           dataType: currentDataTypeKey,
         });
 
-        const nextDataTypeKey = isMappingDataTypeKey(
+        const selectionIntent = deriveProcessingMethodSelectionIntent({
+          currentDataTypeKey,
           mappingRules,
-          selectionResult.outputDataType,
-        )
-          ? selectionResult.outputDataType
-          : isMappingDataTypeKey(mappingRules, option.output_data_type)
-            ? option.output_data_type
-            : currentDataTypeKey;
-
-        const nextActions = buildLocalActionResponse(
-          mappingRules,
-          nextDataTypeKey,
-        );
-
-        const nextNodeType = selectionResult.nodeType
-          ? toChoiceNodeType(selectionResult.nodeType)
-          : toChoiceNodeType(option.node_type);
-        const isConfigured = nextActions.options.length === 0;
+          option,
+          selectionResult,
+        });
 
         await updatePersistedNode({
           node: stagingNode,
-          type: nextNodeType,
+          type: selectionIntent.nextNodeType,
           config: buildNodeConfig({
-            type: nextNodeType,
-            isConfigured,
+            type: selectionIntent.nextNodeType,
+            isConfigured: selectionIntent.isConfigured,
           }),
           inputDataTypeKey: initialDataTypeKey,
-          outputDataTypeKey: nextDataTypeKey,
+          outputDataTypeKey: selectionIntent.nextDataTypeKey,
           role: baseStagingSnapshot?.role ?? resolveNodeRole(stagingNode.id),
         });
 
         openPanel(stagingNode.id);
 
-        if (nextActions.options.length > 0) {
-          setCurrentDataTypeKey(nextDataTypeKey);
+        if (selectionIntent.nextStep === "action") {
+          setCurrentDataTypeKey(selectionIntent.nextDataTypeKey);
           setWizardStep("action");
           return;
         }
 
         finishWizard();
       } catch {
-        setWizardError("泥섎━ 諛⑹떇??諛섏쁺?섏? 紐삵뻽?듬땲??");
+        setWizardError("처리 방식을 반영하지 못했습니다.");
       }
     },
     [
@@ -613,49 +594,38 @@ export const useChoiceWizardController = () => {
           dataType: currentDataTypeKey,
         });
 
-        const nextDataTypeKey = isMappingDataTypeKey(
+        const selectionIntent = deriveActionSelectionIntent({
+          currentDataTypeKey,
           mappingRules,
-          selectionResult.outputDataType,
-        )
-          ? selectionResult.outputDataType
-          : isMappingDataTypeKey(mappingRules, action.output_data_type)
-            ? action.output_data_type
-            : currentDataTypeKey;
-
-        const followUp = selectionResult.followUp ?? action.followUp ?? null;
-        const branchConfig =
-          selectionResult.branchConfig ?? action.branchConfig ?? null;
-
-        const actionNodeType = selectionResult.nodeType
-          ? toChoiceNodeType(selectionResult.nodeType)
-          : toChoiceNodeType(action.node_type);
-        const hasFollowUp = Boolean(followUp || branchConfig);
+          option: action,
+          selectionResult,
+          stagingNodeType: stagingNode.data.type,
+        });
         const finalActionConfig = buildNodeConfig({
-          type: actionNodeType,
-          isConfigured: !hasFollowUp,
-          overrides: hasFollowUp
+          type: selectionIntent.nextNodeType,
+          isConfigured: !selectionIntent.hasFollowUp,
+          overrides: selectionIntent.hasFollowUp
             ? undefined
             : {
                 choiceActionId: action.id,
                 choiceSelections: null,
               },
         });
-        const shouldUseActionLeaf = stagingNode.data.type === "loop";
         let targetNodeId = stagingNode.id;
 
-        if (shouldUseActionLeaf) {
+        if (selectionIntent.shouldUseActionLeaf) {
           if (actionNode) {
             await updatePersistedNode({
               node: actionNode,
-              type: actionNodeType,
+              type: selectionIntent.nextNodeType,
               config: finalActionConfig,
               inputDataTypeKey: currentDataTypeKey,
-              outputDataTypeKey: nextDataTypeKey,
+              outputDataTypeKey: selectionIntent.nextDataTypeKey,
             });
             targetNodeId = actionNode.id;
           } else {
             const createdActionNodeId = await placeWorkflowNode({
-              type: actionNodeType,
+              type: selectionIntent.nextNodeType,
               sourceNodeId: stagingNode.id,
               position: {
                 x:
@@ -663,7 +633,7 @@ export const useChoiceWizardController = () => {
                 y: stagingNode.position.y,
               },
               inputDataTypeKey: currentDataTypeKey,
-              outputDataTypeKey: nextDataTypeKey,
+              outputDataTypeKey: selectionIntent.nextDataTypeKey,
               config: finalActionConfig,
             });
 
@@ -682,22 +652,22 @@ export const useChoiceWizardController = () => {
         } else {
           await updatePersistedNode({
             node: stagingNode,
-            type: actionNodeType,
+            type: selectionIntent.nextNodeType,
             config: finalActionConfig,
             inputDataTypeKey: currentDataTypeKey,
-            outputDataTypeKey: nextDataTypeKey,
+            outputDataTypeKey: selectionIntent.nextDataTypeKey,
             role: baseStagingSnapshot?.role ?? resolveNodeRole(stagingNode.id),
           });
           setActionNodeId(null);
         }
 
         setSelectedAction(action);
-        setSelectedFollowUp(followUp);
-        setSelectedBranchConfig(branchConfig);
-        setCurrentDataTypeKey(nextDataTypeKey);
+        setSelectedFollowUp(selectionIntent.followUp);
+        setSelectedBranchConfig(selectionIntent.branchConfig);
+        setCurrentDataTypeKey(selectionIntent.nextDataTypeKey);
         openPanel(targetNodeId);
 
-        if (followUp || branchConfig) {
+        if (selectionIntent.nextStep === "follow-up") {
           setWizardStep("follow-up");
           return;
         }
