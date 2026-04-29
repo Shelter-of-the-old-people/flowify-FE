@@ -9,7 +9,6 @@ import {
 import {
   type ChoiceBranchConfig,
   type ChoiceFollowUp,
-  type ChoiceResponse,
   type WorkflowResponse,
   findAddedNodeId,
   toBackendDataType,
@@ -24,17 +23,13 @@ import {
 } from "@/entities/workflow";
 import {
   type ResolvedChoiceOption,
-  type ResolvedChoiceResponse,
-  buildFallbackChoiceResponse,
-  resolveChoiceResponse,
+  resolveActionChoiceResponse,
+  resolveInitialChoiceResponse,
   toChoiceMappingRules,
   toDataType,
   toMappingKey,
 } from "@/features/choice-panel";
-import {
-  type MappingDataTypeKey,
-  type MappingRules,
-} from "@/features/choice-panel";
+import { type MappingDataTypeKey } from "@/features/choice-panel";
 import {
   hydrateStore,
   isMiddleWizardPending,
@@ -49,7 +44,6 @@ import { logChoiceWizardEvent } from "./choiceWizardLogger";
 
 type WizardStep = "processing-method" | "action" | "follow-up";
 type WizardChoiceOption = ResolvedChoiceOption;
-type WizardChoiceResponse = ResolvedChoiceResponse;
 
 type WizardNodeSnapshot = {
   authWarning?: boolean;
@@ -63,27 +57,6 @@ type WizardNodeSnapshot = {
 
 const DEFAULT_FLOW_NODE_WIDTH = 172;
 const NODE_GAP_X = 96;
-
-const mergeChoiceResponses = (
-  primary: ChoiceResponse | null | undefined,
-  fallback: WizardChoiceResponse | null,
-): WizardChoiceResponse | null =>
-  resolveChoiceResponse({
-    serverChoice: primary,
-    fallbackChoice: fallback,
-  });
-
-const buildLocalChoiceResponse = (
-  mappingRules: MappingRules,
-  dataTypeKey: MappingDataTypeKey,
-): WizardChoiceResponse =>
-  buildFallbackChoiceResponse(mappingRules, dataTypeKey, "initial");
-
-const buildLocalActionResponse = (
-  mappingRules: MappingRules,
-  dataTypeKey: MappingDataTypeKey,
-): WizardChoiceResponse =>
-  buildFallbackChoiceResponse(mappingRules, dataTypeKey, "action");
 export const useChoiceWizardController = () => {
   const nodes = useWorkflowStore((state) => state.nodes);
   const edges = useWorkflowStore((state) => state.edges);
@@ -225,53 +198,31 @@ export const useChoiceWizardController = () => {
     isWizardMode,
   );
 
-  const initialLocalChoiceResponse = useMemo(
+  const { choice: initialChoiceResponse, source: initialChoiceSource } =
+    useMemo(
+      () =>
+        resolveInitialChoiceResponse({
+          mappingRules,
+          dataTypeKey: initialDataTypeKey,
+          serverChoice: serverChoiceResponse,
+        }),
+      [initialDataTypeKey, mappingRules, serverChoiceResponse],
+    );
+  const activeActionChoiceResponse = useMemo(
     () =>
-      initialDataTypeKey
-        ? buildLocalChoiceResponse(mappingRules, initialDataTypeKey)
-        : null,
-    [initialDataTypeKey, mappingRules],
-  );
-  const initialChoiceResponse = useMemo(
-    () =>
-      mergeChoiceResponses(serverChoiceResponse, initialLocalChoiceResponse),
-    [initialLocalChoiceResponse, serverChoiceResponse],
-  );
-  const initialChoiceSource = serverChoiceResponse
-    ? "server"
-    : initialLocalChoiceResponse
-      ? "fallback"
-      : null;
-  const currentActionChoiceResponse = useMemo(
-    () =>
-      currentDataTypeKey
-        ? buildLocalActionResponse(mappingRules, currentDataTypeKey)
-        : null,
-    [currentDataTypeKey, mappingRules],
-  );
-  const activeActionChoiceResponse = useMemo(() => {
-    if (!currentActionChoiceResponse) {
-      return null;
-    }
-
-    if (
-      initialChoiceResponse &&
-      initialChoiceResponse.requiresProcessingMethod === false &&
-      currentDataTypeKey === initialDataTypeKey
-    ) {
-      return mergeChoiceResponses(
+      resolveActionChoiceResponse({
+        mappingRules,
+        currentDataTypeKey,
         initialChoiceResponse,
-        currentActionChoiceResponse,
-      );
-    }
-
-    return currentActionChoiceResponse;
-  }, [
-    currentActionChoiceResponse,
-    currentDataTypeKey,
-    initialChoiceResponse,
-    initialDataTypeKey,
-  ]);
+        initialDataTypeKey,
+      }),
+    [
+      currentDataTypeKey,
+      initialChoiceResponse,
+      initialDataTypeKey,
+      mappingRules,
+    ],
+  );
 
   const isWorkflowBusy =
     isChoicesLoading ||
