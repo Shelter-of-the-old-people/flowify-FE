@@ -45,6 +45,7 @@ import {
   deriveActionSelectionIntent,
   deriveProcessingMethodSelectionIntent,
 } from "./choiceSelectionPipeline";
+import { logChoiceWizardEvent } from "./choiceWizardLogger";
 
 type WizardStep = "processing-method" | "action" | "follow-up";
 type WizardChoiceOption = ResolvedChoiceOption;
@@ -236,6 +237,11 @@ export const useChoiceWizardController = () => {
       mergeChoiceResponses(serverChoiceResponse, initialLocalChoiceResponse),
     [initialLocalChoiceResponse, serverChoiceResponse],
   );
+  const initialChoiceSource = serverChoiceResponse
+    ? "server"
+    : initialLocalChoiceResponse
+      ? "fallback"
+      : null;
   const currentActionChoiceResponse = useMemo(
     () =>
       currentDataTypeKey
@@ -496,12 +502,25 @@ export const useChoiceWizardController = () => {
       return;
     }
 
-    setWizardStep(
-      initialChoiceResponse.requiresProcessingMethod
-        ? "processing-method"
-        : "action",
-    );
-  }, [initialChoiceResponse, isWizardMode, wizardStep]);
+    const nextStep = initialChoiceResponse.requiresProcessingMethod
+      ? "processing-method"
+      : "action";
+
+    logChoiceWizardEvent({
+      anchorNodeId: parentNode?.id ?? null,
+      event: "wizard-open",
+      nextStep,
+      source: initialChoiceSource,
+      step: wizardStep,
+    });
+    setWizardStep(nextStep);
+  }, [
+    initialChoiceResponse,
+    initialChoiceSource,
+    isWizardMode,
+    parentNode?.id,
+    wizardStep,
+  ]);
 
   const finishWizard = useCallback(() => {
     reset();
@@ -536,6 +555,18 @@ export const useChoiceWizardController = () => {
           selectionResult,
         });
 
+        logChoiceWizardEvent({
+          anchorNodeId: rootParentNodeId,
+          details: {
+            outputDataType: selectionIntent.nextDataTypeKey,
+          },
+          event: "processing-method-selected",
+          nextStep: selectionIntent.nextStep,
+          optionId: option.id,
+          step: wizardStep,
+          targetNodeId: stagingNode.id,
+        });
+
         await updatePersistedNode({
           node: stagingNode,
           type: selectionIntent.nextNodeType,
@@ -558,6 +589,16 @@ export const useChoiceWizardController = () => {
 
         finishWizard();
       } catch {
+        logChoiceWizardEvent({
+          anchorNodeId: rootParentNodeId,
+          details: {
+            message: "processing-method-persist-failed",
+          },
+          event: "wizard-error",
+          optionId: option.id,
+          step: wizardStep,
+          targetNodeId: stagingNode.id,
+        });
         setWizardError("처리 방식을 반영하지 못했습니다.");
       }
     },
@@ -574,6 +615,7 @@ export const useChoiceWizardController = () => {
       selectWorkflowChoice,
       stagingNode,
       updatePersistedNode,
+      wizardStep,
       workflowId,
     ],
   );
@@ -600,6 +642,19 @@ export const useChoiceWizardController = () => {
           option: action,
           selectionResult,
           stagingNodeType: stagingNode.data.type,
+        });
+
+        logChoiceWizardEvent({
+          anchorNodeId: rootParentNodeId,
+          details: {
+            hasFollowUp: selectionIntent.hasFollowUp,
+            outputDataType: selectionIntent.nextDataTypeKey,
+            shouldUseActionLeaf: selectionIntent.shouldUseActionLeaf,
+          },
+          event: "action-selected",
+          nextStep: selectionIntent.nextStep,
+          optionId: action.id,
+          step: wizardStep,
         });
         const finalActionConfig = buildNodeConfig({
           type: selectionIntent.nextNodeType,
@@ -674,6 +729,15 @@ export const useChoiceWizardController = () => {
 
         finishWizard();
       } catch {
+        logChoiceWizardEvent({
+          anchorNodeId: rootParentNodeId,
+          details: {
+            message: "action-persist-failed",
+          },
+          event: "wizard-error",
+          optionId: action.id,
+          step: wizardStep,
+        });
         setWizardError("작업 노드를 반영하지 못했습니다.");
       }
     },
@@ -691,6 +755,7 @@ export const useChoiceWizardController = () => {
       selectWorkflowChoice,
       stagingNode,
       updatePersistedNode,
+      wizardStep,
       workflowId,
     ],
   );
@@ -797,9 +862,30 @@ export const useChoiceWizardController = () => {
               : resolveNodeRole(targetNode.id),
         });
 
+        logChoiceWizardEvent({
+          anchorNodeId: rootParentNodeId,
+          details: {
+            selectionKeys: Object.keys(selections),
+          },
+          event: "follow-up-complete",
+          nextStep: "complete",
+          optionId: selectedAction.id,
+          step: wizardStep,
+          targetNodeId: targetNode.id,
+        });
         openPanel(targetNode.id);
         finishWizard();
       } catch {
+        logChoiceWizardEvent({
+          anchorNodeId: rootParentNodeId,
+          details: {
+            message: "follow-up-persist-failed",
+          },
+          event: "wizard-error",
+          optionId: selectedAction.id,
+          step: wizardStep,
+          targetNodeId: targetNode.id,
+        });
         setWizardError("후속 설정을 반영하지 못했습니다.");
       }
     },
@@ -810,9 +896,11 @@ export const useChoiceWizardController = () => {
       finishWizard,
       openPanel,
       resolveNodeRole,
+      rootParentNodeId,
       selectedAction,
       stagingNode,
       updatePersistedNode,
+      wizardStep,
     ],
   );
 
