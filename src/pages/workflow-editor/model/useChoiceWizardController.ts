@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { NODE_REGISTRY } from "@/entities/node";
 import {
@@ -9,7 +9,6 @@ import {
 import {
   type ChoiceBranchConfig,
   type ChoiceFollowUp,
-  type ChoiceOption,
   type ChoiceResponse,
   type WorkflowResponse,
   findAddedNodeId,
@@ -25,14 +24,15 @@ import {
 } from "@/entities/workflow";
 import {
   MAPPING_NODE_TYPE_MAP,
+  type ResolvedChoiceOption,
+  type ResolvedChoiceResponse,
+  buildFallbackChoiceResponse,
+  resolveChoiceResponse,
   toChoiceMappingRules,
   toDataType,
   toMappingKey,
 } from "@/features/choice-panel";
 import {
-  type BranchConfig,
-  type FollowUp,
-  type MappingAction,
   type MappingDataTypeKey,
   type MappingRules,
 } from "@/features/choice-panel";
@@ -43,19 +43,8 @@ import {
 } from "@/features/workflow-editor";
 
 type WizardStep = "processing-method" | "action" | "follow-up";
-
-type WizardChoiceOption = ChoiceOption & {
-  description?: string;
-  followUp?: ChoiceFollowUp | null;
-  branchConfig?: ChoiceBranchConfig | null;
-};
-
-type WizardChoiceResponse = {
-  question: string;
-  options: WizardChoiceOption[];
-  requiresProcessingMethod: boolean;
-  multiSelect?: boolean | null;
-};
+type WizardChoiceOption = ResolvedChoiceOption;
+type WizardChoiceResponse = ResolvedChoiceResponse;
 
 type WizardNodeSnapshot = {
   authWarning?: boolean;
@@ -76,138 +65,31 @@ const isMappingDataTypeKey = (
 ): value is MappingDataTypeKey =>
   Boolean(value && value in mappingRules.data_types);
 
-const toChoiceFollowUp = (followUp: FollowUp | null | undefined) =>
-  followUp
-    ? {
-        question: followUp.question,
-        options: (followUp.options ?? []).map((option) => ({
-          id: option.id,
-          label: option.label,
-          type: option.type ?? null,
-        })),
-        options_source: followUp.options_source ?? null,
-        multi_select: followUp.multi_select ?? null,
-        description: followUp.description ?? null,
-      }
-    : null;
-
-const toChoiceBranchConfig = (branchConfig: BranchConfig | null | undefined) =>
-  branchConfig
-    ? {
-        question: branchConfig.question,
-        options: (branchConfig.options ?? []).map((option) => ({
-          id: option.id,
-          label: option.label,
-          type: option.type ?? null,
-        })),
-        options_source: branchConfig.options_source ?? null,
-        multi_select: branchConfig.multi_select ?? null,
-        description: branchConfig.description ?? null,
-      }
-    : null;
-
-const toWizardChoiceOption = (
-  option: ChoiceOption | MappingAction,
-): WizardChoiceOption => ({
-  id: option.id,
-  label: option.label,
-  type: "type" in option ? (option.type ?? null) : null,
-  node_type: "node_type" in option ? (option.node_type ?? null) : null,
-  output_data_type:
-    "output_data_type" in option ? (option.output_data_type ?? null) : null,
-  priority: "priority" in option ? (option.priority ?? null) : null,
-  description: "description" in option ? option.description : undefined,
-  followUp:
-    "follow_up" in option ? toChoiceFollowUp(option.follow_up ?? null) : null,
-  branchConfig:
-    "branch_config" in option
-      ? toChoiceBranchConfig(option.branch_config ?? null)
-      : null,
-});
-
 const mergeChoiceResponses = (
   primary: ChoiceResponse | null | undefined,
   fallback: WizardChoiceResponse | null,
-): WizardChoiceResponse | null => {
-  if (!primary && !fallback) {
-    return null;
-  }
-
-  if (!primary) {
-    return fallback;
-  }
-
-  const normalizedPrimary: WizardChoiceResponse = {
-    question: primary.question,
-    options: primary.options.map(toWizardChoiceOption),
-    requiresProcessingMethod: primary.requiresProcessingMethod,
-    multiSelect: primary.multiSelect ?? null,
-  };
-
-  if (!fallback) {
-    return normalizedPrimary;
-  }
-
-  const fallbackOptionMap = new Map(
-    fallback.options.map((option) => [option.id, option]),
-  );
-
-  return {
-    question: normalizedPrimary.question || fallback.question,
-    requiresProcessingMethod: normalizedPrimary.requiresProcessingMethod,
-    multiSelect: normalizedPrimary.multiSelect ?? fallback.multiSelect ?? null,
-    options:
-      normalizedPrimary.options.length > 0
-        ? normalizedPrimary.options.map((option) => ({
-            ...fallbackOptionMap.get(option.id),
-            ...option,
-          }))
-        : fallback.options,
-  };
-};
+): WizardChoiceResponse | null =>
+  resolveChoiceResponse({
+    serverChoice: primary,
+    fallbackChoice: fallback,
+  });
 
 const buildLocalChoiceResponse = (
   mappingRules: MappingRules,
   dataTypeKey: MappingDataTypeKey,
-): WizardChoiceResponse => {
-  const config = mappingRules.data_types[dataTypeKey];
-
-  if (config.requires_processing_method && config.processing_method) {
-    return {
-      question: config.processing_method.question,
-      options: config.processing_method.options.map(toWizardChoiceOption),
-      requiresProcessingMethod: true,
-      multiSelect: null,
-    };
-  }
-
-  return {
-    question: `${config.label}를 어떻게 처리할까요?`,
-    options: config.actions.map(toWizardChoiceOption),
-    requiresProcessingMethod: false,
-    multiSelect: null,
-  };
-};
+): WizardChoiceResponse =>
+  buildFallbackChoiceResponse(mappingRules, dataTypeKey, "initial");
 
 const buildLocalActionResponse = (
   mappingRules: MappingRules,
   dataTypeKey: MappingDataTypeKey,
-): WizardChoiceResponse => {
-  const config = mappingRules.data_types[dataTypeKey];
-
-  return {
-    question: `${config.label}를 어떻게 처리할까요?`,
-    options: config.actions.map(toWizardChoiceOption),
-    requiresProcessingMethod: false,
-    multiSelect: null,
-  };
-};
+): WizardChoiceResponse =>
+  buildFallbackChoiceResponse(mappingRules, dataTypeKey, "action");
 
 const toChoiceNodeType = (value: string | null | undefined): NodeType =>
   value && value in MAPPING_NODE_TYPE_MAP
     ? MAPPING_NODE_TYPE_MAP[value as keyof typeof MAPPING_NODE_TYPE_MAP]
     : "data-process";
-
 export const useChoiceWizardController = () => {
   const nodes = useWorkflowStore((state) => state.nodes);
   const edges = useWorkflowStore((state) => state.edges);
@@ -695,7 +577,7 @@ export const useChoiceWizardController = () => {
 
         finishWizard();
       } catch {
-        setWizardError("처리 방식을 반영하지 못했습니다.");
+        setWizardError("泥섎━ 諛⑹떇??諛섏쁺?섏? 紐삵뻽?듬땲??");
       }
     },
     [
