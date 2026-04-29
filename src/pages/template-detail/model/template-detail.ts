@@ -1,8 +1,19 @@
+import { type Edge, type Node } from "@xyflow/react";
+
+import { type FlowNodeData } from "@/entities/node";
 import { type TemplateDetail } from "@/entities/template";
+import { toFlowEdge, toFlowNode } from "@/entities/workflow";
 
 type TemplateMetaItem = {
   label: string;
   value: string;
+};
+
+export type TemplatePreviewGraph = {
+  edges: Edge[];
+  endNodeId: string | null;
+  nodes: Node<FlowNodeData>[];
+  startNodeId: string | null;
 };
 
 const formatCreatedAt = (value: string) => {
@@ -55,3 +66,21 @@ export const getTemplateMetaItems = (
     value: formatCreatedAt(template.createdAt),
   },
 ];
+
+export const buildTemplatePreviewGraph = (
+  template: TemplateDetail,
+): TemplatePreviewGraph => {
+  const nodes = template.nodes.map(toFlowNode);
+  const edges = template.edges.map(toFlowEdge);
+  const startNodeId =
+    template.nodes.find((node) => node.role === "start")?.id ?? null;
+  const endNodeId =
+    template.nodes.find((node) => node.role === "end")?.id ?? null;
+
+  return {
+    nodes,
+    edges,
+    startNodeId,
+    endNodeId,
+  };
+};

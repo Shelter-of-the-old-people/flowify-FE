@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useNavigate, useParams } from "react-router";
 
 import { Button, HStack, Spinner, Text, VStack } from "@chakra-ui/react";
@@ -5,6 +6,7 @@ import { Button, HStack, Spinner, Text, VStack } from "@chakra-ui/react";
 import { useInstantiateTemplateMutation, useTemplateQuery } from "@/entities";
 import { ROUTE_PATHS, buildPath } from "@/shared";
 
+import { buildTemplatePreviewGraph } from "./model";
 import {
   TemplateInfoPanel,
   TemplatePreviewLayout,
@@ -17,6 +19,10 @@ export default function TemplateDetailPage() {
   const { data: template, isLoading, isError, refetch } = useTemplateQuery(id);
   const { mutateAsync: instantiateTemplate, isPending } =
     useInstantiateTemplateMutation();
+  const previewGraph = useMemo(
+    () => (template ? buildTemplatePreviewGraph(template) : null),
+    [template],
+  );
 
   const handleInstantiate = async () => {
     if (!id) {
@@ -69,7 +75,7 @@ export default function TemplateDetailPage() {
           onBack={() => navigate(ROUTE_PATHS.TEMPLATES)}
         />
       }
-      preview={<TemplateWorkflowPreview />}
+      preview={<TemplateWorkflowPreview graph={previewGraph} />}
     />
   );
 }
