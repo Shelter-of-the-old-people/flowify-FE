@@ -1,11 +1,9 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { NODE_REGISTRY } from "@/entities/node";
-import { type FlowNodeData, type NodeType } from "@/entities/node";
+import { type FlowNodeData } from "@/entities/node";
 import {
   type ChoiceBranchConfig,
   type ChoiceFollowUp,
-  type WorkflowResponse,
   useAddWorkflowNodeMutation,
   useDeleteWorkflowNodeMutation,
   useMappingRulesQuery,
@@ -22,7 +20,6 @@ import {
 } from "@/features/choice-panel";
 import { type MappingDataTypeKey } from "@/features/choice-panel";
 import {
-  hydrateStore,
   isMiddleWizardPending,
   useWorkflowStore,
 } from "@/features/workflow-editor";
@@ -47,6 +44,10 @@ import {
   createProcessingMethodTransitionPatch,
   resolveBackToActionTargetNodeId,
 } from "./choiceWizardStateTransitions";
+import {
+  buildChoiceWizardNodeConfig,
+  createChoiceWizardWorkflowSync,
+} from "./choiceWizardWorkflowGraph";
 
 type WizardChoiceOption = ResolvedChoiceOption;
 
@@ -250,38 +251,8 @@ export const useChoiceWizardController = () => {
     isUpdateNodePending ||
     isSelectChoicePending;
 
-  const buildNodeConfig = useCallback(
-    ({
-      type,
-      baseConfig,
-      isConfigured,
-      overrides,
-      preserveExistingConfig = false,
-    }: {
-      type: NodeType;
-      baseConfig?: FlowNodeData["config"];
-      isConfigured: boolean;
-      overrides?: Partial<FlowNodeData["config"]>;
-      preserveExistingConfig?: boolean;
-    }) =>
-      ({
-        ...(preserveExistingConfig
-          ? (baseConfig ?? NODE_REGISTRY[type].defaultConfig)
-          : NODE_REGISTRY[type].defaultConfig),
-        ...overrides,
-        isConfigured,
-      }) as FlowNodeData["config"],
-    [],
-  );
-
-  const syncWorkflowFromResponse = useCallback(
-    (workflow: WorkflowResponse) => {
-      syncWorkflowGraph(hydrateStore(workflow), {
-        preserveActivePanelNodeId: true,
-        preserveActivePlaceholder: true,
-        preserveDirty: true,
-      });
-    },
+  const syncWorkflowFromResponse = useMemo(
+    () => createChoiceWizardWorkflowSync(syncWorkflowGraph),
     [syncWorkflowGraph],
   );
   const { placeWorkflowNode, removeWorkflowNode, updatePersistedNode } =
@@ -404,7 +375,7 @@ export const useChoiceWizardController = () => {
         await updatePersistedNode({
           node: stagingNode,
           type: selectionIntent.nextNodeType,
-          config: buildNodeConfig({
+          config: buildChoiceWizardNodeConfig({
             type: selectionIntent.nextNodeType,
             isConfigured: selectionIntent.isConfigured,
           }),
@@ -444,7 +415,6 @@ export const useChoiceWizardController = () => {
     },
     [
       baseStagingSnapshot?.role,
-      buildNodeConfig,
       currentDataTypeKey,
       finishWizard,
       initialDataTypeKey,
@@ -499,7 +469,7 @@ export const useChoiceWizardController = () => {
           optionId: action.id,
           step: wizardStep,
         });
-        const finalActionConfig = buildNodeConfig({
+        const finalActionConfig = buildChoiceWizardNodeConfig({
           type: selectionIntent.nextNodeType,
           isConfigured: !selectionIntent.hasFollowUp,
           overrides: selectionIntent.hasFollowUp
@@ -591,7 +561,6 @@ export const useChoiceWizardController = () => {
     [
       actionNode,
       baseStagingSnapshot?.role,
-      buildNodeConfig,
       currentDataTypeKey,
       finishWizard,
       mappingRules,
@@ -704,7 +673,7 @@ export const useChoiceWizardController = () => {
         await updatePersistedNode({
           node: targetNode,
           type: targetNode.data.type,
-          config: buildNodeConfig({
+          config: buildChoiceWizardNodeConfig({
             type: targetNode.data.type,
             baseConfig: targetNode.data.config,
             isConfigured: true,
@@ -750,7 +719,6 @@ export const useChoiceWizardController = () => {
     [
       actionNode,
       baseStagingSnapshot?.role,
-      buildNodeConfig,
       finishWizard,
       openPanel,
       resolveNodeRole,
