@@ -38,8 +38,16 @@ import {
   createChoiceWizardNodePersistence,
   toSnapshotDataTypeKey,
 } from "./choiceWizardNodePersistence";
+import {
+  type ChoiceWizardStatePatch,
+  type ChoiceWizardStep,
+  createActionTransitionPatch,
+  createBackToActionPatch,
+  createBackToProcessingMethodPatch,
+  createProcessingMethodTransitionPatch,
+  resolveBackToActionTargetNodeId,
+} from "./choiceWizardStateTransitions";
 
-type WizardStep = "processing-method" | "action" | "follow-up";
 type WizardChoiceOption = ResolvedChoiceOption;
 
 const DEFAULT_FLOW_NODE_WIDTH = 172;
@@ -75,7 +83,7 @@ export const useChoiceWizardController = () => {
     [mappingRulesResponse],
   );
 
-  const [wizardStep, setWizardStep] = useState<WizardStep | null>(null);
+  const [wizardStep, setWizardStep] = useState<ChoiceWizardStep | null>(null);
   const [initialDataTypeKey, setInitialDataTypeKey] =
     useState<MappingDataTypeKey | null>(null);
   const [currentDataTypeKey, setCurrentDataTypeKey] =
@@ -97,6 +105,30 @@ export const useChoiceWizardController = () => {
     string[]
   >([]);
   const [wizardError, setWizardError] = useState<string | null>(null);
+
+  const applyWizardStatePatch = useCallback((patch: ChoiceWizardStatePatch) => {
+    if ("actionNodeId" in patch) {
+      setActionNodeId(patch.actionNodeId ?? null);
+    }
+    if ("currentDataTypeKey" in patch) {
+      setCurrentDataTypeKey(patch.currentDataTypeKey ?? null);
+    }
+    if ("selectedAction" in patch) {
+      setSelectedAction(patch.selectedAction ?? null);
+    }
+    if ("selectedBranchConfig" in patch) {
+      setSelectedBranchConfig(patch.selectedBranchConfig ?? null);
+    }
+    if ("selectedFollowUp" in patch) {
+      setSelectedFollowUp(patch.selectedFollowUp ?? null);
+    }
+    if ("selectedProcessingOption" in patch) {
+      setSelectedProcessingOption(patch.selectedProcessingOption ?? null);
+    }
+    if ("wizardStep" in patch) {
+      setWizardStep(patch.wizardStep ?? null);
+    }
+  }, []);
 
   const reset = useCallback(() => {
     setWizardStep(null);
@@ -383,9 +415,15 @@ export const useChoiceWizardController = () => {
 
         openPanel(stagingNode.id);
 
+        applyWizardStatePatch(
+          createProcessingMethodTransitionPatch({
+            option,
+            nextDataTypeKey: selectionIntent.nextDataTypeKey,
+            nextStep: selectionIntent.nextStep,
+          }),
+        );
+
         if (selectionIntent.nextStep === "action") {
-          setCurrentDataTypeKey(selectionIntent.nextDataTypeKey);
-          setWizardStep("action");
           return;
         }
 
@@ -411,6 +449,7 @@ export const useChoiceWizardController = () => {
       finishWizard,
       initialDataTypeKey,
       mappingRules,
+      applyWizardStatePatch,
       openPanel,
       resolveNodeRole,
       rootParentNodeId,
@@ -520,14 +559,18 @@ export const useChoiceWizardController = () => {
           setActionNodeId(null);
         }
 
-        setSelectedAction(action);
-        setSelectedFollowUp(selectionIntent.followUp);
-        setSelectedBranchConfig(selectionIntent.branchConfig);
-        setCurrentDataTypeKey(selectionIntent.nextDataTypeKey);
+        applyWizardStatePatch(
+          createActionTransitionPatch({
+            action,
+            branchConfig: selectionIntent.branchConfig,
+            followUp: selectionIntent.followUp,
+            nextDataTypeKey: selectionIntent.nextDataTypeKey,
+            nextStep: selectionIntent.nextStep,
+          }),
+        );
         openPanel(targetNodeId);
 
         if (selectionIntent.nextStep === "follow-up") {
-          setWizardStep("follow-up");
           return;
         }
 
@@ -552,6 +595,7 @@ export const useChoiceWizardController = () => {
       currentDataTypeKey,
       finishWizard,
       mappingRules,
+      applyWizardStatePatch,
       openPanel,
       placeWorkflowNode,
       resolveNodeRole,
@@ -609,13 +653,11 @@ export const useChoiceWizardController = () => {
       });
 
       openPanel(stagingNode.id);
-      setActionNodeId(null);
-      setSelectedAction(null);
-      setSelectedFollowUp(null);
-      setSelectedBranchConfig(null);
-      setSelectedProcessingOption(null);
-      setCurrentDataTypeKey(initialDataTypeKey);
-      setWizardStep("processing-method");
+      applyWizardStatePatch(
+        createBackToProcessingMethodPatch({
+          initialDataTypeKey,
+        }),
+      );
     } catch {
       setWizardError("이전 단계로 돌아가지 못했습니다.");
     }
@@ -626,6 +668,7 @@ export const useChoiceWizardController = () => {
     edges,
     initialDataTypeKey,
     openPanel,
+    applyWizardStatePatch,
     resolveNodeRole,
     removeWorkflowNode,
     sessionOwnedLeafNodeIds,
@@ -635,18 +678,18 @@ export const useChoiceWizardController = () => {
   ]);
 
   const backToAction = useCallback(() => {
-    const targetNodeId = actionNodeId ?? stagingNodeId;
+    const targetNodeId = resolveBackToActionTargetNodeId({
+      actionNodeId,
+      stagingNodeId,
+    });
     if (!targetNodeId) {
       return;
     }
 
     setWizardError(null);
     openPanel(targetNodeId);
-    setSelectedAction(null);
-    setSelectedFollowUp(null);
-    setSelectedBranchConfig(null);
-    setWizardStep("action");
-  }, [actionNodeId, openPanel, stagingNodeId]);
+    applyWizardStatePatch(createBackToActionPatch());
+  }, [actionNodeId, applyWizardStatePatch, openPanel, stagingNodeId]);
 
   const completeFollowUp = useCallback(
     async (selections: Record<string, string | string[]>) => {
