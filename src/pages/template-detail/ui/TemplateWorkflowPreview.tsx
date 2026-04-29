@@ -121,8 +121,13 @@ export const TemplateWorkflowPreview = ({ graph }: Props) => {
           nodesDraggable={false}
           nodesConnectable={false}
           elementsSelectable={false}
+          nodesFocusable={false}
+          edgesFocusable={false}
+          panOnDrag={false}
+          zoomOnScroll={false}
+          zoomOnPinch={false}
           zoomOnDoubleClick={false}
-          panOnDrag
+          preventScrolling={false}
         >
           <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
         </ReactFlow>
