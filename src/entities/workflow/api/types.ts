@@ -214,9 +214,15 @@ export interface SchemaPreviewRequest {
   edges: EdgeDefinitionResponse[];
 }
 
-export interface NodeChoiceSelectRequest {
-  selectedOptionId: string;
-  dataType: string;
+export interface SelectWorkflowChoiceCommand {
+  optionId: string;
+  dataType?: string;
+  context?: Record<string, unknown>;
+}
+
+export interface SelectWorkflowChoiceRequestPayload {
+  actionId: string;
+  dataType?: string;
   context?: Record<string, unknown>;
 }
 

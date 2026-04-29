@@ -688,7 +688,7 @@ export const OutputPanel = () => {
       const selectionResult = await selectWorkflowChoice({
         workflowId,
         prevNodeId: rootParentNodeId,
-        selectedOptionId: option.id,
+        optionId: option.id,
         dataType: currentDataTypeKey,
       });
 
@@ -748,7 +748,7 @@ export const OutputPanel = () => {
       const selectionResult = await selectWorkflowChoice({
         workflowId,
         prevNodeId: rootParentNodeId,
-        selectedOptionId: action.id,
+        optionId: action.id,
         dataType: currentDataTypeKey,
       });
 
