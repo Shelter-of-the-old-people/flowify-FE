@@ -3,16 +3,18 @@ import { useMutation } from "@tanstack/react-query";
 import { type MutationPolicyOptions, toMutationMeta } from "@/shared/api";
 import { queryClient } from "@/shared/libs";
 
-import { workflowApi } from "../api";
+import {
+  type SelectWorkflowChoiceCommand,
+  type SelectWorkflowChoiceTransportMeta,
+  workflowApi,
+} from "../api";
 
 import { workflowKeys } from "./query-keys";
 
-type SelectWorkflowChoiceVariables = {
+type SelectWorkflowChoiceVariables = SelectWorkflowChoiceCommand & {
   workflowId: string;
   prevNodeId: string;
-  selectedOptionId: string;
-  dataType: string;
-  context?: Record<string, unknown>;
+  transport?: SelectWorkflowChoiceTransportMeta;
 };
 
 export const useSelectWorkflowChoiceMutation = (
@@ -25,20 +27,27 @@ export const useSelectWorkflowChoiceMutation = (
     mutationFn: ({
       workflowId,
       prevNodeId,
-      selectedOptionId,
-      dataType,
+      optionId,
       context,
+      transport,
     }: SelectWorkflowChoiceVariables) =>
-      workflowApi.selectChoice(workflowId, prevNodeId, {
-        selectedOptionId,
-        dataType,
-        context,
-      }),
+      workflowApi.selectChoice(
+        workflowId,
+        prevNodeId,
+        {
+          optionId,
+          context,
+        },
+        transport,
+      ),
     retry: options?.retry,
     meta: toMutationMeta(options),
     onSuccess: async (data, variables, onMutateResult, context) => {
       await queryClient.invalidateQueries({
-        queryKey: workflowKeys.choice(variables.workflowId, variables.prevNodeId),
+        queryKey: workflowKeys.choice(
+          variables.workflowId,
+          variables.prevNodeId,
+        ),
       });
       await options?.onSuccess?.(data, variables, onMutateResult, context);
     },
@@ -46,4 +55,3 @@ export const useSelectWorkflowChoiceMutation = (
       await options?.onError?.(error, variables, onMutateResult, context);
     },
   });
-

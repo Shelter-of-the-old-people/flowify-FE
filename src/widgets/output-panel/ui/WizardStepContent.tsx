@@ -150,8 +150,14 @@ type QuestionBlock = {
   question: string;
   multiSelect: boolean;
   options: ChoiceOption[];
+  isDynamicOptionsUnresolved: boolean;
   description?: string | null;
 };
+
+const isDynamicOptionsUnresolved = (
+  optionsSource: string | null | undefined,
+  options: ChoiceOption[],
+) => Boolean(optionsSource && options.length === 0);
 
 const buildQuestionBlocks = (
   followUp: ChoiceFollowUp | null,
@@ -165,6 +171,10 @@ const buildQuestionBlocks = (
       question: followUp.question,
       multiSelect: followUp.multi_select ?? false,
       options: followUp.options ?? [],
+      isDynamicOptionsUnresolved: isDynamicOptionsUnresolved(
+        followUp.options_source,
+        followUp.options ?? [],
+      ),
       description: followUp.description,
     });
   }
@@ -175,6 +185,10 @@ const buildQuestionBlocks = (
       question: branchConfig.question,
       multiSelect: branchConfig.multi_select ?? false,
       options: branchConfig.options ?? [],
+      isDynamicOptionsUnresolved: isDynamicOptionsUnresolved(
+        branchConfig.options_source,
+        branchConfig.options ?? [],
+      ),
       description: branchConfig.description,
     });
   }
@@ -196,6 +210,9 @@ export const FollowUpStep = ({
     {},
   );
   const [customInputs, setCustomInputs] = useState<Record<string, string>>({});
+  const hasUnresolvedDynamicOptions = questionBlocks.some(
+    (block) => block.isDynamicOptionsUnresolved,
+  );
 
   const updateSelection = (
     blockId: string,
@@ -236,6 +253,10 @@ export const FollowUpStep = ({
   };
 
   const handleComplete = () => {
+    if (hasUnresolvedDynamicOptions) {
+      return;
+    }
+
     const mergedSelections = {
       ...selections,
       ...Object.fromEntries(
@@ -274,9 +295,16 @@ export const FollowUpStep = ({
           ) : null}
 
           {block.options.length === 0 ? (
-            <Text fontSize="sm" color="text.secondary">
-              현재 단계에서 보여줄 추가 옵션이 없습니다.
-            </Text>
+            block.isDynamicOptionsUnresolved ? (
+              <Text fontSize="sm" color="red.500">
+                이전 노드의 서비스 또는 필드 정보가 부족해 옵션을 불러오지
+                못했습니다.
+              </Text>
+            ) : (
+              <Text fontSize="sm" color="text.secondary">
+                현재 단계에서 보여줄 추가 옵션이 없습니다.
+              </Text>
+            )
           ) : (
             <VStack align="stretch" gap={3}>
               {block.options.map((option) => {
@@ -327,7 +355,11 @@ export const FollowUpStep = ({
         </VStack>
       ))}
 
-      <Button alignSelf="flex-start" onClick={handleComplete}>
+      <Button
+        alignSelf="flex-start"
+        disabled={hasUnresolvedDynamicOptions}
+        onClick={handleComplete}
+      >
         완료
       </Button>
     </VStack>
