@@ -4,13 +4,11 @@ import { MdCancel } from "react-icons/md";
 import { Box, Icon, Text } from "@chakra-ui/react";
 
 import { NODE_REGISTRY } from "@/entities/node";
-import { type FlowNodeData } from "@/entities/node";
 import {
   getNodeStatusMissingFieldLabel,
   useMappingRulesQuery,
 } from "@/entities/workflow";
 import {
-  OUTPUT_DATA_LABELS,
   findActionById,
   readCustomInputs,
   readSelectionSummary,
@@ -21,6 +19,14 @@ import {
   useWorkflowStore,
 } from "@/features/workflow-editor";
 import { useDualPanelLayout } from "@/shared";
+import {
+  DataPreviewBlock,
+  DataStateNotice,
+  NodeExecutionStatusBlock,
+  SchemaPreviewBlock,
+  isEmptyPanelData,
+  useNodeDataPanelModel,
+} from "@/widgets/node-data-panel";
 
 const PANEL_TRANSITION_MS = 240;
 
@@ -31,11 +37,12 @@ export const InputPanel = () => {
   const activePlaceholder = useWorkflowStore(
     (state) => state.activePlaceholder,
   );
-  const startNodeId = useWorkflowStore((state) => state.startNodeId);
-  const endNodeId = useWorkflowStore((state) => state.endNodeId);
+  const workflowId = useWorkflowStore((state) => state.workflowId);
   const nodeStatuses = useWorkflowStore((state) => state.nodeStatuses);
-  const nodes = useWorkflowStore((state) => state.nodes);
-  const edges = useWorkflowStore((state) => state.edges);
+  const canViewExecutionData = useWorkflowStore(
+    (state) => state.editorCapabilities.canRunWorkflow,
+  );
+  const isDirty = useWorkflowStore((state) => state.isDirty);
   const closePanel = useWorkflowStore((state) => state.closePanel);
   const layout = useDualPanelLayout();
   const isOpen = Boolean(activePanelNodeId) && activePlaceholder === null;
@@ -44,22 +51,16 @@ export const InputPanel = () => {
     () => toChoiceMappingRules(mappingRulesResponse),
     [mappingRulesResponse],
   );
-  const activeNode = activePanelNodeId
-    ? (nodes.find((node) => node.id === activePanelNodeId) ?? null)
-    : null;
-
-  const sourceNodes = activePanelNodeId
-    ? edges
-        .filter((edge) => edge.target === activePanelNodeId)
-        .map((edge) => nodes.find((node) => node.id === edge.source))
-        .filter((node): node is (typeof nodes)[number] => node != null)
-    : [];
-
-  const sourceNode = sourceNodes[0] ?? null;
-  const sourceData: FlowNodeData | null = sourceNode?.data ?? null;
+  const nodeDataPanel = useNodeDataPanelModel({
+    panelKind: "input",
+    workflowId: workflowId || undefined,
+    nodeId: activePanelNodeId,
+    canViewExecutionData,
+    isWorkflowDirty: isDirty,
+  });
+  const { activeNode, sourceNode, isStartNode, isEndNode } = nodeDataPanel;
+  const sourceData = sourceNode?.data ?? null;
   const sourceMeta = sourceData ? NODE_REGISTRY[sourceData.type] : null;
-  const isStartNode = activePanelNodeId === startNodeId;
-  const isEndNode = activePanelNodeId === endNodeId;
   const isMiddleNode = Boolean(activeNode) && !isStartNode && !isEndNode;
   const activeNodeStatus = activePanelNodeId
     ? (nodeStatuses[activePanelNodeId] ?? null)
@@ -79,6 +80,11 @@ export const InputPanel = () => {
   const customInputs = readCustomInputs(
     activeNode?.data.config.choiceSelections ?? null,
   );
+  const hasPreviewData = !isEmptyPanelData(nodeDataPanel.dataToDisplay);
+  const shouldShowSchemaPreview =
+    nodeDataPanel.state !== "data-ready" &&
+    nodeDataPanel.schemaToDisplay !== null &&
+    !nodeDataPanel.isSchemaPreviewLoading;
   const closedTransform =
     layout.mode === "stacked"
       ? `translate3d(0, -${layout.inputPanelTop + layout.panelHeight + 24}px, 0)`
@@ -137,32 +143,52 @@ export const InputPanel = () => {
       </Box>
 
       <Box flex={1} overflow="auto" p={3}>
-        {sourceData ? (
-          <Box>
-            <Text fontSize="md" fontWeight="medium" mb={3}>
-              {sourceMeta?.label ?? sourceData.label}
-            </Text>
-            <Text fontSize="sm" color="text.secondary">
-              출력 타입:{" "}
-              {sourceData.outputTypes[0]
-                ? OUTPUT_DATA_LABELS[sourceData.outputTypes[0]]
-                : "없음"}
-            </Text>
-            <Box
-              mt={4}
-              p={6}
-              borderRadius="2xl"
-              display="grid"
-              gridTemplateColumns="repeat(6, 1fr)"
-              gap={6}
-            >
-              <Text fontSize="sm" color="text.secondary" gridColumn="1 / -1">
-                데이터 미리보기는 백엔드 연동 후 제공될 예정입니다.
+        {activeNode ? (
+          <Box display="flex" flexDirection="column" gap={6}>
+            <Box>
+              <Text fontSize="md" fontWeight="medium" mb={3}>
+                {sourceMeta?.label ?? (isStartNode ? "시작점" : "이전 노드")}
               </Text>
+              {sourceData ? (
+                <Text fontSize="sm" color="text.secondary">
+                  출력 타입: {nodeDataPanel.staticInputLabel ?? "없음"}
+                </Text>
+              ) : isStartNode ? (
+                <Text fontSize="sm" color="text.secondary">
+                  워크플로우의 입력 데이터가 이 지점에서 들어옵니다.
+                </Text>
+              ) : (
+                <Text fontSize="sm" color="text.secondary">
+                  이전 노드가 연결되지 않았습니다.
+                </Text>
+              )}
+            </Box>
+
+            <Box display="flex" flexDirection="column" gap={4}>
+              <DataStateNotice
+                state={nodeDataPanel.state}
+                panelKind="input"
+                executionData={nodeDataPanel.executionData}
+                isStaleAgainstCurrentEditor={
+                  nodeDataPanel.isStaleAgainstCurrentEditor
+                }
+              />
+              {hasPreviewData ? (
+                <DataPreviewBlock
+                  title="입력 데이터"
+                  data={nodeDataPanel.dataToDisplay}
+                />
+              ) : null}
+              {shouldShowSchemaPreview ? (
+                <SchemaPreviewBlock
+                  title="예상 입력 구조"
+                  schema={nodeDataPanel.schemaToDisplay}
+                />
+              ) : null}
             </Box>
 
             {isConfiguredMiddleNode && selectedAction ? (
-              <Box mt={8}>
+              <Box>
                 <Text fontSize="md" fontWeight="bold" mb={3}>
                   데이터 처리 방식
                 </Text>
@@ -180,7 +206,7 @@ export const InputPanel = () => {
             ) : null}
 
             {isConfiguredMiddleNode && selectedOptions.length > 0 ? (
-              <Box mt={8}>
+              <Box>
                 <Text fontSize="md" fontWeight="bold" mb={3}>
                   선택 옵션
                 </Text>
@@ -203,7 +229,7 @@ export const InputPanel = () => {
             ) : null}
 
             {isConfiguredMiddleNode && customInputs.length > 0 ? (
-              <Box mt={8}>
+              <Box>
                 <Text fontSize="md" fontWeight="bold" mb={3}>
                   직접 입력
                 </Text>
@@ -225,10 +251,16 @@ export const InputPanel = () => {
               </Box>
             ) : null}
 
+            {nodeDataPanel.executionData ? (
+              <NodeExecutionStatusBlock
+                executionData={nodeDataPanel.executionData}
+              />
+            ) : null}
+
             {activeNodeStatus ? (
-              <Box mt={8}>
+              <Box>
                 <Text fontSize="md" fontWeight="bold" mb={3}>
-                  노드 상태
+                  설정 상태
                 </Text>
                 <Box bg="gray.50" borderRadius="2xl" px={4} py={4}>
                   <Text fontSize="sm" fontWeight="semibold" mb={1}>
@@ -246,18 +278,9 @@ export const InputPanel = () => {
               </Box>
             ) : null}
           </Box>
-        ) : isStartNode ? (
-          <Box>
-            <Text fontSize="md" fontWeight="medium">
-              시작점
-            </Text>
-            <Text fontSize="sm" color="text.secondary" mt={2}>
-              워크플로우의 입력 데이터가 이 지점에서 들어옵니다.
-            </Text>
-          </Box>
         ) : (
           <Text fontSize="sm" color="text.secondary">
-            이전 노드가 연결되지 않았습니다.
+            노드를 선택하면 들어오는 데이터를 확인할 수 있습니다.
           </Text>
         )}
       </Box>
