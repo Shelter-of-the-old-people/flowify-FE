@@ -1,11 +1,11 @@
 import { request } from "@/shared/api/core";
 
-import { type ExecutionDetail } from "./types";
+import { type ExecutionSummary } from "./types";
 
 export const getExecutionListAPI = (
   workflowId: string,
-): Promise<ExecutionDetail[]> =>
-  request<ExecutionDetail[]>({
+): Promise<ExecutionSummary[]> =>
+  request<ExecutionSummary[]>({
     url: `/workflows/${workflowId}/executions`,
     method: "GET",
   });
