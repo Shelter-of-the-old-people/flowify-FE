@@ -28,6 +28,11 @@ export type ResolvedChoiceResponse = {
 
 export type ChoiceResolutionSource = "server" | "fallback" | null;
 
+type ChoiceResolutionResult = {
+  choice: ResolvedChoiceResponse | null;
+  source: ChoiceResolutionSource;
+};
+
 type FallbackChoiceMode = "initial" | "action";
 
 const toChoiceFollowUp = (followUp: FollowUp | null | undefined) =>
@@ -117,20 +122,36 @@ export const buildFallbackChoiceResponse = (
 };
 
 export const resolveChoiceResponse = ({
+  allowFallback,
   fallbackChoice,
   serverChoice,
 }: {
   serverChoice?: ChoiceResponse | null;
   fallbackChoice?: ResolvedChoiceResponse | null;
-}): ResolvedChoiceResponse | null => {
+  allowFallback: boolean;
+}): ChoiceResolutionResult => {
   if (serverChoice) {
-    return toResolvedChoiceResponse(serverChoice);
+    return {
+      choice: toResolvedChoiceResponse(serverChoice),
+      source: "server",
+    };
   }
 
-  return fallbackChoice ?? null;
+  if (allowFallback && fallbackChoice) {
+    return {
+      choice: fallbackChoice,
+      source: "fallback",
+    };
+  }
+
+  return {
+    choice: null,
+    source: null,
+  };
 };
 
 export const resolveInitialChoiceResponse = ({
+  allowFallback,
   dataTypeKey,
   mappingRules,
   serverChoice,
@@ -138,37 +159,35 @@ export const resolveInitialChoiceResponse = ({
   mappingRules: MappingRules;
   dataTypeKey: MappingDataTypeKey | null;
   serverChoice?: ChoiceResponse | null;
-}): {
-  choice: ResolvedChoiceResponse | null;
-  source: ChoiceResolutionSource;
-} => {
+  allowFallback: boolean;
+}): ChoiceResolutionResult => {
   const fallbackChoice = dataTypeKey
     ? buildFallbackChoiceResponse(mappingRules, dataTypeKey, "initial")
     : null;
-  const choice = resolveChoiceResponse({
+
+  return resolveChoiceResponse({
+    allowFallback,
     serverChoice,
     fallbackChoice,
   });
-
-  return {
-    choice,
-    source: serverChoice ? "server" : fallbackChoice ? "fallback" : null,
-  };
 };
 
 export const resolveActionChoiceResponse = ({
+  allowFallback,
   currentDataTypeKey,
-  initialChoiceResponse,
-  initialDataTypeKey,
   mappingRules,
+  serverChoice,
 }: {
   mappingRules: MappingRules;
   currentDataTypeKey: MappingDataTypeKey | null;
-  initialChoiceResponse: ResolvedChoiceResponse | null;
-  initialDataTypeKey: MappingDataTypeKey | null;
-}): ResolvedChoiceResponse | null => {
+  serverChoice?: ChoiceResponse | null;
+  allowFallback: boolean;
+}): ChoiceResolutionResult => {
   if (!currentDataTypeKey) {
-    return null;
+    return {
+      choice: null,
+      source: null,
+    };
   }
 
   const fallbackChoice = buildFallbackChoiceResponse(
@@ -177,16 +196,9 @@ export const resolveActionChoiceResponse = ({
     "action",
   );
 
-  if (
-    initialChoiceResponse &&
-    initialChoiceResponse.requiresProcessingMethod === false &&
-    currentDataTypeKey === initialDataTypeKey
-  ) {
-    return resolveChoiceResponse({
-      serverChoice: initialChoiceResponse,
-      fallbackChoice,
-    });
-  }
-
-  return fallbackChoice;
+  return resolveChoiceResponse({
+    allowFallback,
+    serverChoice,
+    fallbackChoice,
+  });
 };

@@ -371,6 +371,23 @@ type ChoiceWizardContext = {
 - `selectedNodeId`는 “방금 저장/갱신한 현재 node”다.
 - processing method 결과로 중간 node가 생기면 다음 단계의 `anchorNodeId`는 반드시 그 새 node로 바뀐다.
 
+### 10.2 anchor node 불변식
+
+구현 중 흔들리지 않도록 아래 불변식을 유지한다.
+
+1. `anchorNodeId`는 **다음 `GET /choices` 호출 대상**과 항상 같아야 한다.
+2. `rootParentNodeId`는 wizard 최초 진입 시점을 설명하는 보조 정보일 뿐,
+   이후 단계의 authoritative 기준 node로 재사용하지 않는다.
+3. `selectedNodeId`는 마지막으로 저장/갱신한 node를 가리키며,
+   follow-up / branch-config 저장 단계에서는 이 node를 현재 설정 대상으로 본다.
+4. processing method 결과로 중간 node가 생성되면,
+   다음 action choice는 반드시 그 중간 node를 `anchorNodeId`로 사용한다.
+5. follow-up 완료 후 다음 choice가 필요하면,
+   직전까지 설정하던 현재 node를 그대로 `anchorNodeId`로 유지한다.
+
+즉 프론트는 더 이상 “처음 클릭한 parent node”를 중심으로 wizard를 이어가지 않고,
+**현재 단계의 authoritative anchor node** 를 기준으로 다음 GET/POST를 이어간다.
+
 ---
 
 ## 11. API 계약 구체화
@@ -427,6 +444,92 @@ FE/BE를 함께 바꿔 일치시켜야 한다.
 이 문서는 FE가 context shape를 독자 설계하지 않고
 백엔드와 계약을 확정해야 함을 전제로 한다.
 
+다만 현재 백엔드 문서 `(2)` 기준으로, 프론트는 GET context와 POST context를
+아래처럼 **역할별로 분리된 모델**로 다루는 설계를 채택한다.
+
+```ts
+type ChoiceQueryContext = {
+  service?: string;
+  file_subtype?: string;
+};
+
+type ChoiceSelectContext = ChoiceQueryContext & {
+  fields?: string[];
+};
+```
+
+원칙:
+
+1. GET `/choices` 는 scalar context만 사용한다.
+   - `service`
+   - `file_subtype`
+2. POST `/select` 는 richer context를 사용할 수 있다.
+   - `service`
+   - `file_subtype`
+   - `fields`
+3. key 이름은 GET/POST가 동일한 canonical set을 공유한다.
+4. page/model은 임의 object를 만들지 않고,
+   `deriveChoiceQueryContext(...)`, `deriveChoiceSelectContext(...)`
+   같은 helper를 통해서만 context를 계산한다.
+
+### 11.4 GET query와 cache key 규칙
+
+GET `/choices` 에 context가 들어가기 시작하면,
+프론트 query layer도 아래 규칙을 반드시 지켜야 한다.
+
+1. query key는 더 이상 `(workflowId, prevNodeId)` 만으로 구성하지 않는다.
+2. `service`, `file_subtype` 가 달라지면 다른 choice cache로 취급한다.
+3. query context가 비어 있으면 기존 기본 조회와 동일하게 동작할 수 있어야 한다.
+
+개념적으로 choice cache key는 아래 형태를 따른다.
+
+```ts
+choice(workflowId, prevNodeId, {
+  service,
+  file_subtype,
+})
+```
+
+이 규칙이 없으면:
+
+- 같은 node 기준 GET이라도
+- context만 바뀐 요청이
+- 같은 캐시를 재사용하는 문제가 생긴다.
+
+### 11.5 follow-up / branch-config empty options 의미
+
+백엔드 문서 `(2)` 기준으로 프론트는 `options_source` 와 `options` 상태를
+같이 보고 follow-up 의미를 판정해야 한다.
+
+#### 경우 A. `options_source != null` + `options` empty/null
+
+의미:
+
+- 동적 옵션 resolve 실패
+- context 부족
+- 현재 단계에서 추가 정보 없이는 진행 불가
+
+프론트 처리:
+
+- “선택지가 없음”이 아니라 “추가 정보 부족으로 옵션을 구성하지 못함”으로 해석
+- 완료 버튼 비활성화
+- 가능한 경우 이전 단계로 유도하거나 context 부족 안내 표시
+
+#### 경우 B. `options_source == null` + `options` empty/null
+
+의미:
+
+- 정적 선택지가 원래 없음
+- 추가 선택 없이 진행 가능
+
+프론트 처리:
+
+- 현재처럼 안내 문구 표시 가능
+- 완료 버튼 허용 가능
+
+즉 `options.length === 0`만으로 follow-up 상태를 판정해서는 안 되고,
+**반드시 `options_source` 존재 여부를 함께 해석**해야 한다.
+
 ---
 
 ## 12. 구현 단계 제안
@@ -455,6 +558,8 @@ FE/BE를 함께 바꿔 일치시켜야 한다.
 
 - root parent 기반 로컬 연장 흐름 제거
 - 새 노드 id 기준 재조회 연결
+- `anchorNodeId` 갱신 규칙 반영
+- `rootParentNodeId`는 최초 진입 보조 정보로만 축소
 
 ### 단계 3. action / follow-up 흐름 재구성
 
@@ -463,6 +568,12 @@ FE/BE를 함께 바꿔 일치시켜야 한다.
 - action 선택 후 현재 노드 저장
 - follow-up / branch-config 는 현재 노드 설정 단계로 처리
 - 완료 후 다음 노드 설정으로 연결
+
+포함:
+
+- `options_source` 기반 empty options 해석 반영
+- resolve 실패 시 완료 차단 / 안내 상태 추가
+- resolve 성공 시 기존 follow-up UI 흐름 유지
 
 ### 단계 4. 로컬 authority 제거
 
@@ -475,6 +586,69 @@ FE/BE를 함께 바꿔 일치시켜야 한다.
 
 - `OutputPanel` 내부 로컬 의미 계산 축소
 - fallback은 feature/model로만 제한
+
+### 단계 4-1. GET context query 연동
+
+목표:
+
+- backend 문서 `(2)` 의 scalar GET context를 query layer에 반영
+
+포함:
+
+- `getWorkflowChoicesAPI(workflowId, prevNodeId, context?)`
+- `useWorkflowChoicesQuery` query key에 context 반영
+- controller에서 `deriveChoiceQueryContext(...)` 사용
+- GET context는 `service`, `file_subtype` 범위로 제한
+
+### 단계 4-2. choice loading / fallback 정책 분리
+
+목표:
+
+- 서버 choice가 아직 로딩 중일 때 로컬 fallback 선택지를 먼저 노출하지 않는다.
+- 서버 choice 조회 실패가 확정된 뒤에만 로컬 fallback을 허용한다.
+- wizard step과 choice 데이터 준비 상태를 분리한다.
+
+상태 원칙:
+
+- `wizardStep`은 사용자가 어느 단계에 있는지 나타낸다.
+- choice response는 해당 step에서 보여줄 선택지가 준비됐는지 나타낸다.
+- `wizardStep === "action"` 이지만 `activeActionChoiceResponse === null`인 상태는
+  **새 anchor 기준 action choice를 기다리는 정상 상태**다.
+- `isWizardMode === true`이면 `wizardStep === null`이어도
+  일반 설정 패널로 빠지지 않고 wizard shell에서 loading 상태를 보여준다.
+
+fallback 허용 조건:
+
+```ts
+const allowChoiceFallback = isChoicesError && !serverChoiceResponse;
+```
+
+resolver 규칙:
+
+- `serverChoiceResponse`가 있으면 서버 choice를 사용한다.
+- `serverChoiceResponse`가 없고 `allowChoiceFallback === true`이면 fallback을 사용한다.
+- 그 외에는 `null`을 반환하고 UI는 choice loading 상태를 보여준다.
+
+controller 노출 상태:
+
+```ts
+isChoiceStepLoading: boolean;
+isChoiceStepUnavailable: boolean;
+isUsingChoiceFallback: boolean;
+```
+
+렌더링 규칙:
+
+1. `isWizardMode`이면 wizard shell을 렌더링한다.
+2. 현재 choice step에 선택지가 없고 loading 상태이면 선택 버튼 대신 loading 안내를 보여준다.
+3. 서버 실패 후 fallback이 만들어진 경우에만 fallback 안내와 fallback 선택지를 함께 보여준다.
+4. 서버 실패 후 fallback도 만들 수 없으면 선택지 unavailable 안내를 보여준다.
+
+서비스 context 규칙:
+
+- `service` context의 최종 해석 주체는 백엔드다.
+- 프론트는 알려진 service key만 표시명으로 변환한다.
+- 프론트 `mappingRules.service_fields`에 없는 service라도 null로 버리지 않고 원본 값을 그대로 보낸다.
 
 ### 단계 5. 선택 결과 파이프라인 분리
 

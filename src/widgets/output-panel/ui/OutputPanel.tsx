@@ -49,6 +49,9 @@ type OutputPanelWizardController = {
   selectedBranchConfig: ChoiceBranchConfig | null;
   wizardError: string | null;
   isWorkflowBusy: boolean;
+  isChoiceStepLoading: boolean;
+  isChoiceStepUnavailable: boolean;
+  isUsingChoiceFallback: boolean;
   isChoicesError: boolean;
   serverChoiceResponse: ChoiceResponse | null | undefined;
   selectProcessingMethod: (option: WizardChoiceOption) => Promise<void>;
@@ -66,6 +69,32 @@ type Props = {
 };
 
 const PANEL_TRANSITION_MS = 240;
+
+const ChoiceStepStatus = ({
+  message,
+  showSpinner = false,
+  tone = "muted",
+}: {
+  message: string;
+  showSpinner?: boolean;
+  tone?: "muted" | "error";
+}) => (
+  <Box
+    display="flex"
+    alignItems="center"
+    gap={2}
+    p={4}
+    borderRadius="xl"
+    bg={tone === "error" ? "red.50" : "gray.50"}
+    border="1px solid"
+    borderColor={tone === "error" ? "red.100" : "gray.200"}
+  >
+    {showSpinner ? <Spinner size="sm" color="gray.500" /> : null}
+    <Text fontSize="sm" color={tone === "error" ? "red.500" : "gray.500"}>
+      {message}
+    </Text>
+  </Box>
+);
 
 export const OutputPanel = ({ wizardController }: Props) => {
   const nodes = useWorkflowStore((state) => state.nodes);
@@ -106,6 +135,14 @@ export const OutputPanel = ({ wizardController }: Props) => {
     wizardController.reset();
     closePanel();
   };
+  const shouldShowChoiceStepLoading =
+    canEditNodes && wizardController.isChoiceStepLoading;
+  const shouldShowChoiceStepUnavailable =
+    canEditNodes && wizardController.isChoiceStepUnavailable;
+  const canShowWizardStepContent =
+    canEditNodes &&
+    !shouldShowChoiceStepLoading &&
+    !shouldShowChoiceStepUnavailable;
 
   return (
     <Box
@@ -133,7 +170,7 @@ export const OutputPanel = ({ wizardController }: Props) => {
       flexDirection="column"
       gap={3}
     >
-      {wizardController.isWizardMode && wizardController.wizardStep ? (
+      {wizardController.isWizardMode ? (
         <>
           <Box
             display="flex"
@@ -165,7 +202,21 @@ export const OutputPanel = ({ wizardController }: Props) => {
               </Box>
             ) : null}
 
-            {canEditNodes &&
+            {shouldShowChoiceStepLoading ? (
+              <ChoiceStepStatus
+                message="선택지를 불러오는 중입니다."
+                showSpinner
+              />
+            ) : null}
+
+            {shouldShowChoiceStepUnavailable ? (
+              <ChoiceStepStatus
+                message="선택지를 불러오지 못했습니다."
+                tone="error"
+              />
+            ) : null}
+
+            {canShowWizardStepContent &&
             wizardController.wizardStep === "processing-method" &&
             wizardController.initialChoiceResponse ? (
               <ProcessingMethodStep
@@ -177,7 +228,7 @@ export const OutputPanel = ({ wizardController }: Props) => {
               />
             ) : null}
 
-            {canEditNodes &&
+            {canShowWizardStepContent &&
             wizardController.wizardStep === "action" &&
             wizardController.activeActionChoiceResponse ? (
               <ActionStep
@@ -194,7 +245,8 @@ export const OutputPanel = ({ wizardController }: Props) => {
               />
             ) : null}
 
-            {canEditNodes && wizardController.wizardStep === "follow-up" ? (
+            {canShowWizardStepContent &&
+            wizardController.wizardStep === "follow-up" ? (
               <FollowUpStep
                 followUp={wizardController.selectedFollowUp}
                 branchConfig={wizardController.selectedBranchConfig}
@@ -206,7 +258,8 @@ export const OutputPanel = ({ wizardController }: Props) => {
             ) : null}
           </Box>
 
-          {wizardController.isWorkflowBusy ? (
+          {wizardController.isWorkflowBusy &&
+          !wizardController.isChoiceStepLoading ? (
             <Box display="flex" alignItems="center" gap={2} px={6}>
               <Spinner size="sm" color="gray.500" />
               <Text fontSize="sm" color="gray.500">
@@ -215,8 +268,7 @@ export const OutputPanel = ({ wizardController }: Props) => {
             </Box>
           ) : null}
 
-          {wizardController.isChoicesError &&
-          !wizardController.serverChoiceResponse ? (
+          {wizardController.isUsingChoiceFallback ? (
             <Text px={6} fontSize="sm" color="orange.500">
               서버 선택지를 가져오지 못해 로컬 규칙으로 이어갑니다.
             </Text>

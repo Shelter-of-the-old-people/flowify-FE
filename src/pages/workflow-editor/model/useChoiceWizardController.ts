@@ -28,6 +28,10 @@ import {
   deriveActionSelectionIntent,
   deriveProcessingMethodSelectionIntent,
 } from "./choiceSelectionPipeline";
+import {
+  deriveChoiceQueryContext,
+  deriveChoiceSelectContext,
+} from "./choiceWizardContext";
 import { logChoiceWizardEvent } from "./choiceWizardLogger";
 import {
   type WizardNodeSnapshot,
@@ -98,6 +102,7 @@ export const useChoiceWizardController = () => {
   const [selectedBranchConfig, setSelectedBranchConfig] =
     useState<ChoiceBranchConfig | null>(null);
   const [stagingNodeId, setStagingNodeId] = useState<string | null>(null);
+  const [anchorNodeId, setAnchorNodeId] = useState<string | null>(null);
   const [rootParentNodeId, setRootParentNodeId] = useState<string | null>(null);
   const [baseStagingSnapshot, setBaseStagingSnapshot] =
     useState<WizardNodeSnapshot | null>(null);
@@ -140,6 +145,7 @@ export const useChoiceWizardController = () => {
     setSelectedFollowUp(null);
     setSelectedBranchConfig(null);
     setStagingNodeId(null);
+    setAnchorNodeId(null);
     setRootParentNodeId(null);
     setBaseStagingSnapshot(null);
     setActionNodeId(null);
@@ -207,6 +213,27 @@ export const useChoiceWizardController = () => {
     startNodeId,
     endNodeId,
   );
+  const activeChoiceAnchorNodeId = isWizardMode
+    ? (anchorNodeId ?? parentNode?.id ?? null)
+    : null;
+  const choiceQueryContext = useMemo(
+    () =>
+      deriveChoiceQueryContext({
+        anchorNodeId: activeChoiceAnchorNodeId,
+        edges,
+        nodes,
+      }),
+    [activeChoiceAnchorNodeId, edges, nodes],
+  );
+  const getChoiceSelectContext = useCallback(
+    (anchorNodeId: string | null) =>
+      deriveChoiceSelectContext({
+        anchorNodeId,
+        edges,
+        nodes,
+      }),
+    [edges, nodes],
+  );
 
   const {
     data: serverChoiceResponse,
@@ -214,35 +241,68 @@ export const useChoiceWizardController = () => {
     isError: isChoicesError,
   } = useWorkflowChoicesQuery(
     workflowId || undefined,
-    isWizardMode ? (parentNode?.id ?? null) : null,
+    activeChoiceAnchorNodeId,
+    choiceQueryContext,
     isWizardMode,
   );
+  const allowChoiceFallback = isChoicesError && !serverChoiceResponse;
+  const isInitialChoiceStep =
+    wizardStep === null || wizardStep === "processing-method";
 
   const { choice: initialChoiceResponse, source: initialChoiceSource } =
     useMemo(
       () =>
         resolveInitialChoiceResponse({
+          allowFallback: isInitialChoiceStep ? allowChoiceFallback : false,
           mappingRules,
           dataTypeKey: initialDataTypeKey,
-          serverChoice: serverChoiceResponse,
+          serverChoice: isInitialChoiceStep ? serverChoiceResponse : null,
         }),
-      [initialDataTypeKey, mappingRules, serverChoiceResponse],
+      [
+        allowChoiceFallback,
+        initialDataTypeKey,
+        isInitialChoiceStep,
+        mappingRules,
+        serverChoiceResponse,
+      ],
     );
-  const activeActionChoiceResponse = useMemo(
+  const {
+    choice: activeActionChoiceResponse,
+    source: activeActionChoiceSource,
+  } = useMemo(
     () =>
       resolveActionChoiceResponse({
+        allowFallback: wizardStep === "action" ? allowChoiceFallback : false,
         mappingRules,
         currentDataTypeKey,
-        initialChoiceResponse,
-        initialDataTypeKey,
+        serverChoice: wizardStep === "action" ? serverChoiceResponse : null,
       }),
     [
+      allowChoiceFallback,
       currentDataTypeKey,
-      initialChoiceResponse,
-      initialDataTypeKey,
       mappingRules,
+      serverChoiceResponse,
+      wizardStep,
     ],
   );
+  const isChoiceStep =
+    isWizardMode &&
+    (wizardStep === null ||
+      wizardStep === "processing-method" ||
+      wizardStep === "action");
+  const currentChoiceResponse =
+    wizardStep === "action"
+      ? activeActionChoiceResponse
+      : initialChoiceResponse;
+  const hasChoiceStepContent = Boolean(currentChoiceResponse);
+  const isChoiceStepLoading =
+    isChoiceStep && !hasChoiceStepContent && !isChoicesError;
+  const isChoiceStepUnavailable =
+    isChoiceStep && !hasChoiceStepContent && isChoicesError;
+  const isUsingChoiceFallback =
+    (wizardStep === "action"
+      ? activeActionChoiceSource
+      : initialChoiceSource) === "fallback";
 
   const isWorkflowBusy =
     isChoicesLoading ||
@@ -288,6 +348,7 @@ export const useChoiceWizardController = () => {
 
     const mappingKey = toMappingKey(parentOutputType);
     setStagingNodeId(activeNode.id);
+    setAnchorNodeId(parentNode.id);
     setRootParentNodeId(parentNode.id);
     setBaseStagingSnapshot(createSnapshot(activeNode));
     setInitialDataTypeKey(mappingKey);
@@ -310,7 +371,7 @@ export const useChoiceWizardController = () => {
       : "action";
 
     logChoiceWizardEvent({
-      anchorNodeId: parentNode?.id ?? null,
+      anchorNodeId: activeChoiceAnchorNodeId,
       event: "wizard-open",
       nextStep,
       source: initialChoiceSource,
@@ -320,8 +381,8 @@ export const useChoiceWizardController = () => {
   }, [
     initialChoiceResponse,
     initialChoiceSource,
+    activeChoiceAnchorNodeId,
     isWizardMode,
-    parentNode?.id,
     wizardStep,
   ]);
 
@@ -331,9 +392,10 @@ export const useChoiceWizardController = () => {
 
   const selectProcessingMethod = useCallback(
     async (option: WizardChoiceOption) => {
+      const currentAnchorNodeId = anchorNodeId ?? rootParentNodeId;
       if (
         !stagingNode ||
-        !rootParentNodeId ||
+        !currentAnchorNodeId ||
         !currentDataTypeKey ||
         !initialDataTypeKey
       ) {
@@ -346,8 +408,9 @@ export const useChoiceWizardController = () => {
       try {
         const selectionResult = await selectWorkflowChoice({
           workflowId,
-          prevNodeId: rootParentNodeId,
+          prevNodeId: currentAnchorNodeId,
           optionId: option.id,
+          context: getChoiceSelectContext(currentAnchorNodeId),
           transport: {
             dataType: currentDataTypeKey,
           },
@@ -361,7 +424,7 @@ export const useChoiceWizardController = () => {
         });
 
         logChoiceWizardEvent({
-          anchorNodeId: rootParentNodeId,
+          anchorNodeId: currentAnchorNodeId,
           details: {
             outputDataType: selectionIntent.nextDataTypeKey,
           },
@@ -372,7 +435,7 @@ export const useChoiceWizardController = () => {
           targetNodeId: stagingNode.id,
         });
 
-        await updatePersistedNode({
+        const updatedNodeId = await updatePersistedNode({
           node: stagingNode,
           type: selectionIntent.nextNodeType,
           config: buildChoiceWizardNodeConfig({
@@ -384,6 +447,7 @@ export const useChoiceWizardController = () => {
           role: baseStagingSnapshot?.role ?? resolveNodeRole(stagingNode.id),
         });
 
+        setAnchorNodeId(updatedNodeId);
         openPanel(stagingNode.id);
 
         applyWizardStatePatch(
@@ -401,7 +465,7 @@ export const useChoiceWizardController = () => {
         finishWizard();
       } catch {
         logChoiceWizardEvent({
-          anchorNodeId: rootParentNodeId,
+          anchorNodeId: currentAnchorNodeId,
           details: {
             message: "processing-method-persist-failed",
           },
@@ -414,9 +478,11 @@ export const useChoiceWizardController = () => {
       }
     },
     [
+      anchorNodeId,
       baseStagingSnapshot?.role,
       currentDataTypeKey,
       finishWizard,
+      getChoiceSelectContext,
       initialDataTypeKey,
       mappingRules,
       applyWizardStatePatch,
@@ -433,7 +499,8 @@ export const useChoiceWizardController = () => {
 
   const selectAction = useCallback(
     async (action: WizardChoiceOption) => {
-      if (!stagingNode || !rootParentNodeId || !currentDataTypeKey) {
+      const currentAnchorNodeId = anchorNodeId ?? rootParentNodeId;
+      if (!stagingNode || !currentAnchorNodeId || !currentDataTypeKey) {
         return;
       }
 
@@ -442,8 +509,9 @@ export const useChoiceWizardController = () => {
       try {
         const selectionResult = await selectWorkflowChoice({
           workflowId,
-          prevNodeId: rootParentNodeId,
+          prevNodeId: currentAnchorNodeId,
           optionId: action.id,
+          context: getChoiceSelectContext(currentAnchorNodeId),
           transport: {
             dataType: currentDataTypeKey,
           },
@@ -458,7 +526,7 @@ export const useChoiceWizardController = () => {
         });
 
         logChoiceWizardEvent({
-          anchorNodeId: rootParentNodeId,
+          anchorNodeId: currentAnchorNodeId,
           details: {
             hasFollowUp: selectionIntent.hasFollowUp,
             outputDataType: selectionIntent.nextDataTypeKey,
@@ -491,6 +559,7 @@ export const useChoiceWizardController = () => {
               outputDataTypeKey: selectionIntent.nextDataTypeKey,
             });
             targetNodeId = actionNode.id;
+            setAnchorNodeId(actionNode.id);
           } else {
             const createdActionNodeId = await placeWorkflowNode({
               type: selectionIntent.nextNodeType,
@@ -503,6 +572,7 @@ export const useChoiceWizardController = () => {
               inputDataTypeKey: currentDataTypeKey,
               outputDataTypeKey: selectionIntent.nextDataTypeKey,
               config: finalActionConfig,
+              previousNodes: nodes,
             });
 
             if (!createdActionNodeId) {
@@ -516,9 +586,10 @@ export const useChoiceWizardController = () => {
                 : [...current, createdActionNodeId],
             );
             targetNodeId = createdActionNodeId;
+            setAnchorNodeId(createdActionNodeId);
           }
         } else {
-          await updatePersistedNode({
+          const updatedNodeId = await updatePersistedNode({
             node: stagingNode,
             type: selectionIntent.nextNodeType,
             config: finalActionConfig,
@@ -527,6 +598,7 @@ export const useChoiceWizardController = () => {
             role: baseStagingSnapshot?.role ?? resolveNodeRole(stagingNode.id),
           });
           setActionNodeId(null);
+          setAnchorNodeId(updatedNodeId);
         }
 
         applyWizardStatePatch(
@@ -547,7 +619,7 @@ export const useChoiceWizardController = () => {
         finishWizard();
       } catch {
         logChoiceWizardEvent({
-          anchorNodeId: rootParentNodeId,
+          anchorNodeId: currentAnchorNodeId,
           details: {
             message: "action-persist-failed",
           },
@@ -560,11 +632,14 @@ export const useChoiceWizardController = () => {
     },
     [
       actionNode,
+      anchorNodeId,
       baseStagingSnapshot?.role,
       currentDataTypeKey,
       finishWizard,
+      getChoiceSelectContext,
       mappingRules,
       applyWizardStatePatch,
+      nodes,
       openPanel,
       placeWorkflowNode,
       resolveNodeRole,
@@ -621,6 +696,7 @@ export const useChoiceWizardController = () => {
         role: baseStagingSnapshot.role,
       });
 
+      setAnchorNodeId(rootParentNodeId);
       openPanel(stagingNode.id);
       applyWizardStatePatch(
         createBackToProcessingMethodPatch({
@@ -640,6 +716,7 @@ export const useChoiceWizardController = () => {
     applyWizardStatePatch,
     resolveNodeRole,
     removeWorkflowNode,
+    rootParentNodeId,
     sessionOwnedLeafNodeIds,
     stagingNode,
     stagingNodeId,
@@ -656,6 +733,7 @@ export const useChoiceWizardController = () => {
     }
 
     setWizardError(null);
+    setAnchorNodeId(targetNodeId);
     openPanel(targetNodeId);
     applyWizardStatePatch(createBackToActionPatch());
   }, [actionNodeId, applyWizardStatePatch, openPanel, stagingNodeId]);
@@ -690,7 +768,7 @@ export const useChoiceWizardController = () => {
         });
 
         logChoiceWizardEvent({
-          anchorNodeId: rootParentNodeId,
+          anchorNodeId: anchorNodeId ?? rootParentNodeId,
           details: {
             selectionKeys: Object.keys(selections),
           },
@@ -700,11 +778,12 @@ export const useChoiceWizardController = () => {
           step: wizardStep,
           targetNodeId: targetNode.id,
         });
+        setAnchorNodeId(targetNode.id);
         openPanel(targetNode.id);
         finishWizard();
       } catch {
         logChoiceWizardEvent({
-          anchorNodeId: rootParentNodeId,
+          anchorNodeId: anchorNodeId ?? rootParentNodeId,
           details: {
             message: "follow-up-persist-failed",
           },
@@ -718,6 +797,7 @@ export const useChoiceWizardController = () => {
     },
     [
       actionNode,
+      anchorNodeId,
       baseStagingSnapshot?.role,
       finishWizard,
       openPanel,
@@ -740,6 +820,9 @@ export const useChoiceWizardController = () => {
     selectedBranchConfig,
     wizardError,
     isWorkflowBusy,
+    isChoiceStepLoading,
+    isChoiceStepUnavailable,
+    isUsingChoiceFallback,
     isChoicesError,
     serverChoiceResponse,
     selectProcessingMethod,
