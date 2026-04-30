@@ -128,6 +128,12 @@ export interface SchemaPreviewResponse {
   display_hints: Record<string, string>;
 }
 
+export interface NodeSchemaPreviewResponse {
+  nodeId: string;
+  input: SchemaPreviewResponse | null;
+  output: SchemaPreviewResponse | null;
+}
+
 export interface CreateWorkflowRequest {
   name: string;
   description?: string;

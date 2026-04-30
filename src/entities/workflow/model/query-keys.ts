@@ -27,6 +27,13 @@ export const workflowKeys = {
   detail: (id: string) => [...workflowKeys.details(), id] as const,
   schemaPreview: (workflowId: string) =>
     [...workflowKeys.detail(workflowId), "schema-preview"] as const,
+  nodeSchemaPreview: (workflowId: string, nodeId: string) =>
+    [
+      ...workflowKeys.detail(workflowId),
+      "nodes",
+      nodeId,
+      "schema-preview",
+    ] as const,
   choicesRoot: (workflowId: string) =>
     [...workflowKeys.detail(workflowId), "choices"] as const,
   choice: (

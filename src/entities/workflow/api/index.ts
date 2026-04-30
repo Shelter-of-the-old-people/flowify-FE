@@ -9,6 +9,7 @@ import { getSinkSchemaAPI } from "./get-sink-schema.api";
 import { getSourceCatalogAPI } from "./get-source-catalog.api";
 import { getWorkflowChoicesAPI } from "./get-workflow-choices.api";
 import { getWorkflowListAPI } from "./get-workflow-list.api";
+import { getWorkflowNodeSchemaPreviewAPI } from "./get-workflow-node-schema-preview.api";
 import { getWorkflowSchemaPreviewAPI } from "./get-workflow-schema-preview.api";
 import { getWorkflowAPI } from "./get-workflow.api";
 import { previewWorkflowSchemaAPI } from "./preview-workflow-schema.api";
@@ -27,6 +28,7 @@ export const workflowApi = {
   getSinkSchema: getSinkSchemaAPI,
   getMappingRules: getMappingRulesAPI,
   getSchemaPreview: getWorkflowSchemaPreviewAPI,
+  getNodeSchemaPreview: getWorkflowNodeSchemaPreviewAPI,
   create: createWorkflowAPI,
   update: updateWorkflowAPI,
   delete: deleteWorkflowAPI,
