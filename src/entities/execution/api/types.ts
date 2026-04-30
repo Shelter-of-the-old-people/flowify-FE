@@ -9,11 +9,8 @@ export interface ExecutionErrorDetail {
 }
 
 export interface ExecutionSnapshot {
-  nodeId?: string | null;
-  nodeType?: string | null;
-  config?: Record<string, unknown> | null;
-  inputDataType?: string | null;
-  outputDataType?: string | null;
+  capturedAt: string | null;
+  stateData?: Record<string, unknown> | null;
 }
 
 export interface ExecutionLog {
