@@ -24,6 +24,7 @@ import {
   DataStateNotice,
   NodeExecutionStatusBlock,
   SchemaPreviewBlock,
+  SourceSummaryBlock,
   isEmptyPanelData,
   useNodeDataPanelModel,
 } from "@/widgets/node-data-panel";
@@ -62,13 +63,18 @@ export const InputPanel = () => {
   const sourceData = sourceNode?.data ?? null;
   const sourceMeta = sourceData ? NODE_REGISTRY[sourceData.type] : null;
   const isMiddleNode = Boolean(activeNode) && !isStartNode && !isEndNode;
-  const activeNodeStatus = activePanelNodeId
+  const storeNodeStatus = activePanelNodeId
     ? (nodeStatuses[activePanelNodeId] ?? null)
     : null;
+  const activeNodeStatus =
+    nodeDataPanel.schemaPreview?.nodeStatus ?? storeNodeStatus;
   const isConfiguredMiddleNode =
     isMiddleNode && isMiddleWizardCompleted(activeNode);
-  const activeNodeMissingFields =
-    activeNodeStatus?.missingFields.map(getNodeStatusMissingFieldLabel) ?? [];
+  const activeNodeMissingFields = (activeNodeStatus?.missingFields ?? []).map(
+    getNodeStatusMissingFieldLabel,
+  );
+  const activeNodeConfig =
+    (activeNode?.data.config as unknown as Record<string, unknown>) ?? null;
   const selectedAction = findActionById(
     mappingRules,
     activeNode?.data.config.choiceActionId,
@@ -165,6 +171,12 @@ export const InputPanel = () => {
             </Box>
 
             <Box display="flex" flexDirection="column" gap={4}>
+              {isStartNode ? (
+                <SourceSummaryBlock
+                  config={activeNodeConfig}
+                  source={nodeDataPanel.schemaPreview?.source ?? null}
+                />
+              ) : null}
               <DataStateNotice
                 state={nodeDataPanel.state}
                 panelKind="input"
