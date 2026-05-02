@@ -54,6 +54,7 @@ const BACKEND_TYPE_TO_NODE_TYPE = Object.fromEntries(
 ) as Record<string, NodeType>;
 
 const SERVICE_KEY_TO_NODE_TYPE = {
+  canvas_lms: "storage",
   coupang: "web-scraping",
   github: "web-scraping",
   gmail: "communication",

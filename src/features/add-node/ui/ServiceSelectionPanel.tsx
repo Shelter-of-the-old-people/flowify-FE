@@ -30,6 +30,7 @@ import { useReactFlow, useViewport } from "@xyflow/react";
 import { type DataType, type FlowNodeData } from "@/entities/node";
 import {
   getOAuthConnectionUiState,
+  storeOAuthCallbackReturnPath,
   useConnectOAuthTokenMutation,
   useOAuthTokensQuery,
 } from "@/entities/oauth-token";
@@ -685,6 +686,7 @@ export const ServiceSelectionPanel = () => {
     data: oauthTokens,
     isError: isOAuthTokensError,
     isLoading: isOAuthTokensLoading,
+    refetch: refetchOAuthTokens,
   } = useOAuthTokensQuery({
     enabled: Boolean(activePlaceholder),
   });
@@ -1082,12 +1084,24 @@ export const ServiceSelectionPanel = () => {
     setEndStep("confirm");
   };
 
-  const handleConnectService = (serviceKey: string) => {
+  const handleConnectService = (
+    serviceKey: string,
+    onConnected?: () => void,
+  ) => {
     void (async () => {
       try {
         setAuthErrorMessage(null);
         const result = await connectOAuthToken(serviceKey);
-        window.location.assign(result.authUrl);
+        if ("authUrl" in result) {
+          storeOAuthCallbackReturnPath(
+            `${window.location.pathname}${window.location.search}`,
+          );
+          window.location.assign(result.authUrl);
+          return;
+        }
+
+        await refetchOAuthTokens();
+        onConnected?.();
       } catch (error) {
         setAuthErrorMessage(getApiErrorMessage(error));
       }
@@ -1272,7 +1286,11 @@ export const ServiceSelectionPanel = () => {
                   errorMessage={authErrorMessage}
                   isPending={isConnectOAuthPending}
                   serviceLabel={selectedSourceService.label}
-                  onAuth={() => handleConnectService(selectedSourceService.key)}
+                  onAuth={() =>
+                    handleConnectService(selectedSourceService.key, () =>
+                      setStartStep("mode"),
+                    )
+                  }
                   onBack={handleStartBack}
                 />
               ) : null}
@@ -1366,7 +1384,11 @@ export const ServiceSelectionPanel = () => {
                   errorMessage={authErrorMessage}
                   isPending={isConnectOAuthPending}
                   serviceLabel={selectedSinkService.label}
-                  onAuth={() => handleConnectService(selectedSinkService.key)}
+                  onAuth={() =>
+                    handleConnectService(selectedSinkService.key, () =>
+                      setEndStep("confirm"),
+                    )
+                  }
                   onBack={handleEndBack}
                 />
               ) : null}

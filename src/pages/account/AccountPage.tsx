@@ -16,6 +16,7 @@ import {
   type OAuthConnectionTone,
   getOAuthConnectionUiState,
   isOAuthConnectSupported,
+  storeOAuthCallbackReturnPath,
   useConnectOAuthTokenMutation,
   useDisconnectOAuthTokenMutation,
   useOAuthTokensQuery,
@@ -122,7 +123,15 @@ export default function AccountPage() {
 
     try {
       const result = await connectToken(service);
-      window.location.assign(result.authUrl);
+      if ("authUrl" in result) {
+        storeOAuthCallbackReturnPath(
+          `${window.location.pathname}${window.location.search}`,
+        );
+        window.location.assign(result.authUrl);
+        return;
+      }
+
+      await refetchOAuthTokens();
     } catch {
       // 화면의 기본 상태 문구로 충분히 안내한다.
     }

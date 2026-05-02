@@ -5,7 +5,11 @@ import { getTypedConfig } from "../../model";
 import { type FlowNodeData } from "../../model/types";
 import { BaseNode } from "../BaseNode";
 
-const STORAGE_SERVICE_LABEL: Record<"google_drive" | "notion", string> = {
+const STORAGE_SERVICE_LABEL: Record<
+  "canvas_lms" | "google_drive" | "notion",
+  string
+> = {
+  canvas_lms: "Canvas LMS",
   google_drive: "Google Drive",
   notion: "Notion",
 };

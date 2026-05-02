@@ -3,13 +3,15 @@ import { useLocation, useNavigate } from "react-router";
 
 import { Box, Button, Spinner, Text, VStack } from "@chakra-ui/react";
 
+import { authApi } from "@/entities";
+import { consumeOAuthCallbackReturnPath } from "@/entities/oauth-token";
 import {
   ROUTE_PATHS,
   clearAuthSession,
   storeAuthUser,
   storeTokens,
 } from "@/shared";
-import { authApi } from "@/entities";
+
 import {
   authCallbackFallbackMessage,
   resolveAuthExchangeError,
@@ -22,15 +24,42 @@ export default function AuthCallbackPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const [callbackState, setCallbackState] = useState<CallbackState>("pending");
+  const [errorActionLabel, setErrorActionLabel] = useState("로그인 화면 이동");
+  const [errorActionPath, setErrorActionPath] = useState(ROUTE_PATHS.LOGIN);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  void errorActionLabel;
 
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
     const exchangeCode = searchParams.get("exchange_code");
+    const service = searchParams.get("service");
 
     let isMounted = true;
 
     const finalizeLogin = async () => {
+      if (service) {
+        const returnPath =
+          consumeOAuthCallbackReturnPath() ?? ROUTE_PATHS.ACCOUNT;
+        const serviceError =
+          searchParams.get("message") ??
+          (searchParams.get("error")
+            ? "서비스 연결을 완료하지 못했습니다. 다시 시도해 주세요."
+            : null);
+
+        if (serviceError) {
+          if (isMounted) {
+            setCallbackState("error");
+            setErrorActionLabel("이전 화면으로 이동");
+            setErrorActionPath(returnPath);
+            setErrorMessage(serviceError);
+          }
+          return;
+        }
+
+        navigate(returnPath, { replace: true });
+        return;
+      }
+
       const redirectErrorMessage = resolveRedirectError(searchParams);
       if (redirectErrorMessage) {
         clearAuthSession();
@@ -112,11 +141,13 @@ export default function AuthCallbackPage() {
           <Text fontSize="lg" fontWeight="semibold">
             로그인 실패
           </Text>
-          <Text color="gray.600">{errorMessage ?? authCallbackFallbackMessage}</Text>
+          <Text color="gray.600">
+            {errorMessage ?? authCallbackFallbackMessage}
+          </Text>
           <Button
             bg="gray.900"
             color="white"
-            onClick={() => navigate(ROUTE_PATHS.LOGIN, { replace: true })}
+            onClick={() => navigate(errorActionPath, { replace: true })}
             _hover={{ bg: "gray.800" }}
           >
             로그인 화면 이동

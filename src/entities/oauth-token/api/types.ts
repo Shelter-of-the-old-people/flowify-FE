@@ -5,6 +5,11 @@ export interface OAuthTokenSummary {
   expiresAt: string | null;
 }
 
-export interface OAuthConnectResponse {
-  authUrl: string;
-}
+export type OAuthConnectResponse =
+  | {
+      authUrl: string;
+    }
+  | {
+      connected: string;
+      service: string;
+    };

@@ -211,6 +211,7 @@ export const getConnectedServiceCards = (tokens: OAuthTokenSummary[]) =>
           badgeKey === "unknown"
             ? token.service
             : getServiceLabelFromBadgeKey(badgeKey),
+        serviceKey: token.service,
         badgeKey,
         statusLabel: "연결됨",
       };

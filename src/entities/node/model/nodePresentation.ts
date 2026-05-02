@@ -36,6 +36,7 @@ const STORAGE_SERVICE_TITLE: Record<
   NonNullable<StorageNodeConfig["service"]>,
   string
 > = {
+  canvas_lms: "Canvas LMS",
   google_drive: "Google Drive",
   notion: "Notion",
 };

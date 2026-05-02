@@ -47,7 +47,7 @@ export interface CommunicationNodeConfig extends BaseNodeConfig {
 }
 
 export interface StorageNodeConfig extends BaseNodeConfig {
-  service: "google_drive" | "notion" | null;
+  service: "canvas_lms" | "google_drive" | "notion" | null;
   targetPath: string | null;
   action: "read" | "write" | "update" | null;
   permissions: string | null;

@@ -4,6 +4,7 @@ export const ROUTE_PATHS = {
   DASHBOARD: "/dashboard",
   LOGIN: "/login",
   AUTH_CALLBACK: "/auth/callback",
+  OAUTH_CALLBACK: "/oauth/callback",
   ACCOUNT: "/account",
   SETTINGS: "/settings",
   TEMPLATES: "/templates",
