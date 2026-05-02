@@ -34,6 +34,7 @@ export type NodeDataPanelModel = {
   state: NodeDataPanelState;
   dataToDisplay: unknown;
   schemaToDisplay: SchemaPreviewResponse | null;
+  schemaPreviewLabel: string | null;
   canViewExecutionData: boolean;
   isExecutionDataLoading: boolean;
   isSchemaPreviewLoading: boolean;

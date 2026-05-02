@@ -77,8 +77,12 @@ export const useNodeDataPanelModel = ({
   const dataToDisplay = getPanelData(panelKind, executionData, isStartNode);
   const schemaToDisplay =
     panelKind === "input"
-      ? (schemaPreview?.input ?? null)
-      : (schemaPreview?.output ?? null);
+      ? (schemaPreview?.input?.schema ?? null)
+      : (schemaPreview?.output?.schema ?? null);
+  const schemaPreviewLabel =
+    panelKind === "input"
+      ? (schemaPreview?.input?.label ?? null)
+      : (schemaPreview?.output?.label ?? null);
   const staticInputLabel =
     sourceNode?.data.outputTypes[0] !== undefined
       ? getDataTypeLabel(sourceNode.data.outputTypes[0])
@@ -108,6 +112,7 @@ export const useNodeDataPanelModel = ({
     state,
     dataToDisplay,
     schemaToDisplay,
+    schemaPreviewLabel,
     canViewExecutionData,
     isExecutionDataLoading: executionDataQuery.isLoading,
     isSchemaPreviewLoading: schemaPreviewQuery.isLoading,
