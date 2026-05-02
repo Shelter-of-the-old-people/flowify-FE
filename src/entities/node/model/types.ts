@@ -34,6 +34,10 @@ interface BaseNodeConfig {
   choiceActionId?: string | null;
   /** 중간 노드 위자드 후속 설정 값 */
   choiceSelections?: Record<string, string | string[]> | null;
+  /** source target display label */
+  target_label?: string | null;
+  /** source target display metadata */
+  target_meta?: Record<string, unknown> | null;
 }
 
 // ─── 도메인 서비스 노드 Config ───────────────────────────────

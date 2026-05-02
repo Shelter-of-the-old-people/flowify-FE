@@ -172,6 +172,28 @@ const getTargetSchemaPlaceholder = (targetSchema: Record<string, unknown>) =>
 const hasTargetSchema = (targetSchema: Record<string, unknown>) =>
   Object.keys(targetSchema).length > 0;
 
+const buildSourceTargetConfig = ({
+  hasTarget,
+  targetValue,
+}: {
+  hasTarget: boolean;
+  targetValue: SourceTargetPickerValue;
+}) => {
+  if (!hasTarget) {
+    return { target: EMPTY_TARGET_SENTINEL };
+  }
+
+  if (targetValue.option) {
+    return {
+      target: targetValue.option.id,
+      target_label: targetValue.option.label,
+      target_meta: targetValue.option.metadata,
+    };
+  }
+
+  return { target: targetValue.value.trim() };
+};
+
 const toCanonicalInputType = (canonicalInputType: string): DataType =>
   toFrontendDataType(canonicalInputType);
 
@@ -899,10 +921,11 @@ export const ServiceSelectionPanel = () => {
             canonical_input_type: selectedSourceMode.canonical_input_type,
             service: selectedSourceService.key,
             source_mode: selectedSourceMode.key,
-            target: hasTargetSchema(selectedSourceMode.target_schema)
-              ? selectedTargetValue.value.trim()
-              : EMPTY_TARGET_SENTINEL,
             trigger_kind: selectedSourceMode.trigger_kind,
+            ...buildSourceTargetConfig({
+              hasTarget: hasTargetSchema(selectedSourceMode.target_schema),
+              targetValue: selectedTargetValue,
+            }),
           } as Partial<FlowNodeData["config"]>,
           outputTypes: [outputType],
         }),
