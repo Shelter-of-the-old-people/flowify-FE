@@ -29,6 +29,32 @@ export interface SourceCatalogResponse {
   services: SourceServiceResponse[];
 }
 
+export interface TargetOptionItemResponse {
+  id: string;
+  label: string;
+  description?: string | null;
+  type?: string | null;
+  metadata?: Record<string, unknown>;
+}
+
+export interface TargetOptionResponse {
+  items: TargetOptionItemResponse[];
+  nextCursor?: string | null;
+}
+
+export interface TargetOptionsRequest {
+  serviceKey: string;
+  mode: string;
+  parentId?: string | null;
+  query?: string | null;
+  cursor?: string | null;
+}
+
+export interface CreateGoogleDriveFolderRequest {
+  name: string;
+  parentId?: string | null;
+}
+
 export interface SinkSchemaFieldResponse {
   key: string;
   label: string;

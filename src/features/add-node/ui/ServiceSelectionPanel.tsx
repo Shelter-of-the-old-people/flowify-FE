@@ -13,6 +13,7 @@ import {
   MdArticle,
   MdCancel,
   MdFolder,
+  MdSchool,
   MdSearch,
 } from "react-icons/md";
 import {
@@ -36,6 +37,7 @@ import {
   type SinkServiceResponse,
   type SourceModeResponse,
   type SourceServiceResponse,
+  type TargetOptionItemResponse,
   findAddedNodeId,
   getVisualNodeTypeFromServiceKey,
   toBackendDataType,
@@ -44,9 +46,14 @@ import {
   useAddWorkflowNodeMutation,
   useSinkCatalogQuery,
   useSourceCatalogQuery,
+  useTargetOptionsQuery,
 } from "@/entities/workflow";
 import { hydrateStore, useWorkflowStore } from "@/features/workflow-editor";
-import { getApiErrorMessage, getLeafNodeIds } from "@/shared";
+import {
+  RemoteOptionPicker,
+  getApiErrorMessage,
+  getLeafNodeIds,
+} from "@/shared";
 
 import { isSinkServiceInRollout } from "../model/sink-rollout";
 import { isSourceModeInRollout } from "../model/source-rollout";
@@ -62,6 +69,7 @@ const START_END_NODE_HEIGHT = 176;
 const EMPTY_TARGET_SENTINEL = "";
 
 const CATALOG_SERVICE_ICON_MAP: Record<string, IconType> = {
+  canvas_lms: MdSchool,
   gmail: SiGmail,
   google_calendar: SiGooglecalendar,
   google_drive: SiGoogledrive,
@@ -104,6 +112,15 @@ const TARGET_SCHEMA_LABELS: Record<string, string> = {
   text_input: "대상",
   time_picker: "시간",
 };
+
+const REMOTE_TARGET_PICKER_TYPES = new Set([
+  "course_picker",
+  "file_picker",
+  "folder_picker",
+  "term_picker",
+]);
+
+const REMOTE_TARGET_PICKER_SERVICES = new Set(["canvas_lms", "google_drive"]);
 
 const DAY_PICKER_OPTIONS = [
   { label: "월요일", value: "monday" },
@@ -380,16 +397,48 @@ const SourceModeList = ({
 );
 
 const SourceTargetForm = ({
+  emptyOptionMessage,
+  errorMessage,
+  hasMoreOptions,
+  isLoadingMoreOptions,
+  isLoadingOptions,
   mode,
+  onBrowseOption,
   onBack,
   onChange,
+  onLoadMoreOptions,
+  onOptionPathSelect,
+  onOptionSearchChange,
+  onOptionSelect,
+  onResetOptionPath,
   onSubmit,
+  optionItems,
+  optionPath,
+  optionQuery,
+  selectedOptionId,
+  useRemoteOptions,
   value,
 }: {
+  emptyOptionMessage: string;
+  errorMessage?: string | null;
+  hasMoreOptions: boolean;
+  isLoadingMoreOptions: boolean;
+  isLoadingOptions: boolean;
   mode: SourceModeResponse;
+  onBrowseOption?: (option: TargetOptionItemResponse) => void;
   onBack: () => void;
   onChange: (value: string) => void;
+  onLoadMoreOptions: () => void;
+  onOptionPathSelect: (index: number) => void;
+  onOptionSearchChange: (value: string) => void;
+  onOptionSelect: (option: TargetOptionItemResponse) => void;
+  onResetOptionPath: () => void;
   onSubmit: () => void;
+  optionItems: TargetOptionItemResponse[];
+  optionPath: Array<{ id: string; label: string }>;
+  optionQuery: string;
+  selectedOptionId?: string | null;
+  useRemoteOptions: boolean;
   value: string;
 }) => {
   const schemaType = getTargetSchemaType(mode.target_schema);
@@ -417,7 +466,26 @@ const SourceTargetForm = ({
         {getTargetSchemaLabel(mode.target_schema)} 정보를 입력해주세요.
       </Text>
 
-      {schemaType === "day_picker" ? (
+      {useRemoteOptions ? (
+        <RemoteOptionPicker
+          emptyMessage={emptyOptionMessage}
+          errorMessage={errorMessage}
+          hasMore={hasMoreOptions}
+          isLoading={isLoadingOptions}
+          isLoadingMore={isLoadingMoreOptions}
+          items={optionItems}
+          path={optionPath}
+          searchPlaceholder={`${getTargetSchemaLabel(mode.target_schema)} 검색`}
+          searchValue={optionQuery}
+          selectedId={selectedOptionId}
+          onBrowse={onBrowseOption}
+          onLoadMore={onLoadMoreOptions}
+          onPathSelect={onOptionPathSelect}
+          onResetPath={onResetOptionPath}
+          onSearchChange={onOptionSearchChange}
+          onSelect={onOptionSelect}
+        />
+      ) : schemaType === "day_picker" ? (
         <Box display="flex" flexDirection="column" gap={3}>
           {DAY_PICKER_OPTIONS.map((option) => (
             <Button
@@ -453,12 +521,14 @@ const StartNodeConfirm = ({
   onBack,
   onConfirm,
   service,
+  targetLabel,
   targetValue,
 }: {
   mode: SourceModeResponse;
   onBack: () => void;
   onConfirm: () => void;
   service: SourceServiceResponse;
+  targetLabel: string;
   targetValue: string;
 }) => (
   <WizardCard minWidth="520px" maxWidth="640px">
@@ -515,7 +585,7 @@ const StartNodeConfirm = ({
             target
           </Text>
           <Text fontSize="md" fontWeight="semibold">
-            {targetValue}
+            {targetLabel || targetValue}
           </Text>
         </Box>
       ) : null}
@@ -633,7 +703,12 @@ export const ServiceSelectionPanel = () => {
     useState<SourceModeResponse | null>(null);
   const [selectedSourceService, setSelectedSourceService] =
     useState<SourceServiceResponse | null>(null);
+  const [selectedTargetLabel, setSelectedTargetLabel] = useState("");
   const [selectedTargetValue, setSelectedTargetValue] = useState("");
+  const [targetOptionPath, setTargetOptionPath] = useState<
+    TargetOptionItemResponse[]
+  >([]);
+  const [targetOptionQuery, setTargetOptionQuery] = useState("");
   const [startStep, setStartStep] = useState<StartWizardStep>("service");
   const [authErrorMessage, setAuthErrorMessage] = useState<string | null>(null);
   const syncWorkflowFromResponse = useCallback(
@@ -680,6 +755,77 @@ export const ServiceSelectionPanel = () => {
         .filter((service) => service.source_modes.length > 0),
     [sourceCatalog?.services],
   );
+
+  const resetTargetOptions = useCallback(() => {
+    setSelectedTargetLabel("");
+    setSelectedTargetValue("");
+    setTargetOptionPath([]);
+    setTargetOptionQuery("");
+  }, []);
+
+  const selectedTargetSchemaType = selectedSourceMode
+    ? getTargetSchemaType(selectedSourceMode.target_schema)
+    : null;
+  const useRemoteTargetOptions = Boolean(
+    selectedSourceMode &&
+    selectedSourceService &&
+    selectedTargetSchemaType &&
+    REMOTE_TARGET_PICKER_TYPES.has(selectedTargetSchemaType) &&
+    REMOTE_TARGET_PICKER_SERVICES.has(selectedSourceService.key),
+  );
+  const targetOptionParentId =
+    targetOptionPath.length > 0
+      ? (targetOptionPath[targetOptionPath.length - 1]?.id ?? null)
+      : null;
+  const targetOptionsRequest = useMemo(() => {
+    if (
+      !useRemoteTargetOptions ||
+      !selectedSourceService ||
+      !selectedSourceMode
+    ) {
+      return null;
+    }
+
+    return {
+      mode: selectedSourceMode.key,
+      parentId: targetOptionParentId,
+      query: targetOptionQuery.trim() || null,
+      serviceKey: selectedSourceService.key,
+    };
+  }, [
+    selectedSourceMode,
+    selectedSourceService,
+    targetOptionParentId,
+    targetOptionQuery,
+    useRemoteTargetOptions,
+  ]);
+  const {
+    data: targetOptionsResponse,
+    fetchNextPage: fetchMoreTargetOptions,
+    hasNextPage: hasMoreTargetOptions,
+    error: targetOptionsError,
+    isFetching: isTargetOptionsFetching,
+    isLoading: isTargetOptionsLoading,
+  } = useTargetOptionsQuery(targetOptionsRequest, {
+    enabled: startStep === "target" && useRemoteTargetOptions,
+  });
+  const targetOptionItems = useMemo(() => {
+    const pages = targetOptionsResponse?.pages ?? [];
+    const seenIds = new Set<string>();
+    const mergedItems: TargetOptionItemResponse[] = [];
+
+    for (const page of pages) {
+      for (const item of page.items) {
+        if (seenIds.has(item.id)) {
+          continue;
+        }
+        seenIds.add(item.id);
+        mergedItems.push(item);
+      }
+    }
+
+    return mergedItems;
+  }, [targetOptionsResponse?.pages]);
 
   const endSourceNode = useMemo(() => {
     const nodeIds = nodes
@@ -738,11 +884,11 @@ export const ServiceSelectionPanel = () => {
     setSelectedSinkService(null);
     setSelectedSourceMode(null);
     setSelectedSourceService(null);
-    setSelectedTargetValue("");
+    resetTargetOptions();
     setStartStep("service");
     setAuthErrorMessage(null);
     setActivePlaceholder(null);
-  }, [setActivePlaceholder]);
+  }, [resetTargetOptions, setActivePlaceholder]);
 
   const handleOverlayClose = useCallback(() => {
     resetWizard();
@@ -818,10 +964,32 @@ export const ServiceSelectionPanel = () => {
     return null;
   }
 
+  const handleTargetValueChange = (value: string) => {
+    setSelectedTargetValue(value);
+    setSelectedTargetLabel(value);
+  };
+
+  const handleTargetOptionSelect = (option: TargetOptionItemResponse) => {
+    setSelectedTargetValue(option.id);
+    setSelectedTargetLabel(option.label);
+  };
+
+  const handleTargetOptionBrowse = (option: TargetOptionItemResponse) => {
+    setTargetOptionPath((current) => [...current, option]);
+  };
+
+  const handleTargetOptionPathSelect = (index: number) => {
+    setTargetOptionPath((current) => current.slice(0, index + 1));
+  };
+
+  const handleTargetOptionPathReset = () => {
+    setTargetOptionPath([]);
+  };
+
   const handleSourceServiceSelect = (service: SourceServiceResponse) => {
     setSelectedSourceService(service);
     setSelectedSourceMode(null);
-    setSelectedTargetValue("");
+    resetTargetOptions();
     setAuthErrorMessage(null);
 
     if (shouldRequestAuth(service)) {
@@ -834,7 +1002,7 @@ export const ServiceSelectionPanel = () => {
 
   const handleSourceModeSelect = (mode: SourceModeResponse) => {
     setSelectedSourceMode(mode);
-    setSelectedTargetValue("");
+    resetTargetOptions();
 
     if (hasTargetSchema(mode.target_schema)) {
       setStartStep("target");
@@ -857,23 +1025,33 @@ export const ServiceSelectionPanel = () => {
     const outputType = toCanonicalInputType(
       selectedSourceMode.canonical_input_type,
     );
+    const normalizedTargetValue = hasTargetSchema(
+      selectedSourceMode.target_schema,
+    )
+      ? selectedTargetValue.trim()
+      : EMPTY_TARGET_SENTINEL;
+    const normalizedTargetLabel = selectedTargetLabel.trim();
 
     void (async () => {
+      const startNodeConfig: Partial<FlowNodeData["config"]> = {
+        canonical_input_type: selectedSourceMode.canonical_input_type,
+        service: selectedSourceService.key,
+        source_mode: selectedSourceMode.key,
+        target: normalizedTargetValue,
+        trigger_kind: selectedSourceMode.trigger_kind,
+      };
+
+      if (normalizedTargetLabel) {
+        startNodeConfig.target_label = normalizedTargetLabel;
+      }
+
       const nextWorkflow = await addWorkflowNode({
         workflowId,
         body: toNodeAddRequest({
           type: nodeType,
           position: activePlaceholder.position,
           role: "start",
-          config: {
-            canonical_input_type: selectedSourceMode.canonical_input_type,
-            service: selectedSourceService.key,
-            source_mode: selectedSourceMode.key,
-            target: hasTargetSchema(selectedSourceMode.target_schema)
-              ? selectedTargetValue.trim()
-              : EMPTY_TARGET_SENTINEL,
-            trigger_kind: selectedSourceMode.trigger_kind,
-          } as Partial<FlowNodeData["config"]>,
+          config: startNodeConfig,
           outputTypes: [outputType],
         }),
       });
@@ -968,14 +1146,16 @@ export const ServiceSelectionPanel = () => {
         return;
       case "auth":
         setSelectedSourceService(null);
+        resetTargetOptions();
         setStartStep("service");
         return;
       case "mode":
         setSelectedSourceMode(null);
+        resetTargetOptions();
         setStartStep("service");
         return;
       case "target":
-        setSelectedTargetValue("");
+        resetTargetOptions();
         setStartStep("mode");
         return;
       case "confirm":
@@ -1107,10 +1287,41 @@ export const ServiceSelectionPanel = () => {
 
               {startStep === "target" && selectedSourceMode ? (
                 <SourceTargetForm
+                  emptyOptionMessage="선택 가능한 항목이 없습니다."
+                  errorMessage={
+                    targetOptionsError
+                      ? getApiErrorMessage(targetOptionsError)
+                      : null
+                  }
+                  hasMoreOptions={Boolean(hasMoreTargetOptions)}
+                  isLoadingMoreOptions={
+                    isTargetOptionsFetching && !isTargetOptionsLoading
+                  }
+                  isLoadingOptions={isTargetOptionsLoading}
                   mode={selectedSourceMode}
+                  optionItems={targetOptionItems}
+                  optionPath={targetOptionPath.map((item) => ({
+                    id: item.id,
+                    label: item.label,
+                  }))}
+                  optionQuery={targetOptionQuery}
+                  selectedOptionId={selectedTargetValue || null}
+                  useRemoteOptions={useRemoteTargetOptions}
                   value={selectedTargetValue}
                   onBack={handleStartBack}
-                  onChange={setSelectedTargetValue}
+                  onBrowseOption={handleTargetOptionBrowse}
+                  onChange={handleTargetValueChange}
+                  onLoadMoreOptions={() => {
+                    if (!hasMoreTargetOptions) {
+                      return;
+                    }
+
+                    void fetchMoreTargetOptions();
+                  }}
+                  onOptionPathSelect={handleTargetOptionPathSelect}
+                  onOptionSearchChange={setTargetOptionQuery}
+                  onOptionSelect={handleTargetOptionSelect}
+                  onResetOptionPath={handleTargetOptionPathReset}
                   onSubmit={() => setStartStep("confirm")}
                 />
               ) : null}
@@ -1121,6 +1332,7 @@ export const ServiceSelectionPanel = () => {
                 <StartNodeConfirm
                   mode={selectedSourceMode}
                   service={selectedSourceService}
+                  targetLabel={selectedTargetLabel}
                   targetValue={selectedTargetValue}
                   onBack={handleStartBack}
                   onConfirm={handleCreateStartNode}

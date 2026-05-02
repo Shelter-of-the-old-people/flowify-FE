@@ -1,4 +1,5 @@
 import { addWorkflowNodeAPI } from "./add-workflow-node.api";
+import { createGoogleDriveFolderAPI } from "./create-google-drive-folder.api";
 import { createWorkflowAPI } from "./create-workflow.api";
 import { deleteWorkflowNodeAPI } from "./delete-workflow-node.api";
 import { deleteWorkflowAPI } from "./delete-workflow.api";
@@ -7,6 +8,7 @@ import { getMappingRulesAPI } from "./get-mapping-rules.api";
 import { getSinkCatalogAPI } from "./get-sink-catalog.api";
 import { getSinkSchemaAPI } from "./get-sink-schema.api";
 import { getSourceCatalogAPI } from "./get-source-catalog.api";
+import { getTargetOptionsAPI } from "./get-target-options.api";
 import { getWorkflowChoicesAPI } from "./get-workflow-choices.api";
 import { getWorkflowListAPI } from "./get-workflow-list.api";
 import { getWorkflowSchemaPreviewAPI } from "./get-workflow-schema-preview.api";
@@ -23,6 +25,8 @@ export const workflowApi = {
   getList: getWorkflowListAPI,
   getById: getWorkflowAPI,
   getSourceCatalog: getSourceCatalogAPI,
+  createGoogleDriveFolder: createGoogleDriveFolderAPI,
+  getTargetOptions: getTargetOptionsAPI,
   getSinkCatalog: getSinkCatalogAPI,
   getSinkSchema: getSinkSchemaAPI,
   getMappingRules: getMappingRulesAPI,

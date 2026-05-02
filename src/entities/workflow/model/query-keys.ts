@@ -2,6 +2,22 @@ export const workflowKeys = {
   all: () => ["workflow"] as const,
   editorCatalog: () => [...workflowKeys.all(), "editor-catalog"] as const,
   sourceCatalog: () => [...workflowKeys.editorCatalog(), "sources"] as const,
+  targetOptionsRoot: (serviceKey: string) =>
+    [...workflowKeys.sourceCatalog(), serviceKey, "target-options"] as const,
+  targetOptions: (
+    serviceKey: string,
+    mode: string,
+    parentId: string,
+    query: string,
+    cursor: string,
+  ) =>
+    [
+      ...workflowKeys.targetOptionsRoot(serviceKey),
+      mode,
+      parentId,
+      query,
+      cursor,
+    ] as const,
   sinkCatalog: () => [...workflowKeys.editorCatalog(), "sinks"] as const,
   sinkSchema: (serviceKey: string, inputType: string) =>
     [...workflowKeys.sinkCatalog(), serviceKey, "schema", inputType] as const,
