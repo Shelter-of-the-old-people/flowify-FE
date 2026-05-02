@@ -29,6 +29,28 @@ export interface SourceCatalogResponse {
   services: SourceServiceResponse[];
 }
 
+export type SourceTargetOptionType = "course" | "term" | "file" | "folder";
+
+export interface SourceTargetOptionItemResponse {
+  id: string;
+  label: string;
+  description: string | null;
+  type: SourceTargetOptionType | string;
+  metadata: Record<string, unknown>;
+}
+
+export interface SourceTargetOptionsResponse {
+  items: SourceTargetOptionItemResponse[];
+  nextCursor: string | null;
+}
+
+export interface SourceTargetOptionsParameters {
+  mode: string;
+  parentId?: string;
+  query?: string;
+  cursor?: string;
+}
+
 export interface SinkSchemaFieldResponse {
   key: string;
   label: string;

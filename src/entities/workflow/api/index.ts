@@ -7,6 +7,7 @@ import { getMappingRulesAPI } from "./get-mapping-rules.api";
 import { getSinkCatalogAPI } from "./get-sink-catalog.api";
 import { getSinkSchemaAPI } from "./get-sink-schema.api";
 import { getSourceCatalogAPI } from "./get-source-catalog.api";
+import { getSourceTargetOptionsAPI } from "./get-source-target-options.api";
 import { getWorkflowChoicesAPI } from "./get-workflow-choices.api";
 import { getWorkflowListAPI } from "./get-workflow-list.api";
 import { getWorkflowNodeSchemaPreviewAPI } from "./get-workflow-node-schema-preview.api";
@@ -24,6 +25,7 @@ export const workflowApi = {
   getList: getWorkflowListAPI,
   getById: getWorkflowAPI,
   getSourceCatalog: getSourceCatalogAPI,
+  getSourceTargetOptions: getSourceTargetOptionsAPI,
   getSinkCatalog: getSinkCatalogAPI,
   getSinkSchema: getSinkSchemaAPI,
   getMappingRules: getMappingRulesAPI,

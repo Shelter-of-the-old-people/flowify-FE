@@ -13,6 +13,7 @@ export * from "./useShareWorkflowMutation";
 export * from "./useSinkCatalogQuery";
 export * from "./useSinkSchemaQuery";
 export * from "./useSourceCatalogQuery";
+export * from "./useSourceTargetOptionsQuery";
 export * from "./useToggleWorkflowActiveMutation";
 export * from "./useUpdateWorkflowNodeMutation";
 export * from "./useWorkflowChoicesQuery";
