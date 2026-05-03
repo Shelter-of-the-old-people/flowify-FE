@@ -1,4 +1,5 @@
-import { MdCancel } from "react-icons/md";
+import { type MouseEvent } from "react";
+import { MdClose } from "react-icons/md";
 
 import { Flex, IconButton, Spinner, Text, VStack } from "@chakra-ui/react";
 
@@ -7,20 +8,26 @@ import { ServiceBadge } from "@/shared";
 import { type DashboardServiceCard } from "../model";
 
 type Props = {
-  disconnectDisabled?: boolean;
-  isDisconnecting?: boolean;
-  onDisconnect?: (serviceKey: string) => void;
   service: DashboardServiceCard;
+  isPending?: boolean;
+  onAction?: () => void;
 };
 
 export const ServiceConnectionCard = ({
-  disconnectDisabled = false,
-  isDisconnecting = false,
-  onDisconnect,
   service,
+  isPending = false,
+  onAction,
 }: Props) => {
+  const isConnectCard = service.actionKind === "connect";
+
+  const handleDisconnectClick = (event: MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    onAction?.();
+  };
+
   return (
     <Flex
+      as={isConnectCard ? "button" : "div"}
       w={{ base: "full", md: "252px" }}
       align="center"
       justify="space-between"
@@ -30,8 +37,24 @@ export const ServiceConnectionCard = ({
       border="1px solid"
       borderColor="border.default"
       borderRadius="10px"
+      cursor={isConnectCard ? "pointer" : "default"}
+      transition="transform 180ms ease, box-shadow 180ms ease"
+      _hover={
+        isConnectCard
+          ? {
+              transform: "translateY(-1px)",
+              boxShadow: "0 12px 24px rgba(15, 23, 42, 0.06)",
+            }
+          : undefined
+      }
+      _disabled={{
+        cursor: "not-allowed",
+        opacity: 0.7,
+      }}
+      aria-disabled={isConnectCard ? isPending : undefined}
+      onClick={isConnectCard && !isPending ? onAction : undefined}
     >
-      <Flex align="center" gap={3} minW={0} flex="1">
+      <Flex align="center" gap={3} minW={0} flex={1}>
         <ServiceBadge type={service.badgeKey} />
 
         <VStack align="stretch" gap={0.5} minW={0}>
@@ -49,18 +72,22 @@ export const ServiceConnectionCard = ({
         </VStack>
       </Flex>
 
-      {onDisconnect && service.serviceKey ? (
+      {isConnectCard ? (
+        isPending ? (
+          <Spinner size="sm" flexShrink={0} />
+        ) : null
+      ) : (
         <IconButton
-          aria-label={`${service.label} 연결 해제`}
-          alignSelf="flex-start"
-          disabled={disconnectDisabled}
-          size="xs"
+          aria-label={service.actionLabel}
           variant="ghost"
-          onClick={() => onDisconnect(service.serviceKey!)}
+          size="sm"
+          flexShrink={0}
+          disabled={isPending}
+          onClick={handleDisconnectClick}
         >
-          {isDisconnecting ? <Spinner size="xs" /> : <MdCancel />}
+          {isPending ? <Spinner size="xs" /> : <MdClose />}
         </IconButton>
-      ) : null}
+      )}
     </Flex>
   );
 };

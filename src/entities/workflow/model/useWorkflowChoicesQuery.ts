@@ -7,12 +7,14 @@ import {
 } from "@/shared/api";
 
 import { workflowApi } from "../api";
+import { type ChoiceQueryContext } from "../api";
 
 import { workflowKeys } from "./query-keys";
 
 export const useWorkflowChoicesQuery = (
   workflowId: string | undefined,
   prevNodeId: string | null,
+  context?: ChoiceQueryContext,
   enabledOrOptions?:
     | boolean
     | QueryPolicyOptions<Awaited<ReturnType<typeof workflowApi.getChoices>>>,
@@ -22,14 +24,14 @@ export const useWorkflowChoicesQuery = (
   return useQuery({
     queryKey:
       workflowId && prevNodeId
-        ? workflowKeys.choice(workflowId, prevNodeId)
+        ? workflowKeys.choice(workflowId, prevNodeId, context)
         : ["workflow", "choices", "idle"],
     queryFn: () => {
       if (!workflowId || !prevNodeId) {
         throw new Error("workflow id and prev node id are required");
       }
 
-      return workflowApi.getChoices(workflowId, prevNodeId);
+      return workflowApi.getChoices(workflowId, prevNodeId, context);
     },
     enabled: Boolean(workflowId && prevNodeId) && (options?.enabled ?? true),
     select: options?.select,
@@ -41,4 +43,3 @@ export const useWorkflowChoicesQuery = (
     throwOnError: false,
   });
 };
-

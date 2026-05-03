@@ -8,6 +8,7 @@ import {
 
 import { type WorkflowListResponse, workflowApi } from "../api";
 
+import { normalizeWorkflowListResponse } from "./normalize-workflow-list-response";
 import { workflowKeys } from "./query-keys";
 
 export const useInfiniteWorkflowListQuery = (
@@ -18,7 +19,12 @@ export const useInfiniteWorkflowListQuery = (
 
   return useInfiniteQuery({
     queryKey: workflowKeys.infiniteList(size),
-    queryFn: ({ pageParam }) => workflowApi.getList(pageParam, size),
+    queryFn: async ({ pageParam }) =>
+      normalizeWorkflowListResponse(
+        await workflowApi.getList(pageParam, size),
+        pageParam,
+        size,
+      ),
     enabled: options?.enabled ?? true,
     initialPageParam: 0,
     getNextPageParam: (lastPage: WorkflowListResponse) => {
@@ -32,4 +38,3 @@ export const useInfiniteWorkflowListQuery = (
     throwOnError: false,
   });
 };
-

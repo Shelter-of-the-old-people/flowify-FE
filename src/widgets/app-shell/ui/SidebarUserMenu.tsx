@@ -1,111 +1,127 @@
-import { useEffect, useRef } from "react";
-import { type IconType } from "react-icons";
+import { useState } from "react";
 import { useNavigate } from "react-router";
 
-import { Box, Button, VStack } from "@chakra-ui/react";
+import {
+  Avatar,
+  Box,
+  Button,
+  HStack,
+  Menu,
+  Portal,
+  Text,
+  VStack,
+} from "@chakra-ui/react";
 
-import { LogoutMenu, useLogout } from "@/features/auth/logout";
-import { ROUTE_PATHS } from "@/shared";
-
-import { SidebarNavItem } from "./SidebarNavItem";
+import { useLogout } from "@/features/auth/logout";
+import { ROUTE_PATHS, getAuthUser } from "@/shared";
 
 type SidebarUserMenuProps = {
-  icon: IconType;
   label: string;
   isExpanded: boolean;
-  isOpen: boolean;
-  onToggle: () => void;
-  onClose: () => void;
 };
 
 export const SidebarUserMenu = ({
-  icon,
   label,
   isExpanded,
-  isOpen,
-  onToggle,
-  onClose,
 }: SidebarUserMenuProps) => {
   const { isPending, logout } = useLogout();
   const navigate = useNavigate();
-  const containerRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
-
-    const handlePointerDown = (event: MouseEvent) => {
-      const target = event.target;
-
-      if (
-        containerRef.current &&
-        target instanceof Node &&
-        !containerRef.current.contains(target)
-      ) {
-        onClose();
-      }
-    };
-
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        onClose();
-      }
-    };
-
-    window.addEventListener("mousedown", handlePointerDown);
-    window.addEventListener("keydown", handleEscape);
-
-    return () => {
-      window.removeEventListener("mousedown", handlePointerDown);
-      window.removeEventListener("keydown", handleEscape);
-    };
-  }, [isOpen, onClose]);
+  const [isOpen, setIsOpen] = useState(false);
+  const authUser = getAuthUser();
+  const displayName = authUser?.name || label;
+  const displayEmail = authUser?.email ?? "저장된 사용자 정보가 없습니다.";
 
   return (
-    <Box ref={containerRef} position="relative">
-      <SidebarNavItem
-        icon={icon}
-        label={label}
-        isExpanded={isExpanded}
-        isActive={isOpen}
-        onClick={onToggle}
-      />
-
-      {isOpen ? (
-        <Box position="absolute" left="calc(100% + 8px)" bottom="0" zIndex={20}>
-          <VStack
-            align="stretch"
-            gap={2}
-            p={2}
-            bg="white"
-            border="1px solid"
-            borderColor="gray.200"
-            borderRadius="12px"
-            boxShadow="0 10px 30px rgba(15, 23, 42, 0.12)"
-            minW="132px"
+    <Menu.Root
+      lazyMount
+      unmountOnExit
+      open={isOpen}
+      onOpenChange={(details) => setIsOpen(details.open)}
+      positioning={{ placement: "right-end", gutter: 8 }}
+    >
+      <Menu.Trigger asChild>
+        <Button
+          variant="ghost"
+          justifyContent={isExpanded ? "flex-start" : "center"}
+          alignItems="center"
+          gap={isExpanded ? 3 : 0}
+          w={isExpanded ? "full" : 7}
+          h={7}
+          minW={7}
+          minH={7}
+          px={isExpanded ? 2 : 0}
+          borderRadius="8px"
+          color={isOpen ? "gray.900" : "gray.700"}
+          bg={isOpen ? "gray.100" : "transparent"}
+          _hover={{ bg: "gray.100" }}
+          _expanded={{ bg: "gray.100", color: "gray.900" }}
+          aria-label={
+            isExpanded
+              ? `${displayName} 계정 메뉴`
+              : `${displayName} 계정 메뉴 열기`
+          }
+        >
+          <Avatar.Root size="xs" flexShrink={0}>
+            <Avatar.Fallback name={displayName} />
+            <Avatar.Image src={authUser?.picture ?? undefined} />
+          </Avatar.Root>
+          <Box
+            maxW={isExpanded ? "120px" : "0px"}
+            opacity={isExpanded ? 1 : 0}
+            overflow="hidden"
+            transition="max-width 220ms ease, opacity 180ms ease"
           >
-            <Button
-              size="sm"
-              variant="ghost"
-              justifyContent="flex-start"
-              onClick={() => {
-                onClose();
+            <Text fontSize="sm" fontWeight="medium" whiteSpace="nowrap">
+              {displayName}
+            </Text>
+          </Box>
+        </Button>
+      </Menu.Trigger>
+
+      <Portal>
+        <Menu.Positioner zIndex={20}>
+          <Menu.Content
+            minW="144px"
+            p={1.5}
+            borderRadius="12px"
+            borderColor="gray.200"
+            boxShadow="0 10px 30px rgba(15, 23, 42, 0.12)"
+          >
+            <HStack px={2.5} py={2} gap={3} align="center">
+              <Avatar.Root size="sm" flexShrink={0}>
+                <Avatar.Fallback name={displayName} />
+                <Avatar.Image src={authUser?.picture ?? undefined} />
+              </Avatar.Root>
+              <VStack align="flex-start" gap={0} minW={0}>
+                <Text fontSize="sm" fontWeight="semibold" truncate>
+                  {displayName}
+                </Text>
+                <Text fontSize="xs" color="gray.500" truncate>
+                  {displayEmail}
+                </Text>
+              </VStack>
+            </HStack>
+            <Menu.Separator />
+            <Menu.Item
+              value="account"
+              onSelect={() => {
                 navigate(ROUTE_PATHS.ACCOUNT);
               }}
             >
-              내 정보
-            </Button>
-            <LogoutMenu
-              isPending={isPending}
-              onLogout={() => {
-                onClose();
+              계정 정보
+            </Menu.Item>
+            <Menu.Item
+              value="logout"
+              disabled={isPending}
+              onSelect={() => {
                 void logout();
               }}
-            />
-          </VStack>
-        </Box>
-      ) : null}
-    </Box>
+            >
+              {isPending ? "로그아웃 중..." : "로그아웃"}
+            </Menu.Item>
+          </Menu.Content>
+        </Menu.Positioner>
+      </Portal>
+    </Menu.Root>
   );
 };

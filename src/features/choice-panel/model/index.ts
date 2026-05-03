@@ -1,3 +1,4 @@
+export * from "./choiceFallback";
 export * from "./dataTypeKeyMap";
 export * from "./mappingRulesAdapter";
 export * from "./mappingRules";

@@ -6,6 +6,7 @@ import {
   type CommunicationNodeConfig,
   type FlowNodeData,
   type StorageNodeConfig,
+  type WebScrapingNodeConfig,
 } from "./types";
 
 export type NodeRole = "source" | "process" | "destination";
@@ -47,6 +48,17 @@ const COMMUNICATION_SERVICE_TITLE: Record<
 > = {
   gmail: "Gmail",
   slack: "Slack",
+};
+
+const WEB_SCRAPING_SERVICE_TITLE: Record<
+  NonNullable<WebScrapingNodeConfig["service"]>,
+  string
+> = {
+  canvas_lms: "Canvas LMS",
+  coupang: "Coupang",
+  github: "GitHub",
+  naver_news: "Naver News",
+  youtube: "YouTube",
 };
 
 export const getNodeRole = ({
@@ -93,6 +105,10 @@ const getConfiguredTitle = (data: FlowNodeData): string | null => {
     }
     case "web-scraping": {
       const config = getTypedConfig("web-scraping", data.config);
+      if (config.service) {
+        return WEB_SCRAPING_SERVICE_TITLE[config.service] ?? config.targetUrl;
+      }
+
       return config.targetUrl ?? null;
     }
     case "filter":

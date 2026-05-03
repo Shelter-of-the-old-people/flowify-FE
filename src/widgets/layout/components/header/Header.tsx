@@ -31,8 +31,8 @@ export const Header = () => {
           <Text color="neutral.600">이용 가이드</Text>
         </HStack>
         <HStack>
-          <Button bg="neutral.500" fontWeight="bold" rounded="xl">
-            버튼
+          <Button asChild bg="neutral.500" fontWeight="bold" rounded="xl">
+            <Link to={ROUTE_PATHS.LOGIN}>로그인</Link>
           </Button>
         </HStack>
       </Flex>

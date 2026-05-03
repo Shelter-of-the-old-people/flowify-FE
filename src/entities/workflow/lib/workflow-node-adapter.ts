@@ -72,6 +72,7 @@ const NODE_TYPES_WITH_SERVICE_CONFIG = new Set<NodeType>([
   "communication",
   "spreadsheet",
   "storage",
+  "web-scraping",
 ]);
 
 type NodeDraftOptions = {

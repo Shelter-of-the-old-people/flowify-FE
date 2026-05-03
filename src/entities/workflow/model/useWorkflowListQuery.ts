@@ -6,22 +6,26 @@ import {
   toQueryMeta,
 } from "@/shared/api";
 
-import { workflowApi } from "../api";
+import { type WorkflowListResponse, workflowApi } from "../api";
 
+import { normalizeWorkflowListResponse } from "./normalize-workflow-list-response";
 import { workflowKeys } from "./query-keys";
 
 export const useWorkflowListQuery = (
   page = 0,
   size = 20,
-  enabledOrOptions?:
-    | boolean
-    | QueryPolicyOptions<Awaited<ReturnType<typeof workflowApi.getList>>>,
+  enabledOrOptions?: boolean | QueryPolicyOptions<WorkflowListResponse>,
 ) => {
   const options = resolveQueryPolicyOptions(enabledOrOptions);
 
   return useQuery({
     queryKey: workflowKeys.list({ page, size }),
-    queryFn: () => workflowApi.getList(page, size),
+    queryFn: async () =>
+      normalizeWorkflowListResponse(
+        await workflowApi.getList(page, size),
+        page,
+        size,
+      ),
     enabled: options?.enabled ?? true,
     select: options?.select,
     retry: options?.retry,
@@ -32,4 +36,3 @@ export const useWorkflowListQuery = (
     throwOnError: false,
   });
 };
-

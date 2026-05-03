@@ -1,3 +1,14 @@
+import { type ChoiceQueryContext } from "../api";
+
+const normalizeChoiceQueryContext = (context?: ChoiceQueryContext) => {
+  const normalized = {
+    file_subtype: context?.file_subtype?.trim() || undefined,
+    service: context?.service?.trim() || undefined,
+  };
+
+  return normalized.file_subtype || normalized.service ? normalized : null;
+};
+
 export const workflowKeys = {
   all: () => ["workflow"] as const,
   editorCatalog: () => [...workflowKeys.all(), "editor-catalog"] as const,
@@ -34,6 +45,19 @@ export const workflowKeys = {
     [...workflowKeys.detail(workflowId), "schema-preview"] as const,
   choicesRoot: (workflowId: string) =>
     [...workflowKeys.detail(workflowId), "choices"] as const,
-  choice: (workflowId: string, prevNodeId: string) =>
-    [...workflowKeys.choicesRoot(workflowId), prevNodeId] as const,
+  choice: (
+    workflowId: string,
+    prevNodeId: string,
+    context?: ChoiceQueryContext,
+  ) => {
+    const normalizedContext = normalizeChoiceQueryContext(context);
+
+    return normalizedContext
+      ? ([
+          ...workflowKeys.choicesRoot(workflowId),
+          prevNodeId,
+          normalizedContext,
+        ] as const)
+      : ([...workflowKeys.choicesRoot(workflowId), prevNodeId] as const);
+  },
 } as const;

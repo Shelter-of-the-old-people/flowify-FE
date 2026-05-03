@@ -30,7 +30,6 @@ import { useReactFlow, useViewport } from "@xyflow/react";
 import { type DataType, type FlowNodeData } from "@/entities/node";
 import {
   getOAuthConnectionUiState,
-  storeOAuthCallbackReturnPath,
   useConnectOAuthTokenMutation,
   useOAuthTokensQuery,
 } from "@/entities/oauth-token";
@@ -53,7 +52,9 @@ import { hydrateStore, useWorkflowStore } from "@/features/workflow-editor";
 import {
   RemoteOptionPicker,
   getApiErrorMessage,
+  getCurrentRelativeUrl,
   getLeafNodeIds,
+  storeOAuthConnectReturnPath,
 } from "@/shared";
 
 import { isSinkServiceInRollout } from "../model/sink-rollout";
@@ -1092,10 +1093,8 @@ export const ServiceSelectionPanel = () => {
       try {
         setAuthErrorMessage(null);
         const result = await connectOAuthToken(serviceKey);
-        if ("authUrl" in result) {
-          storeOAuthCallbackReturnPath(
-            `${window.location.pathname}${window.location.search}`,
-          );
+        if (result.kind === "redirect") {
+          storeOAuthConnectReturnPath(getCurrentRelativeUrl());
           window.location.assign(result.authUrl);
           return;
         }

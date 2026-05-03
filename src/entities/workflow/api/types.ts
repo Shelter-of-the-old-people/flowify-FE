@@ -201,6 +201,8 @@ export interface WorkflowResponse extends Omit<Workflow, "nodes" | "edges"> {
   nodeStatuses?: WorkflowNodeStatusResponse[];
 }
 
+export type RawWorkflowListResponse = WorkflowListResponse | WorkflowResponse[];
+
 export interface WorkflowNodeStatusResponse {
   nodeId: string;
   configured: boolean;
@@ -238,10 +240,28 @@ export interface SchemaPreviewRequest {
   edges: EdgeDefinitionResponse[];
 }
 
-export interface NodeChoiceSelectRequest {
-  selectedOptionId: string;
-  dataType: string;
-  context?: Record<string, unknown>;
+export interface SelectWorkflowChoiceCommand {
+  optionId: string;
+  context?: ChoiceSelectContext;
+}
+
+export interface SelectWorkflowChoiceTransportMeta {
+  dataType?: string;
+}
+
+export interface SelectWorkflowChoiceRequestPayload {
+  actionId: string;
+  dataType?: string;
+  context?: ChoiceSelectContext;
+}
+
+export interface ChoiceQueryContext {
+  service?: string;
+  file_subtype?: string;
+}
+
+export interface ChoiceSelectContext extends ChoiceQueryContext {
+  fields?: string[];
 }
 
 export interface ShareRequest {
@@ -263,7 +283,7 @@ export interface ChoiceOption {
 
 export interface ChoiceFollowUp {
   question: string;
-  options: ChoiceOption[];
+  options?: ChoiceOption[] | null;
   options_source?: string | null;
   multi_select?: boolean | null;
   description?: string | null;

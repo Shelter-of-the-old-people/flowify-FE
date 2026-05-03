@@ -11,6 +11,8 @@ import { hydrateStore, useWorkflowStore } from "@/features/workflow-editor";
 import { EDITOR_CANVAS_AREA_ID, ROUTE_PATHS, getAuthUser } from "@/shared";
 import { Canvas, EditorRemoteBar, InputPanel, OutputPanel } from "@/widgets";
 
+import { useChoiceWizardController } from "./model";
+
 const EditorLoadingView = () => (
   <Box
     display="flex"
@@ -67,6 +69,7 @@ const WorkflowEditorInner = () => {
   );
   const resetEditor = useWorkflowStore((state) => state.resetEditor);
   const { data: workflow, isLoading, isError } = useWorkflowQuery(id);
+  const choiceWizardController = useChoiceWizardController();
   const hydratedWorkflowIdRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -155,7 +158,7 @@ const WorkflowEditorInner = () => {
       <EditorRemoteBar />
       <ServiceSelectionPanel />
       <InputPanel />
-      <OutputPanel />
+      <OutputPanel wizardController={choiceWizardController} />
     </Box>
   );
 };

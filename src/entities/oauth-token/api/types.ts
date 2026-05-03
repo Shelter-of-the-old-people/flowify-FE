@@ -5,11 +5,10 @@ export interface OAuthTokenSummary {
   expiresAt: string | null;
 }
 
-export type OAuthConnectResponse =
-  | {
-      authUrl: string;
-    }
-  | {
-      connected: string;
-      service: string;
-    };
+export type RawOAuthConnectResponse =
+  | { authUrl: string }
+  | { connected: "true"; service: string };
+
+export type OAuthConnectResult =
+  | { kind: "redirect"; authUrl: string }
+  | { kind: "direct"; service: string; connected: true };

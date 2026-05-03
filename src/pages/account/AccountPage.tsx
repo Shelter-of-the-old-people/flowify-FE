@@ -16,14 +16,18 @@ import {
   type OAuthConnectionTone,
   getOAuthConnectionUiState,
   isOAuthConnectSupported,
-  storeOAuthCallbackReturnPath,
   useConnectOAuthTokenMutation,
   useDisconnectOAuthTokenMutation,
   useOAuthTokensQuery,
   useSinkCatalogQuery,
   useSourceCatalogQuery,
 } from "@/entities";
-import { ROUTE_PATHS, getAuthUser } from "@/shared";
+import {
+  ROUTE_PATHS,
+  getAuthUser,
+  getCurrentRelativeUrl,
+  storeOAuthConnectReturnPath,
+} from "@/shared";
 
 type OAuthServiceItem = {
   key: string;
@@ -123,10 +127,8 @@ export default function AccountPage() {
 
     try {
       const result = await connectToken(service);
-      if ("authUrl" in result) {
-        storeOAuthCallbackReturnPath(
-          `${window.location.pathname}${window.location.search}`,
-        );
+      if (result.kind === "redirect") {
+        storeOAuthConnectReturnPath(getCurrentRelativeUrl());
         window.location.assign(result.authUrl);
         return;
       }
