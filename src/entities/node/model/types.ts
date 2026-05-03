@@ -30,10 +30,22 @@ export type NodeCategory = "domain" | "processing" | "ai";
 interface BaseNodeConfig {
   /** 설정 완료 여부 — 캔버스에서 경고 표시 기준 */
   isConfigured: boolean;
+  /** start node source mode key */
+  source_mode?: string | null;
+  /** start node target value */
+  target?: string | null;
+  /** start node canonical input type */
+  canonical_input_type?: string | null;
+  /** start node trigger type */
+  trigger_kind?: string | null;
   /** 중간 노드 위자드에서 선택한 액션 ID */
   choiceActionId?: string | null;
   /** 중간 노드 위자드 후속 설정 값 */
   choiceSelections?: Record<string, string | string[]> | null;
+  /** source target display label */
+  target_label?: string | null;
+  /** source target display metadata */
+  target_meta?: Record<string, unknown> | null;
 }
 
 // ─── 도메인 서비스 노드 Config ───────────────────────────────

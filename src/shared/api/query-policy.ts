@@ -33,34 +33,37 @@ export type QueryPolicyOptions<
   >["placeholderData"];
 };
 
-export type InfiniteQueryPolicyOptions<TQueryFnData> = MetaPolicyOptions & {
+export type InfiniteQueryPolicyOptions<
+  TQueryFnData,
+  TPageParam = number,
+> = MetaPolicyOptions & {
   enabled?: UseInfiniteQueryOptions<
     TQueryFnData,
     ApiError,
-    InfiniteData<TQueryFnData, number>,
+    InfiniteData<TQueryFnData, TPageParam>,
     QueryKey,
-    number
+    TPageParam
   >["enabled"];
   retry?: UseInfiniteQueryOptions<
     TQueryFnData,
     ApiError,
-    InfiniteData<TQueryFnData, number>,
+    InfiniteData<TQueryFnData, TPageParam>,
     QueryKey,
-    number
+    TPageParam
   >["retry"];
   staleTime?: UseInfiniteQueryOptions<
     TQueryFnData,
     ApiError,
-    InfiniteData<TQueryFnData, number>,
+    InfiniteData<TQueryFnData, TPageParam>,
     QueryKey,
-    number
+    TPageParam
   >["staleTime"];
   refetchInterval?: UseInfiniteQueryOptions<
     TQueryFnData,
     ApiError,
-    InfiniteData<TQueryFnData, number>,
+    InfiniteData<TQueryFnData, TPageParam>,
     QueryKey,
-    number
+    TPageParam
   >["refetchInterval"];
 };
 
@@ -97,13 +100,18 @@ export const resolveQueryPolicyOptions = <TQueryFnData, TData = TQueryFnData>(
   return enabledOrOptions;
 };
 
-export const resolveInfiniteQueryPolicyOptions = <TQueryFnData>(
-  enabledOrOptions?: boolean | InfiniteQueryPolicyOptions<TQueryFnData>,
+export const resolveInfiniteQueryPolicyOptions = <
+  TQueryFnData,
+  TPageParam = number,
+>(
+  enabledOrOptions?:
+    | boolean
+    | InfiniteQueryPolicyOptions<TQueryFnData, TPageParam>,
 ) => {
   if (typeof enabledOrOptions === "boolean") {
     return {
       enabled: enabledOrOptions,
-    } as InfiniteQueryPolicyOptions<TQueryFnData>;
+    } as InfiniteQueryPolicyOptions<TQueryFnData, TPageParam>;
   }
 
   return enabledOrOptions;

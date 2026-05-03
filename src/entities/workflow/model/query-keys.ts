@@ -1,4 +1,7 @@
-import { type ChoiceQueryContext } from "../api";
+import {
+  type ChoiceQueryContext,
+  type SourceTargetOptionsParameters,
+} from "../api";
 
 const normalizeChoiceQueryContext = (context?: ChoiceQueryContext) => {
   const normalized = {
@@ -9,10 +12,29 @@ const normalizeChoiceQueryContext = (context?: ChoiceQueryContext) => {
   return normalized.file_subtype || normalized.service ? normalized : null;
 };
 
+const normalizeSourceTargetOptionsParameters = (
+  params: SourceTargetOptionsParameters,
+) => ({
+  cursor: params.cursor?.trim() || null,
+  mode: params.mode,
+  parentId: params.parentId?.trim() || null,
+  query: params.query?.trim() || null,
+});
+
 export const workflowKeys = {
   all: () => ["workflow"] as const,
   editorCatalog: () => [...workflowKeys.all(), "editor-catalog"] as const,
   sourceCatalog: () => [...workflowKeys.editorCatalog(), "sources"] as const,
+  sourceTargetOptionsRoot: (serviceKey: string) =>
+    [...workflowKeys.sourceCatalog(), serviceKey, "target-options"] as const,
+  sourceTargetOptions: (
+    serviceKey: string,
+    params: SourceTargetOptionsParameters,
+  ) =>
+    [
+      ...workflowKeys.sourceTargetOptionsRoot(serviceKey),
+      normalizeSourceTargetOptionsParameters(params),
+    ] as const,
   sinkCatalog: () => [...workflowKeys.editorCatalog(), "sinks"] as const,
   sinkSchema: (serviceKey: string, inputType: string) =>
     [...workflowKeys.sinkCatalog(), serviceKey, "schema", inputType] as const,
@@ -27,6 +49,13 @@ export const workflowKeys = {
   detail: (id: string) => [...workflowKeys.details(), id] as const,
   schemaPreview: (workflowId: string) =>
     [...workflowKeys.detail(workflowId), "schema-preview"] as const,
+  nodeSchemaPreview: (workflowId: string, nodeId: string) =>
+    [
+      ...workflowKeys.detail(workflowId),
+      "nodes",
+      nodeId,
+      "schema-preview",
+    ] as const,
   choicesRoot: (workflowId: string) =>
     [...workflowKeys.detail(workflowId), "choices"] as const,
   choice: (

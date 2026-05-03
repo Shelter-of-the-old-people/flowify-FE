@@ -29,6 +29,28 @@ export interface SourceCatalogResponse {
   services: SourceServiceResponse[];
 }
 
+export type SourceTargetOptionType = "course" | "term" | "file" | "folder";
+
+export interface SourceTargetOptionItemResponse {
+  id: string;
+  label: string;
+  description: string | null;
+  type: SourceTargetOptionType | string;
+  metadata: Record<string, unknown>;
+}
+
+export interface SourceTargetOptionsResponse {
+  items: SourceTargetOptionItemResponse[];
+  nextCursor: string | null;
+}
+
+export interface SourceTargetOptionsParameters {
+  mode: string;
+  parentId?: string;
+  query?: string;
+  cursor?: string;
+}
+
 export interface SinkSchemaFieldResponse {
   key: string;
   label: string;
@@ -126,6 +148,45 @@ export interface SchemaPreviewResponse {
   is_list: boolean;
   fields: SchemaPreviewFieldResponse[];
   display_hints: Record<string, string>;
+}
+
+export interface NodeInputPreviewResponse {
+  dataType: string;
+  label: string;
+  sourceNodeId: string | null;
+  sourceNodeLabel: string | null;
+  schema: SchemaPreviewResponse;
+}
+
+export interface NodeOutputPreviewResponse {
+  dataType: string;
+  label: string;
+  schema: SchemaPreviewResponse;
+}
+
+export interface SourceConfigSummaryResponse {
+  service: string;
+  serviceLabel: string;
+  mode: string | null;
+  modeLabel: string | null;
+  target: string | null;
+  targetLabel: string | null;
+  canonicalInputType: string | null;
+  triggerKind: string | null;
+}
+
+export interface NodeStatusSummaryResponse {
+  configured: boolean;
+  executable: boolean;
+  missingFields: string[] | null;
+}
+
+export interface NodeSchemaPreviewResponse {
+  nodeId: string;
+  input?: NodeInputPreviewResponse | null;
+  output?: NodeOutputPreviewResponse | null;
+  source?: SourceConfigSummaryResponse | null;
+  nodeStatus?: NodeStatusSummaryResponse | null;
 }
 
 export interface CreateWorkflowRequest {

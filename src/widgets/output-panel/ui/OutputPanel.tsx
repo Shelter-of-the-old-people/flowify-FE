@@ -10,13 +10,20 @@ import {
   type ChoiceOption,
   type ChoiceResponse,
 } from "@/entities/workflow";
-import { OUTPUT_DATA_LABELS } from "@/features/choice-panel";
 import { PanelRenderer } from "@/features/configure-node";
 import {
   isMiddleWizardCompleted,
   useWorkflowStore,
 } from "@/features/workflow-editor";
 import { useDualPanelLayout } from "@/shared";
+import {
+  DataPreviewBlock,
+  DataStateNotice,
+  NodeExecutionStatusBlock,
+  SchemaPreviewBlock,
+  isEmptyPanelData,
+  useNodeDataPanelModel,
+} from "@/widgets/node-data-panel";
 
 import {
   ActionStep,
@@ -104,9 +111,14 @@ export const OutputPanel = ({ wizardController }: Props) => {
   const activePlaceholder = useWorkflowStore(
     (state) => state.activePlaceholder,
   );
+  const workflowId = useWorkflowStore((state) => state.workflowId);
   const canEditNodes = useWorkflowStore(
     (state) => state.editorCapabilities.canEditNodes,
   );
+  const canViewExecutionData = useWorkflowStore(
+    (state) => state.editorCapabilities.canRunWorkflow,
+  );
+  const isDirty = useWorkflowStore((state) => state.isDirty);
   const closePanel = useWorkflowStore((state) => state.closePanel);
   const layout = useDualPanelLayout();
   const isOpen = Boolean(activePanelNodeId) && activePlaceholder === null;
@@ -117,11 +129,20 @@ export const OutputPanel = ({ wizardController }: Props) => {
   );
 
   const isDetailMode = isMiddleWizardCompleted(activeNode);
+  const nodeDataPanel = useNodeDataPanelModel({
+    panelKind: "output",
+    workflowId: workflowId || undefined,
+    nodeId: isDetailMode ? activePanelNodeId : null,
+    canViewExecutionData,
+    isWorkflowDirty: isDirty,
+  });
   const activeMeta = activeNode ? NODE_REGISTRY[activeNode.data.type] : null;
-  const outputDataLabel =
-    activeNode?.data.outputTypes[0] !== undefined
-      ? OUTPUT_DATA_LABELS[activeNode.data.outputTypes[0]]
-      : "출력 데이터";
+  const outputDataLabel = nodeDataPanel.staticOutputLabel ?? "출력 데이터";
+  const hasPreviewData = !isEmptyPanelData(nodeDataPanel.dataToDisplay);
+  const shouldShowSchemaPreview =
+    nodeDataPanel.state !== "data-ready" &&
+    nodeDataPanel.schemaToDisplay !== null &&
+    !nodeDataPanel.isSchemaPreviewLoading;
 
   const closedTransform =
     layout.mode === "stacked"
@@ -309,10 +330,36 @@ export const OutputPanel = ({ wizardController }: Props) => {
                 {outputDataLabel}
               </Text>
               <Text fontSize="sm" color="text.secondary">
-                처리된 데이터 미리보기는 백엔드 실행 연동 뒤에 자연스럽게 보여줄
-                예정입니다.
+                최근 실행 기준으로 이 노드가 다음 단계에 전달한 데이터를
+                표시합니다.
               </Text>
             </Box>
+
+            <DataStateNotice
+              state={nodeDataPanel.state}
+              panelKind="output"
+              executionData={nodeDataPanel.executionData}
+              isStaleAgainstCurrentEditor={
+                nodeDataPanel.isStaleAgainstCurrentEditor
+              }
+            />
+            {hasPreviewData ? (
+              <DataPreviewBlock
+                title="출력 데이터"
+                data={nodeDataPanel.dataToDisplay}
+              />
+            ) : null}
+            {shouldShowSchemaPreview ? (
+              <SchemaPreviewBlock
+                title="예상 출력 구조"
+                schema={nodeDataPanel.schemaToDisplay}
+              />
+            ) : null}
+            {nodeDataPanel.executionData ? (
+              <NodeExecutionStatusBlock
+                executionData={nodeDataPanel.executionData}
+              />
+            ) : null}
           </VStack>
         </>
       ) : (

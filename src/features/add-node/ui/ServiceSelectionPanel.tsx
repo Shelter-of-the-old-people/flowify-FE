@@ -56,6 +56,13 @@ import {
 
 import { isSinkServiceInRollout } from "../model/sink-rollout";
 import { isSourceModeInRollout } from "../model/source-rollout";
+import {
+  type SourceTargetPickerValue,
+  createEmptySourceTargetPickerValue,
+  isRemoteTargetPicker,
+} from "../model/source-target-picker";
+
+import { SourceTargetPicker } from "./SourceTargetPicker";
 
 type StartWizardStep = "service" | "auth" | "mode" | "target" | "confirm";
 type EndWizardStep = "service" | "auth" | "confirm";
@@ -100,6 +107,8 @@ const DATA_TYPE_LABELS: Record<DataType, string> = {
 };
 
 const TARGET_SCHEMA_LABELS: Record<string, string> = {
+  course_picker: "과목",
+  term_picker: "학기",
   channel_picker: "채널",
   day_picker: "요일",
   email_picker: "이메일",
@@ -162,6 +171,28 @@ const getTargetSchemaPlaceholder = (targetSchema: Record<string, unknown>) =>
 
 const hasTargetSchema = (targetSchema: Record<string, unknown>) =>
   Object.keys(targetSchema).length > 0;
+
+const buildSourceTargetConfig = ({
+  hasTarget,
+  targetValue,
+}: {
+  hasTarget: boolean;
+  targetValue: SourceTargetPickerValue;
+}) => {
+  if (!hasTarget) {
+    return { target: EMPTY_TARGET_SENTINEL };
+  }
+
+  if (targetValue.option) {
+    return {
+      target: targetValue.option.id,
+      target_label: targetValue.option.label,
+      target_meta: targetValue.option.metadata,
+    };
+  }
+
+  return { target: targetValue.value.trim() };
+};
 
 const toCanonicalInputType = (canonicalInputType: string): DataType =>
   toFrontendDataType(canonicalInputType);
@@ -390,16 +421,19 @@ const SourceTargetForm = ({
   mode,
   onBack,
   onChange,
+  serviceKey,
   onSubmit,
   value,
 }: {
   mode: SourceModeResponse;
   onBack: () => void;
-  onChange: (value: string) => void;
+  onChange: (value: SourceTargetPickerValue) => void;
+  serviceKey: string;
   onSubmit: () => void;
-  value: string;
+  value: SourceTargetPickerValue;
 }) => {
   const schemaType = getTargetSchemaType(mode.target_schema);
+  const isRemotePicker = isRemoteTargetPicker(mode.target_schema);
 
   return (
     <WizardCard minWidth="520px" maxWidth="640px">
@@ -424,14 +458,21 @@ const SourceTargetForm = ({
         {getTargetSchemaLabel(mode.target_schema)} 정보를 입력해주세요.
       </Text>
 
-      {schemaType === "day_picker" ? (
+      {isRemotePicker ? (
+        <SourceTargetPicker
+          mode={mode}
+          serviceKey={serviceKey}
+          value={value}
+          onChange={onChange}
+        />
+      ) : schemaType === "day_picker" ? (
         <Box display="flex" flexDirection="column" gap={3}>
           {DAY_PICKER_OPTIONS.map((option) => (
             <Button
               key={option.value}
               justifyContent="flex-start"
-              variant={value === option.value ? "solid" : "outline"}
-              onClick={() => onChange(option.value)}
+              variant={value.value === option.value ? "solid" : "outline"}
+              onClick={() => onChange({ option: null, value: option.value })}
             >
               {option.label}
             </Button>
@@ -441,13 +482,15 @@ const SourceTargetForm = ({
         <Input
           placeholder={getTargetSchemaPlaceholder(mode.target_schema)}
           type={schemaType === "time_picker" ? "time" : "text"}
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
+          value={value.value}
+          onChange={(event) =>
+            onChange({ option: null, value: event.target.value })
+          }
         />
       )}
 
       <Box display="flex" justifyContent="flex-end" mt={6}>
-        <Button disabled={!value.trim()} onClick={onSubmit}>
+        <Button disabled={!value.value.trim()} onClick={onSubmit}>
           다음
         </Button>
       </Box>
@@ -641,7 +684,8 @@ export const ServiceSelectionPanel = () => {
     useState<SourceModeResponse | null>(null);
   const [selectedSourceService, setSelectedSourceService] =
     useState<SourceServiceResponse | null>(null);
-  const [selectedTargetValue, setSelectedTargetValue] = useState("");
+  const [selectedTargetValue, setSelectedTargetValue] =
+    useState<SourceTargetPickerValue>(createEmptySourceTargetPickerValue);
   const [startStep, setStartStep] = useState<StartWizardStep>("service");
   const [authErrorMessage, setAuthErrorMessage] = useState<string | null>(null);
   const syncWorkflowFromResponse = useCallback(
@@ -746,7 +790,7 @@ export const ServiceSelectionPanel = () => {
     setSelectedSinkService(null);
     setSelectedSourceMode(null);
     setSelectedSourceService(null);
-    setSelectedTargetValue("");
+    setSelectedTargetValue(createEmptySourceTargetPickerValue());
     setStartStep("service");
     setAuthErrorMessage(null);
     setActivePlaceholder(null);
@@ -829,7 +873,7 @@ export const ServiceSelectionPanel = () => {
   const handleSourceServiceSelect = (service: SourceServiceResponse) => {
     setSelectedSourceService(service);
     setSelectedSourceMode(null);
-    setSelectedTargetValue("");
+    setSelectedTargetValue(createEmptySourceTargetPickerValue());
     setAuthErrorMessage(null);
 
     if (shouldRequestAuth(service)) {
@@ -842,7 +886,7 @@ export const ServiceSelectionPanel = () => {
 
   const handleSourceModeSelect = (mode: SourceModeResponse) => {
     setSelectedSourceMode(mode);
-    setSelectedTargetValue("");
+    setSelectedTargetValue(createEmptySourceTargetPickerValue());
 
     if (hasTargetSchema(mode.target_schema)) {
       setStartStep("target");
@@ -877,10 +921,11 @@ export const ServiceSelectionPanel = () => {
             canonical_input_type: selectedSourceMode.canonical_input_type,
             service: selectedSourceService.key,
             source_mode: selectedSourceMode.key,
-            target: hasTargetSchema(selectedSourceMode.target_schema)
-              ? selectedTargetValue.trim()
-              : EMPTY_TARGET_SENTINEL,
             trigger_kind: selectedSourceMode.trigger_kind,
+            ...buildSourceTargetConfig({
+              hasTarget: hasTargetSchema(selectedSourceMode.target_schema),
+              targetValue: selectedTargetValue,
+            }),
           } as Partial<FlowNodeData["config"]>,
           outputTypes: [outputType],
         }),
@@ -997,7 +1042,7 @@ export const ServiceSelectionPanel = () => {
         setStartStep("service");
         return;
       case "target":
-        setSelectedTargetValue("");
+        setSelectedTargetValue(createEmptySourceTargetPickerValue());
         setStartStep("mode");
         return;
       case "confirm":
@@ -1127,9 +1172,12 @@ export const ServiceSelectionPanel = () => {
                 />
               ) : null}
 
-              {startStep === "target" && selectedSourceMode ? (
+              {startStep === "target" &&
+              selectedSourceMode &&
+              selectedSourceService ? (
                 <SourceTargetForm
                   mode={selectedSourceMode}
+                  serviceKey={selectedSourceService.key}
                   value={selectedTargetValue}
                   onBack={handleStartBack}
                   onChange={setSelectedTargetValue}
@@ -1143,7 +1191,10 @@ export const ServiceSelectionPanel = () => {
                 <StartNodeConfirm
                   mode={selectedSourceMode}
                   service={selectedSourceService}
-                  targetValue={selectedTargetValue}
+                  targetValue={
+                    selectedTargetValue.option?.label ??
+                    selectedTargetValue.value
+                  }
                   onBack={handleStartBack}
                   onConfirm={handleCreateStartNode}
                 />
