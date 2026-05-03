@@ -675,6 +675,8 @@ export const ServiceSelectionPanel = () => {
     useSourceCatalogQuery();
   const { flowToScreenPosition } = useReactFlow();
   const viewport = useViewport();
+  const activePlaceholderKind = activePlaceholder?.kind ?? null;
+  const activeSinkSourceNodeId = activePlaceholder?.sourceNodeId ?? null;
 
   const [endStep, setEndStep] = useState<EndWizardStep>("service");
   const [searchQuery, setSearchQuery] = useState("");
@@ -734,6 +736,16 @@ export const ServiceSelectionPanel = () => {
   );
 
   const endSourceNode = useMemo(() => {
+    if (activePlaceholderKind === "sink" && activeSinkSourceNodeId) {
+      const sourceNode = nodes.find(
+        (node) => node.id === activeSinkSourceNodeId,
+      );
+
+      if (sourceNode) {
+        return sourceNode;
+      }
+    }
+
     const nodeIds = nodes
       .map((node) => node.id)
       .filter((id) => id !== endNodeId);
@@ -754,7 +766,14 @@ export const ServiceSelectionPanel = () => {
         ? (nodes.find((node) => node.id === startNodeId) ?? null)
         : null)
     );
-  }, [edges, endNodeId, nodes, startNodeId]);
+  }, [
+    activePlaceholderKind,
+    activeSinkSourceNodeId,
+    edges,
+    endNodeId,
+    nodes,
+    startNodeId,
+  ]);
 
   const sinkInputType = endSourceNode?.data.outputTypes[0] ?? null;
   const sinkInputTypeKey = sinkInputType
@@ -775,14 +794,12 @@ export const ServiceSelectionPanel = () => {
 
   const filteredCatalogServices = useMemo(() => {
     const targetServices =
-      activePlaceholder?.id === "placeholder-end"
-        ? sinkServices
-        : sourceServices;
+      activePlaceholderKind === "sink" ? sinkServices : sourceServices;
 
     return targetServices.filter((service) =>
       service.label.toLowerCase().includes(searchQuery.toLowerCase()),
     );
-  }, [activePlaceholder?.id, searchQuery, sinkServices, sourceServices]);
+  }, [activePlaceholderKind, searchQuery, sinkServices, sourceServices]);
 
   const resetWizard = useCallback(() => {
     setEndStep("service");
@@ -863,8 +880,8 @@ export const ServiceSelectionPanel = () => {
     return null;
   }
 
-  const isStartPlaceholder = activePlaceholder.id === "placeholder-start";
-  const isEndPlaceholder = activePlaceholder.id === "placeholder-end";
+  const isStartPlaceholder = activePlaceholderKind === "start";
+  const isEndPlaceholder = activePlaceholderKind === "sink";
 
   if (!isStartPlaceholder && !isEndPlaceholder) {
     return null;

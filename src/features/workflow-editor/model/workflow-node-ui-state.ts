@@ -31,17 +31,3 @@ export const isMiddleWizardPending = (
 ) =>
   isMiddleWorkflowNode(node, startNodeId, endNodeId) &&
   !isMiddleWizardCompleted(node);
-
-export const canStartProcessingAfterSinkSelection = ({
-  creationMethod,
-  endNode,
-  startNodeId,
-}: {
-  creationMethod: string | null;
-  endNode: WorkflowNode;
-  startNodeId: string | null;
-}) =>
-  startNodeId !== null &&
-  endNode !== null &&
-  hasSelectedSinkService(endNode) &&
-  !creationMethod;

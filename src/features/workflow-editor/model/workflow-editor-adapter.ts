@@ -36,7 +36,6 @@ export interface WorkflowHydratedState {
   nodeStatuses: WorkflowNodeStatusMap;
   startNodeId: string | null;
   endNodeId: string | null;
-  creationMethod: "manual" | null;
 }
 
 const toNodeStatusMap = (
@@ -76,6 +75,5 @@ export const hydrateStore = (
     nodeStatuses: toNodeStatusMap(workflow.nodeStatuses),
     startNodeId: startNode?.id ?? null,
     endNodeId: endNode?.id ?? null,
-    creationMethod: startNode ? "manual" : null,
   };
 };
