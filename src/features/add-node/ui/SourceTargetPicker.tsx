@@ -1,28 +1,23 @@
 import { useMemo, useState } from "react";
-import { type KeyboardEvent } from "react";
 import {
   MdCalendarMonth,
   MdFolder,
   MdInsertDriveFile,
   MdSchool,
-  MdSearch,
 } from "react-icons/md";
 
-import {
-  Box,
-  Button,
-  Icon,
-  Input,
-  Spinner,
-  Text,
-  VStack,
-} from "@chakra-ui/react";
+import { Box, Button, Input, Text } from "@chakra-ui/react";
 
 import {
   type SourceModeResponse,
   type SourceTargetOptionItemResponse,
   useInfiniteSourceTargetOptionsQuery,
 } from "@/entities/workflow";
+import {
+  RemoteOptionPicker,
+  type RemoteOptionPickerItem,
+  getApiErrorMessage,
+} from "@/shared";
 
 import {
   DAY_PICKER_OPTIONS,
@@ -33,11 +28,17 @@ import {
   isRemoteTargetPicker,
 } from "../model/source-target-picker";
 
-type SourceTargetPickerProps = {
+type Props = {
   mode: SourceModeResponse;
   onChange: (value: SourceTargetPickerValue) => void;
   serviceKey: string;
   value: SourceTargetPickerValue;
+};
+
+type PickerState = {
+  folderPath: SourceTargetOptionItemResponse[];
+  scope: string;
+  searchQuery: string;
 };
 
 const TARGET_OPTION_ICON_MAP = {
@@ -47,8 +48,8 @@ const TARGET_OPTION_ICON_MAP = {
   term: MdCalendarMonth,
 };
 
-const getOptionIcon = (type: string) =>
-  TARGET_OPTION_ICON_MAP[type as keyof typeof TARGET_OPTION_ICON_MAP] ??
+const getOptionIcon = (option: RemoteOptionPickerItem) =>
+  TARGET_OPTION_ICON_MAP[option.type as keyof typeof TARGET_OPTION_ICON_MAP] ??
   MdFolder;
 
 const formatMetadataValue = (value: unknown) => {
@@ -60,8 +61,12 @@ const formatMetadataValue = (value: unknown) => {
 };
 
 const getMetadataSummary = (
-  metadata: SourceTargetOptionItemResponse["metadata"],
+  metadata: SourceTargetOptionItemResponse["metadata"] | undefined,
 ) => {
+  if (!metadata) {
+    return "";
+  }
+
   const summaryKeys = [
     "term",
     "courseCount",
@@ -79,96 +84,62 @@ const getMetadataSummary = (
     .join(" · ");
 };
 
-const SourceTargetOptionRow = ({
-  isSelected,
-  onSelect,
-  option,
-}: {
-  isSelected: boolean;
-  onSelect: () => void;
-  option: SourceTargetOptionItemResponse;
-}) => {
+const renderOptionMetadata = (option: RemoteOptionPickerItem) => {
   const metadataSummary = getMetadataSummary(option.metadata);
 
-  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.key !== "Enter" && event.key !== " ") {
-      return;
-    }
-
-    event.preventDefault();
-    onSelect();
-  };
-
-  return (
-    <Box
-      alignItems="flex-start"
-      bg={isSelected ? "blue.50" : "white"}
-      border="1px solid"
-      borderColor={isSelected ? "blue.300" : "gray.100"}
-      borderRadius="2xl"
-      cursor="pointer"
-      display="flex"
-      gap={3}
-      px={4}
-      py={3}
-      role="button"
-      tabIndex={0}
-      transition="border-color 150ms ease, background 150ms ease"
-      _hover={{
-        bg: isSelected ? "blue.50" : "gray.50",
-        borderColor: isSelected ? "blue.300" : "gray.200",
-      }}
-      onClick={onSelect}
-      onKeyDown={handleKeyDown}
-    >
-      <Box flexShrink={0} pt={1}>
-        <Icon as={getOptionIcon(option.type)} boxSize={5} color="gray.600" />
-      </Box>
-
-      <Box minW={0}>
-        <Text fontSize="sm" fontWeight="semibold">
-          {option.label}
-        </Text>
-        {option.description ? (
-          <Text color="text.secondary" fontSize="xs" mt={1}>
-            {option.description}
-          </Text>
-        ) : null}
-        {metadataSummary ? (
-          <Text color="text.secondary" fontSize="xs" mt={1}>
-            {metadataSummary}
-          </Text>
-        ) : null}
-      </Box>
-    </Box>
-  );
+  return metadataSummary ? (
+    <Text color="text.secondary" fontSize="xs">
+      {metadataSummary}
+    </Text>
+  ) : null;
 };
+
+const createPickerState = (scope: string): PickerState => ({
+  folderPath: [],
+  scope,
+  searchQuery: "",
+});
 
 export const SourceTargetPicker = ({
   mode,
   onChange,
   serviceKey,
   value,
-}: SourceTargetPickerProps) => {
+}: Props) => {
   const schemaType = getTargetSchemaType(mode.target_schema);
   const isRemotePicker = isRemoteTargetPicker(mode.target_schema);
-  const [searchQuery, setSearchQuery] = useState("");
+  const isFolderPicker = schemaType === "folder_picker";
+  const pickerScope = `${serviceKey}:${mode.key}:${schemaType}`;
+  const [pickerState, setPickerState] = useState<PickerState>(() =>
+    createPickerState(pickerScope),
+  );
+  const activePickerState =
+    pickerState.scope === pickerScope
+      ? pickerState
+      : createPickerState(pickerScope);
+  const { folderPath, searchQuery } = activePickerState;
+  const parentId =
+    isFolderPicker && folderPath.length > 0
+      ? folderPath[folderPath.length - 1]?.id
+      : undefined;
+  const pickerPath = folderPath.map(({ id, label }) => ({ id, label }));
   const targetOptionsParams = useMemo(
     () =>
       isRemotePicker
         ? {
             mode: mode.key,
+            parentId,
             query: searchQuery,
           }
         : undefined,
-    [isRemotePicker, mode.key, searchQuery],
+    [isRemotePicker, mode.key, parentId, searchQuery],
   );
   const {
     data: targetOptions,
+    error,
     fetchNextPage,
     hasNextPage,
     isError,
-    isFetching,
     isFetchingNextPage,
     isLoading,
     refetch,
@@ -179,6 +150,71 @@ export const SourceTargetPicker = ({
   const items =
     targetOptions?.pages.flatMap((page) => page.items) ??
     ([] as SourceTargetOptionItemResponse[]);
+
+  const setScopedSearchQuery = (nextQuery: string) => {
+    setPickerState((current) => {
+      const base =
+        current.scope === pickerScope
+          ? current
+          : createPickerState(pickerScope);
+
+      return {
+        ...base,
+        searchQuery: nextQuery,
+      };
+    });
+  };
+
+  const handleBrowseOption = (option: RemoteOptionPickerItem) => {
+    const sourceOption = items.find((item) => item.id === option.id);
+    if (!sourceOption || sourceOption.type !== "folder") {
+      return;
+    }
+
+    setPickerState((current) => {
+      const base =
+        current.scope === pickerScope
+          ? current
+          : createPickerState(pickerScope);
+
+      return {
+        ...base,
+        folderPath: [...base.folderPath, sourceOption],
+        searchQuery: "",
+      };
+    });
+    onChange({ option: null, value: "" });
+  };
+
+  const handleSelectOption = (option: RemoteOptionPickerItem) => {
+    const sourceOption = items.find((item) => item.id === option.id);
+    if (!sourceOption) {
+      return;
+    }
+
+    onChange({ option: sourceOption, value: sourceOption.id });
+  };
+
+  const handleResetPath = () => {
+    setPickerState(createPickerState(pickerScope));
+    onChange({ option: null, value: "" });
+  };
+
+  const handlePathSelect = (index: number) => {
+    setPickerState((current) => {
+      const base =
+        current.scope === pickerScope
+          ? current
+          : createPickerState(pickerScope);
+
+      return {
+        ...base,
+        folderPath: base.folderPath.slice(0, index + 1),
+        searchQuery: "",
+      };
+    });
+    onChange({ option: null, value: "" });
+  };
 
   if (schemaType === "day_picker") {
     return (
@@ -210,74 +246,30 @@ export const SourceTargetPicker = ({
     );
   }
 
-  const handleSearchChange = (nextQuery: string) => {
-    setSearchQuery(nextQuery);
-  };
-
   return (
-    <Box display="flex" flexDirection="column" gap={4}>
-      <Box position="relative">
-        <Input
-          placeholder={`${getTargetSchemaLabel(mode.target_schema)} 검색`}
-          pr={10}
-          value={searchQuery}
-          onChange={(event) => handleSearchChange(event.target.value)}
-        />
-        <Box
-          pointerEvents="none"
-          position="absolute"
-          right={4}
-          top="50%"
-          transform="translateY(-50%)"
-        >
-          <Icon as={MdSearch} boxSize={5} color="gray.500" />
-        </Box>
-      </Box>
-
-      {isLoading ? (
-        <Box alignItems="center" display="flex" gap={2}>
-          <Spinner color="gray.500" size="sm" />
-          <Text color="text.secondary" fontSize="sm">
-            선택지를 불러오는 중입니다.
-          </Text>
-        </Box>
-      ) : isError ? (
-        <Box bg="red.50" borderRadius="2xl" px={4} py={3}>
-          <Text color="red.600" fontSize="sm">
-            선택지를 불러오지 못했습니다.
-          </Text>
-          <Button mt={3} size="sm" variant="outline" onClick={() => refetch()}>
-            다시 시도
-          </Button>
-        </Box>
-      ) : items.length === 0 ? (
-        <Text color="text.secondary" fontSize="sm" py={4} textAlign="center">
-          선택할 수 있는 {getTargetSchemaLabel(mode.target_schema)}이 없습니다.
-        </Text>
-      ) : (
-        <VStack align="stretch" gap={2} maxH="320px" overflowY="auto">
-          {items.map((option) => (
-            <SourceTargetOptionRow
-              key={option.id}
-              isSelected={value.value === option.id}
-              option={option}
-              onSelect={() => onChange({ option, value: option.id })}
-            />
-          ))}
-        </VStack>
-      )}
-
-      {hasNextPage ? (
-        <Button
-          disabled={isFetching}
-          loading={isFetchingNextPage}
-          size="sm"
-          variant="outline"
-          onClick={() => void fetchNextPage()}
-        >
-          더 보기
-        </Button>
-      ) : null}
-    </Box>
+    <RemoteOptionPicker
+      canBrowseItem={(option) => isFolderPicker && option.type === "folder"}
+      emptyMessage={`선택할 수 있는 ${getTargetSchemaLabel(mode.target_schema)}이 없습니다.`}
+      errorMessage={isError ? getApiErrorMessage(error) : null}
+      getBrowseLabel={(option) => `${option.label} 내부 폴더 보기`}
+      getItemIcon={getOptionIcon}
+      hasMore={Boolean(hasNextPage)}
+      isLoading={isLoading}
+      isLoadingMore={isFetchingNextPage}
+      items={items}
+      path={isFolderPicker ? pickerPath : undefined}
+      renderItemMetadata={renderOptionMetadata}
+      rootLabel="내 드라이브"
+      searchPlaceholder={`${getTargetSchemaLabel(mode.target_schema)} 검색`}
+      searchValue={searchQuery}
+      selectedId={value.value}
+      onBrowse={isFolderPicker ? handleBrowseOption : undefined}
+      onLoadMore={() => void fetchNextPage()}
+      onPathSelect={isFolderPicker ? handlePathSelect : undefined}
+      onResetPath={isFolderPicker ? handleResetPath : undefined}
+      onRetry={() => void refetch()}
+      onSearchChange={setScopedSearchQuery}
+      onSelect={handleSelectOption}
+    />
   );
 };
