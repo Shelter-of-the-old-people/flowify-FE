@@ -1,7 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
-import { MdFolder } from "react-icons/md";
+import { MdClose, MdFolder } from "react-icons/md";
 
-import { Box, Button, Input, Spinner, Text } from "@chakra-ui/react";
+import {
+  Box,
+  Button,
+  Icon,
+  IconButton,
+  Input,
+  Spinner,
+  Text,
+} from "@chakra-ui/react";
 
 import { type FlowNodeData } from "@/entities/node";
 import {
@@ -338,7 +346,6 @@ const GoogleDriveFolderPickerField = ({
         searchQuery: "",
       };
     });
-    onClear();
   };
 
   const handleSelectOption = (option: RemoteOptionPickerItem) => {
@@ -352,7 +359,6 @@ const GoogleDriveFolderPickerField = ({
 
   const handleResetPath = () => {
     setPickerState(createFolderPickerState(pickerScope));
-    onClear();
   };
 
   const handlePathSelect = (index: number) => {
@@ -368,19 +374,39 @@ const GoogleDriveFolderPickerField = ({
         searchQuery: "",
       };
     });
-    onClear();
   };
 
   return (
     <Box display="flex" flexDirection="column" gap={3}>
       {selectedId ? (
-        <Box bg="gray.50" borderRadius="xl" px={4} py={3}>
-          <Text color="text.secondary" fontSize="xs">
-            선택된 폴더
-          </Text>
-          <Text fontSize="sm" fontWeight="semibold">
-            {selectedLabel || selectedId}
-          </Text>
+        <Box
+          alignItems="center"
+          bg="gray.50"
+          borderRadius="xl"
+          display="flex"
+          gap={3}
+          justifyContent="space-between"
+          px={4}
+          py={3}
+        >
+          <Box minW={0}>
+            <Text color="text.secondary" fontSize="xs">
+              선택된 폴더
+            </Text>
+            <Text fontSize="sm" fontWeight="semibold" truncate>
+              {selectedLabel || selectedId}
+            </Text>
+          </Box>
+          <IconButton
+            aria-label="Clear selected folder"
+            disabled={readOnly}
+            flexShrink={0}
+            size="xs"
+            variant="ghost"
+            onClick={onClear}
+          >
+            <Icon as={MdClose} boxSize={4} />
+          </IconButton>
         </Box>
       ) : null}
 
