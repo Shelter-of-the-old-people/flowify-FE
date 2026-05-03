@@ -828,7 +828,7 @@ export const SinkNodePanel = ({
               fields={sinkSchema.fields}
               nodeId={nodeId}
               readOnly={readOnly}
-              serviceKey={serviceKey}
+              serviceKey={selectedSinkService.key}
               sinkConfig={sinkConfig}
               onSaveConfig={(config) => replaceNodeConfig(nodeId, config)}
             />

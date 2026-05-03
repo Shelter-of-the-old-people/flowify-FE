@@ -1172,7 +1172,9 @@ export const ServiceSelectionPanel = () => {
                 />
               ) : null}
 
-              {startStep === "target" && selectedSourceMode ? (
+              {startStep === "target" &&
+              selectedSourceMode &&
+              selectedSourceService ? (
                 <SourceTargetForm
                   mode={selectedSourceMode}
                   serviceKey={selectedSourceService.key}
