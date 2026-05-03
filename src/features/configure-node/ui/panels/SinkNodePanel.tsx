@@ -1,19 +1,27 @@
 import { useEffect, useMemo, useState } from "react";
+import { MdFolder } from "react-icons/md";
 
 import { Box, Button, Input, Spinner, Text } from "@chakra-ui/react";
 
 import { type FlowNodeData } from "@/entities/node";
 import {
   type SinkSchemaFieldResponse,
+  type SourceTargetOptionItemResponse,
   getNodeStatusMissingFieldLabel,
   toBackendDataType,
   toEdgeDefinition,
   toNodeDefinition,
+  useInfiniteSourceTargetOptionsQuery,
   useSinkCatalogQuery,
   useSinkSchemaQuery,
   useWorkflowSchemaPreviewMutation,
 } from "@/entities/workflow";
 import { useWorkflowStore } from "@/features/workflow-editor";
+import {
+  RemoteOptionPicker,
+  type RemoteOptionPickerItem,
+  getApiErrorMessage,
+} from "@/shared";
 
 import { type NodePanelProps } from "../../model";
 
@@ -31,6 +39,17 @@ const FIELD_LABELS: Record<string, string> = {
   text: "텍스트",
 };
 
+const GOOGLE_DRIVE_SERVICE_KEY = "google_drive";
+const GOOGLE_DRIVE_FOLDER_PICKER_MODE = "folder_all_files";
+
+type DraftValues = Record<string, string>;
+type AuxiliaryDraftValues = Record<string, unknown>;
+type FolderPickerState = {
+  folderPath: SourceTargetOptionItemResponse[];
+  scope: string;
+  searchQuery: string;
+};
+
 const getFieldInputType = (fieldType: string) => {
   if (fieldType === "email_input") {
     return "email";
@@ -42,6 +61,17 @@ const getFieldInputType = (fieldType: string) => {
 
   return "text";
 };
+
+const getAuxiliaryLabelKey = (fieldKey: string) => `${fieldKey}_label`;
+
+const getAuxiliaryMetaKey = (fieldKey: string) => `${fieldKey}_meta`;
+
+const getAuxiliaryFieldKeys = (fields: SinkSchemaFieldResponse[]) =>
+  fields.flatMap((field) =>
+    field.type === "folder_picker"
+      ? [getAuxiliaryLabelKey(field.key), getAuxiliaryMetaKey(field.key)]
+      : [],
+  );
 
 const getInitialDraftValues = (
   fields: SinkSchemaFieldResponse[],
@@ -58,6 +88,17 @@ const getInitialDraftValues = (
       return [field.key, stringValue];
     }),
   );
+
+const getInitialAuxiliaryDraftValues = (
+  fields: SinkSchemaFieldResponse[],
+  sinkConfig: Record<string, unknown>,
+) => {
+  const entries = getAuxiliaryFieldKeys(fields)
+    .map((key) => [key, sinkConfig[key]] as const)
+    .filter(([, value]) => value !== undefined && value !== null);
+
+  return Object.fromEntries(entries);
+};
 
 const normalizeDraftValue = (
   field: SinkSchemaFieldResponse,
@@ -77,7 +118,7 @@ const normalizeDraftValue = (
 };
 
 const validateDraft = (
-  draftValues: Record<string, string>,
+  draftValues: DraftValues,
   fields: SinkSchemaFieldResponse[],
 ) => {
   const nextValidationErrors: Record<string, string> = {};
@@ -104,17 +145,23 @@ const validateDraft = (
 };
 
 const buildCommittedConfigFromDraft = ({
+  auxiliaryDraftValues,
   draftValues,
   fields,
   sinkConfig,
 }: {
-  draftValues: Record<string, string>;
+  auxiliaryDraftValues: AuxiliaryDraftValues;
+  draftValues: DraftValues;
   fields: SinkSchemaFieldResponse[];
   sinkConfig: Record<string, unknown>;
 }) => {
   const schemaFieldKeys = new Set(fields.map((field) => field.key));
+  const auxiliaryFieldKeys = new Set(getAuxiliaryFieldKeys(fields));
   const preservedConfigEntries = Object.entries(sinkConfig).filter(
-    ([key]) => !schemaFieldKeys.has(key) && key !== "isConfigured",
+    ([key]) =>
+      !schemaFieldKeys.has(key) &&
+      !auxiliaryFieldKeys.has(key) &&
+      key !== "isConfigured",
   );
   const nextConfig = Object.fromEntries(preservedConfigEntries) as Record<
     string,
@@ -131,6 +178,26 @@ const buildCommittedConfigFromDraft = ({
     }
   });
 
+  fields.forEach((field) => {
+    if (field.type !== "folder_picker") {
+      return;
+    }
+
+    const folderValue = draftValues[field.key]?.trim() ?? "";
+    if (folderValue.length === 0) {
+      return;
+    }
+
+    [getAuxiliaryLabelKey(field.key), getAuxiliaryMetaKey(field.key)].forEach(
+      (key) => {
+        const value = auxiliaryDraftValues[key];
+        if (value !== undefined && value !== null && value !== "") {
+          nextConfig[key] = value;
+        }
+      },
+    );
+  });
+
   const isConfigured = fields
     .filter((field) => field.required)
     .every((field) =>
@@ -143,11 +210,215 @@ const buildCommittedConfigFromDraft = ({
   } as FlowNodeData["config"];
 };
 
+const createFolderPickerState = (scope: string): FolderPickerState => ({
+  folderPath: [],
+  scope,
+  searchQuery: "",
+});
+
+const formatMetadataValue = (value: unknown) => {
+  if (typeof value === "string" || typeof value === "number") {
+    return String(value);
+  }
+
+  return null;
+};
+
+const getMetadataSummary = (
+  metadata: SourceTargetOptionItemResponse["metadata"] | undefined,
+) => {
+  if (!metadata) {
+    return "";
+  }
+
+  const summaryKeys = ["mimeType", "modifiedTime", "size"];
+
+  return summaryKeys
+    .map((key) => {
+      const value = formatMetadataValue(metadata[key]);
+      return value ? `${key}: ${value}` : null;
+    })
+    .filter((value): value is string => value !== null)
+    .join(" · ");
+};
+
+const renderFolderMetadata = (option: RemoteOptionPickerItem) => {
+  const metadataSummary = getMetadataSummary(option.metadata);
+
+  return metadataSummary ? (
+    <Text color="text.secondary" fontSize="xs">
+      {metadataSummary}
+    </Text>
+  ) : null;
+};
+
+type GoogleDriveFolderPickerFieldProps = {
+  fieldKey: string;
+  onClear: () => void;
+  onSelectOption: (option: SourceTargetOptionItemResponse) => void;
+  readOnly: boolean;
+  selectedId: string;
+  selectedLabel?: string | null;
+};
+
+const GoogleDriveFolderPickerField = ({
+  fieldKey,
+  onClear,
+  onSelectOption,
+  readOnly,
+  selectedId,
+  selectedLabel,
+}: GoogleDriveFolderPickerFieldProps) => {
+  const pickerScope = `${fieldKey}:${GOOGLE_DRIVE_FOLDER_PICKER_MODE}`;
+  const [pickerState, setPickerState] = useState<FolderPickerState>(() =>
+    createFolderPickerState(pickerScope),
+  );
+  const activePickerState =
+    pickerState.scope === pickerScope
+      ? pickerState
+      : createFolderPickerState(pickerScope);
+  const { folderPath, searchQuery } = activePickerState;
+  const parentId =
+    folderPath.length > 0 ? folderPath[folderPath.length - 1]?.id : undefined;
+  const pickerPath = folderPath.map(({ id, label }) => ({ id, label }));
+  const {
+    data: targetOptions,
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isError,
+    isFetchingNextPage,
+    isLoading,
+    refetch,
+  } = useInfiniteSourceTargetOptionsQuery(
+    GOOGLE_DRIVE_SERVICE_KEY,
+    {
+      mode: GOOGLE_DRIVE_FOLDER_PICKER_MODE,
+      parentId,
+      query: searchQuery,
+    },
+    {
+      enabled: !readOnly,
+      staleTime: 1000 * 30,
+    },
+  );
+  const items =
+    targetOptions?.pages.flatMap((page) => page.items) ??
+    ([] as SourceTargetOptionItemResponse[]);
+
+  const setScopedSearchQuery = (nextQuery: string) => {
+    setPickerState((current) => {
+      const base =
+        current.scope === pickerScope
+          ? current
+          : createFolderPickerState(pickerScope);
+
+      return {
+        ...base,
+        searchQuery: nextQuery,
+      };
+    });
+  };
+
+  const handleBrowseOption = (option: RemoteOptionPickerItem) => {
+    const sourceOption = items.find((item) => item.id === option.id);
+    if (!sourceOption || sourceOption.type !== "folder") {
+      return;
+    }
+
+    setPickerState((current) => {
+      const base =
+        current.scope === pickerScope
+          ? current
+          : createFolderPickerState(pickerScope);
+
+      return {
+        ...base,
+        folderPath: [...base.folderPath, sourceOption],
+        searchQuery: "",
+      };
+    });
+    onClear();
+  };
+
+  const handleSelectOption = (option: RemoteOptionPickerItem) => {
+    const sourceOption = items.find((item) => item.id === option.id);
+    if (!sourceOption) {
+      return;
+    }
+
+    onSelectOption(sourceOption);
+  };
+
+  const handleResetPath = () => {
+    setPickerState(createFolderPickerState(pickerScope));
+    onClear();
+  };
+
+  const handlePathSelect = (index: number) => {
+    setPickerState((current) => {
+      const base =
+        current.scope === pickerScope
+          ? current
+          : createFolderPickerState(pickerScope);
+
+      return {
+        ...base,
+        folderPath: base.folderPath.slice(0, index + 1),
+        searchQuery: "",
+      };
+    });
+    onClear();
+  };
+
+  return (
+    <Box display="flex" flexDirection="column" gap={3}>
+      {selectedId ? (
+        <Box bg="gray.50" borderRadius="xl" px={4} py={3}>
+          <Text color="text.secondary" fontSize="xs">
+            선택된 폴더
+          </Text>
+          <Text fontSize="sm" fontWeight="semibold">
+            {selectedLabel || selectedId}
+          </Text>
+        </Box>
+      ) : null}
+
+      <RemoteOptionPicker
+        canBrowseItem={(option) => option.type === "folder"}
+        disabled={readOnly}
+        emptyMessage="선택할 수 있는 폴더가 없습니다."
+        errorMessage={isError ? getApiErrorMessage(error) : null}
+        getBrowseLabel={(option) => `${option.label} 내부 폴더 보기`}
+        getItemIcon={() => MdFolder}
+        hasMore={Boolean(hasNextPage)}
+        isLoading={isLoading}
+        isLoadingMore={isFetchingNextPage}
+        items={items}
+        path={pickerPath}
+        renderItemMetadata={renderFolderMetadata}
+        rootLabel="내 드라이브"
+        searchPlaceholder="폴더 검색"
+        searchValue={searchQuery}
+        selectedId={selectedId}
+        onBrowse={handleBrowseOption}
+        onLoadMore={() => void fetchNextPage()}
+        onPathSelect={handlePathSelect}
+        onResetPath={handleResetPath}
+        onRetry={() => void refetch()}
+        onSearchChange={setScopedSearchQuery}
+        onSelect={handleSelectOption}
+      />
+    </Box>
+  );
+};
+
 type SinkSchemaEditorProps = {
   fields: SinkSchemaFieldResponse[];
   nodeId: string;
   onSaveConfig: (config: FlowNodeData["config"]) => void;
   readOnly: boolean;
+  serviceKey: string;
   sinkConfig: Record<string, unknown>;
 };
 
@@ -156,27 +427,47 @@ const SinkSchemaEditor = ({
   nodeId,
   onSaveConfig,
   readOnly,
+  serviceKey,
   sinkConfig,
 }: SinkSchemaEditorProps) => {
   const initialDraftValues = useMemo(
     () => getInitialDraftValues(fields, sinkConfig),
     [fields, sinkConfig],
   );
+  const initialAuxiliaryDraftValues = useMemo(
+    () => getInitialAuxiliaryDraftValues(fields, sinkConfig),
+    [fields, sinkConfig],
+  );
   const [draftValues, setDraftValues] =
-    useState<Record<string, string>>(initialDraftValues);
+    useState<DraftValues>(initialDraftValues);
+  const [auxiliaryDraftValues, setAuxiliaryDraftValues] =
+    useState<AuxiliaryDraftValues>(initialAuxiliaryDraftValues);
   const [validationErrors, setValidationErrors] = useState<
     Record<string, string>
   >({});
 
-  const hasChanges = useMemo(
-    () =>
-      fields.some(
-        (field) =>
-          (draftValues[field.key] ?? "") !==
-          (initialDraftValues[field.key] ?? ""),
-      ),
-    [draftValues, fields, initialDraftValues],
-  );
+  const hasChanges = useMemo(() => {
+    const hasDraftChanges = fields.some(
+      (field) =>
+        (draftValues[field.key] ?? "") !==
+        (initialDraftValues[field.key] ?? ""),
+    );
+
+    if (hasDraftChanges) {
+      return true;
+    }
+
+    return (
+      JSON.stringify(auxiliaryDraftValues) !==
+      JSON.stringify(initialAuxiliaryDraftValues)
+    );
+  }, [
+    auxiliaryDraftValues,
+    draftValues,
+    fields,
+    initialAuxiliaryDraftValues,
+    initialDraftValues,
+  ]);
 
   const handleFieldChange = (fieldKey: string, value: string) => {
     setDraftValues((current) => ({
@@ -194,8 +485,31 @@ const SinkSchemaEditor = ({
     });
   };
 
+  const handleFolderFieldSelect = (
+    field: SinkSchemaFieldResponse,
+    option: SourceTargetOptionItemResponse,
+  ) => {
+    handleFieldChange(field.key, option.id);
+    setAuxiliaryDraftValues((current) => ({
+      ...current,
+      [getAuxiliaryLabelKey(field.key)]: option.label,
+      [getAuxiliaryMetaKey(field.key)]: option.metadata,
+    }));
+  };
+
+  const handleFolderFieldClear = (field: SinkSchemaFieldResponse) => {
+    handleFieldChange(field.key, "");
+    setAuxiliaryDraftValues((current) => {
+      const nextAuxiliaryDraftValues = { ...current };
+      delete nextAuxiliaryDraftValues[getAuxiliaryLabelKey(field.key)];
+      delete nextAuxiliaryDraftValues[getAuxiliaryMetaKey(field.key)];
+      return nextAuxiliaryDraftValues;
+    });
+  };
+
   const handleResetDraft = () => {
     setDraftValues(initialDraftValues);
+    setAuxiliaryDraftValues(initialAuxiliaryDraftValues);
     setValidationErrors({});
   };
 
@@ -207,6 +521,7 @@ const SinkSchemaEditor = ({
     }
 
     const nextConfig = buildCommittedConfigFromDraft({
+      auxiliaryDraftValues,
       draftValues,
       fields,
       sinkConfig,
@@ -254,6 +569,26 @@ const SinkSchemaEditor = ({
                     </Button>
                   ))}
                 </Box>
+              ) : serviceKey === GOOGLE_DRIVE_SERVICE_KEY &&
+                field.type === "folder_picker" ? (
+                <GoogleDriveFolderPickerField
+                  fieldKey={field.key}
+                  readOnly={readOnly}
+                  selectedId={stringValue}
+                  selectedLabel={
+                    typeof auxiliaryDraftValues[
+                      getAuxiliaryLabelKey(field.key)
+                    ] === "string"
+                      ? (auxiliaryDraftValues[
+                          getAuxiliaryLabelKey(field.key)
+                        ] as string)
+                      : null
+                  }
+                  onClear={() => handleFolderFieldClear(field)}
+                  onSelectOption={(option) =>
+                    handleFolderFieldSelect(field, option)
+                  }
+                />
               ) : (
                 <Input
                   disabled={readOnly}
@@ -467,6 +802,7 @@ export const SinkNodePanel = ({
               fields={sinkSchema.fields}
               nodeId={nodeId}
               readOnly={readOnly}
+              serviceKey={serviceKey}
               sinkConfig={sinkConfig}
               onSaveConfig={(config) => replaceNodeConfig(nodeId, config)}
             />
