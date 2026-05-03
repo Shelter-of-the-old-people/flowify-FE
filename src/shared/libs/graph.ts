@@ -30,6 +30,14 @@ export const collectDescendantIds = (
  * outgoing edge가 없는 끝단(leaf) 노드의 ID 목록을 반환한다.
  */
 export const getLeafNodeIds = (nodeIds: string[], edges: Edge[]): string[] => {
-  const sourcesWithOutgoing = new Set(edges.map((e) => e.source));
+  const nodeIdSet = new Set(nodeIds);
+  const sourcesWithOutgoing = new Set(
+    edges
+      .filter(
+        (edge) => nodeIdSet.has(edge.source) && nodeIdSet.has(edge.target),
+      )
+      .map((edge) => edge.source),
+  );
+
   return nodeIds.filter((id) => !sourcesWithOutgoing.has(id));
 };
