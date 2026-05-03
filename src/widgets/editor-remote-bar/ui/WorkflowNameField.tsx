@@ -15,7 +15,7 @@ type WorkflowNameFieldProps = {
 
 export const WorkflowNameField = ({
   disabled = false,
-  disabledReason = "���� �߿��� ���� ������ �� �����ϴ�",
+  disabledReason = "실행 중에는 편집할 수 없습니다",
 }: WorkflowNameFieldProps) => {
   const workflowName = useWorkflowStore((state) => state.workflowName);
   const workflowId = useWorkflowStore((state) => state.workflowId);
@@ -26,7 +26,7 @@ export const WorkflowNameField = ({
   const isConfirmingRef = useRef(false);
   const { mutateAsync: saveWorkflow, isPending: isSavePending } =
     useSaveWorkflowMutation();
-  const displayName = workflowName || "�� ��ũ�÷ο�";
+  const displayName = workflowName || "새 워크플로우";
   const isInteractionDisabled = disabled || isSavePending;
 
   const handleStartEdit = () => {
@@ -74,8 +74,9 @@ export const WorkflowNameField = ({
       });
     } catch {
       toaster.create({
-        title: "���� ����",
-        description: "��ũ�÷ο� �̸��� �ٷ� �������� ���߽��ϴ�. �ٽ� �õ����ּ���.",
+        title: "저장 실패",
+        description:
+          "워크플로우 이름을 바로 저장하는데 실패했습니다. 다시 시도해 주세요.",
         type: "error",
       });
     } finally {
@@ -136,7 +137,7 @@ export const WorkflowNameField = ({
       cursor={isInteractionDisabled ? "default" : "pointer"}
       opacity={isInteractionDisabled ? 0.6 : 1}
       onClick={handleStartEdit}
-      title={isInteractionDisabled ? disabledReason : "Ŭ���Ͽ� �̸� ����"}
+      title={isInteractionDisabled ? disabledReason : "클릭하여 이름 수정"}
     >
       {displayName}
     </Text>
