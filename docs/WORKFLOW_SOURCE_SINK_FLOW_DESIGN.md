@@ -1,12 +1,12 @@
 # Workflow Source/Sink Flow Design
 
-> **작성일** 2026-04-19
-> **수정일** 2026-04-20
-> **목적** 시작/도착 노드 흐름을 프론트 정적 node catalog 중심 구조에서 `source service -> canonical data type -> processing -> sink service` 구조로 재정의한다.
-> **문서 성격**
+> **작성일:** 2026-04-19
+> **수정일:** 2026-04-20
+> **목적:** 시작/도착 노드 흐름을 프론트 정적 node catalog 중심 구조에서 `source service -> canonical data type -> processing -> sink service` 구조로 재정의한다.
+> **문서 성격:**
 > - 이 문서는 **지금 바로 구현 가능한 FE 상세 명세서가 아니다**
 > - 이 문서는 **목표 상태 정의 + 백엔드 선행 계약 + FE 전환 규칙**을 정리하는 문서다
-> **우선순위**
+> **우선순위:**
 > - 시작/도착 노드의 목표 구조 정의는 이 문서가 우선한다
 > - 단, 실제 lifecycle과 현재 구현 동작은 `NODE_SETUP_WIZARD_DESIGN.md`를 함께 참고해야 한다
 

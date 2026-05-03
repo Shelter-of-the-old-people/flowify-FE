@@ -1,13 +1,5 @@
 # 대시보드 페이지 설계 문서
 
-## Follow-up Fixes
-
-- 연결된 서비스 카드에 직접 연결 해제 액션을 추가했다.
-- 액션은 텍스트 버튼 대신 코드베이스의 기존 패턴에 맞춰 `MdCancel` 아이콘 버튼으로 맞췄다.
-- 사용자는 계정 페이지로 이동하지 않고도 대시보드에서 바로 Google Drive 같은 OAuth 연결을 끊고 다시 연결할 수 있다.
-- Google Drive가 끊긴 뒤 `연동 준비 중`으로 잠기지 않도록 FE의 connectable service 판정을 실제 백엔드 지원 서비스 기준으로 바로잡았다.
-- 서비스 연결이 끝나면 `/oauth/callback`에서 404로 멈추지 않고, 연결을 시작한 앱 화면으로 다시 복귀하도록 콜백 복귀 경로를 보강했다.
-
 > **작성일:** 2026-04-14
 > **이슈:** #87
 > **브랜치:** `feat#87-dashboard-page`
@@ -15,6 +7,16 @@
 > **참조 Figma:** `https://www.figma.com/design/liTdK7QHV5tufaQW8DwV6U/Untitled?node-id=1974-1681&m=dev`
 > **관련 문서:** `docs/CONVENTION.md`, `docs/FRONTEND_DESIGN_DOCUMENT.md`, `docs/BACKEND_INTEGRATION_DESIGN.md`, `docs/WORKFLOW_LIST_PAGE_DESIGN.md`, `docs/TEMPLATE_LIST_PAGE_DESIGN.md`
 > **목적:** 앱 셸 내부의 홈 진입 화면을 `/dashboard`로 분리하고, Figma 시안 기준의 대시보드 UI와 현재 프론트 데이터 소스 간의 정합성을 정리한다.
+
+---
+
+## 후속 수정
+
+- 연결된 서비스 카드에 직접 연결 해제 액션을 추가했다.
+- 액션은 텍스트 버튼 대신 코드베이스의 기존 패턴에 맞춰 `MdCancel` 아이콘 버튼으로 맞췄다.
+- 사용자는 계정 페이지로 이동하지 않고도 대시보드에서 바로 Google Drive 같은 OAuth 연결을 끊고 다시 연결할 수 있다.
+- Google Drive가 끊긴 뒤 `연동 준비 중`으로 잠기지 않도록 FE의 connectable service 판정을 실제 백엔드 지원 서비스 기준으로 바로잡았다.
+- 서비스 연결이 끝나면 `/oauth/callback`에서 404로 멈추지 않고, 연결을 시작한 앱 화면으로 다시 복귀하도록 콜백 복귀 경로를 보강했다.
 
 ---
 

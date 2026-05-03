@@ -1,8 +1,8 @@
 # Persisted Workflow Editor 전환 설계
 
-> **작성일** 2026-04-17
-> **최종 보강일** 2026-04-18
-> **대상 범위**
+> **작성일:** 2026-04-17
+> **최종 보강일:** 2026-04-18
+> **대상 범위:**
 > - `src/features/create-workflow/model/useCreateWorkflowShortcut.ts`
 > - `src/pages/workflow-editor/WorkflowEditorPage.tsx`
 > - `src/widgets/output-panel/ui/OutputPanel.tsx`
@@ -10,7 +10,7 @@
 > - `src/widgets/editor-remote-bar/ui/EditorRemoteBar.tsx`
 > - `src/features/workflow-editor/model/workflowStore.ts`
 > - `src/features/workflow-editor/model/workflow-editor-adapter.ts`
-> **목적** 워크플로우 생성 버튼이 이미 서버에 빈 workflow를 생성하고 editor로 진입시키는 현재 구조에 맞춰, editor 내부의 local draft 경로를 제거하고 persisted workflow 전용 편집 surface로 정렬한다. 추가로, 실행 상태를 `executionId` 기반으로 추적하고, 그래프 동기화를 mutation 응답의 `WorkflowResponse` 기준으로 통일한다.
+> **목적:** 워크플로우 생성 버튼이 이미 서버에 빈 workflow를 생성하고 editor로 진입시키는 현재 구조에 맞춰, editor 내부의 local draft 경로를 제거하고 persisted workflow 전용 편집 surface로 정렬한다. 추가로, 실행 상태를 `executionId` 기반으로 추적하고, 그래프 동기화를 mutation 응답의 `WorkflowResponse` 기준으로 통일한다.
 
 ---
 
