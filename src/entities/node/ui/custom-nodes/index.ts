@@ -8,6 +8,7 @@ export * from "./FilterNode";
 export * from "./LLMNode";
 export * from "./LoopNode";
 export * from "./MultiOutputNode";
+export * from "./NextStepChoiceNode";
 export * from "./NotificationNode";
 export * from "./OutputFormatNode";
 export * from "./PlaceholderNode";

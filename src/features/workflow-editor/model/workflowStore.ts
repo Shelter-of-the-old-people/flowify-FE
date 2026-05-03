@@ -17,9 +17,11 @@ import {
   type WorkflowNodeStatusMap,
 } from "./workflow-editor-adapter";
 
-type PlaceholderInfo = {
+export type PlaceholderInfo = {
   id: string;
+  kind: "start" | "sink";
   position: { x: number; y: number };
+  sourceNodeId?: string | null;
 };
 
 type NodePosition = {
@@ -41,7 +43,6 @@ interface WorkflowEditorState {
   activePanelNodeId: string | null;
   startNodeId: string | null;
   endNodeId: string | null;
-  creationMethod: "manual" | null;
   activePlaceholder: PlaceholderInfo | null;
   workflowId: string;
   workflowName: string;
@@ -76,7 +77,6 @@ interface WorkflowEditorActions {
   setEditorCapabilities: (capabilities: WorkflowEditorCapabilities) => void;
   setStartNodeId: (id: string | null) => void;
   setEndNodeId: (id: string | null) => void;
-  setCreationMethod: (method: "manual" | null) => void;
   setActivePlaceholder: (placeholder: PlaceholderInfo | null) => void;
   applyLayoutPositions: (
     updates: Array<{ nodeId: string; position: NodePosition }>,
@@ -93,7 +93,6 @@ const initialState: WorkflowEditorState = {
   activePanelNodeId: null,
   startNodeId: null,
   endNodeId: null,
-  creationMethod: null,
   activePlaceholder: null,
   workflowId: "",
   workflowName: "",
@@ -254,14 +253,6 @@ export const useWorkflowStore = create<
         }
       }),
 
-    setCreationMethod: (method) =>
-      set((state) => {
-        state.creationMethod = method;
-        if (!state._isSyncing) {
-          state.isDirty = true;
-        }
-      }),
-
     setActivePlaceholder: (placeholder) =>
       set((state) => {
         state.activePlaceholder = placeholder;
@@ -317,7 +308,6 @@ export const useWorkflowStore = create<
         state.nodeStatuses = payload.nodeStatuses;
         state.startNodeId = payload.startNodeId;
         state.endNodeId = payload.endNodeId;
-        state.creationMethod = payload.creationMethod;
         state.activePanelNodeId = null;
         state.activePlaceholder = null;
         state.unsavedNodePositions = {};
@@ -349,7 +339,6 @@ export const useWorkflowStore = create<
         state.nodeStatuses = payload.nodeStatuses;
         state.startNodeId = payload.startNodeId;
         state.endNodeId = payload.endNodeId;
-        state.creationMethod = payload.creationMethod;
         state.unsavedNodePositions = preservedUnsavedNodePositions;
         state.activePanelNodeId = preserveActivePanelNodeId
           ? hasNode(payload.nodes, state.activePanelNodeId)

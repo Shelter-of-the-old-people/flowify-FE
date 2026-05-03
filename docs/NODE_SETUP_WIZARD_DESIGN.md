@@ -1,9 +1,16 @@
 # 노드 설정 위자드 상세 설계
 
 > **작성일:** 2026-04-05
-> **최종 수정:** 2026-04-08 (v4.3 — 반응형 듀얼 패널 유지 + 화살표형 custom edge 설계 추가)
+> **최종 수정:** 2026-05-03 (v4.4 — 다음 단계 placeholder 통합 설계 반영)
 > **선행 문서:** [FRONTEND_DESIGN_DOCUMENT.md](./FRONTEND_DESIGN_DOCUMENT.md), [FOUNDATION_IMPLEMENTATION_PLAN.md](./FOUNDATION_IMPLEMENTATION_PLAN.md)
 > **목적:** 시작/도착 노드 및 중간 노드의 설정 위자드 흐름을 설계한다.
+>
+> **v4.4 변경 요약:**
+> - `다음` placeholder와 `도착` placeholder를 **`다음 단계` placeholder 하나로 통합**
+> - `다음 단계` 클릭 시 캔버스 노드에서 `중간 처리 추가` / `보낼 곳 설정`을 선택
+> - `보낼 곳 설정` 선택 시 ServiceSelectionPanel이 `sourceNodeId`를 받아 해당 노드 뒤에 도착 노드를 생성
+> - 도착 노드가 생성되면 terminal로 간주하고 후속 `다음 단계` placeholder를 숨김
+> - `CreationMethodNode`, `creationMethod` 기반 수동/AI 생성 방식 분기는 제거 대상
 >
 > **v4.3 변경 요약:**
 > - 시작/도착 노드 위자드: **실제 캔버스 placeholder/node 기준**으로 SSP 카드가 오른쪽 `48px`에 anchor됨 (`[실제 캔버스 placeholder 또는 노드] —48px— [위자드 카드]`)
@@ -13,7 +20,7 @@
 > - Edge 렌더링: `smoothstep` 선 중심 표현에서 **화살표형 custom edge**로 전환
 > - 일반 직렬 연결과 분기 연결 모두 **EdgeLabelRenderer 기반 방향 표시** 사용
 > - 설정 중 노드 위 불필요한 서비스 아이콘 완전 제거
-> - "생성 방식을 결정하세요" → 모든 위자드 단계 완료 후에만 표시
+> - "생성 방식을 결정하세요" → 모든 위자드 단계 완료 후에만 표시 (v4.4에서 제거 대상)
 > - 패널 사이에 설정 중인 노드 체인만 표시 (다른 노드 숨김)
 > - SSP 내부에 placeholder나 선택된 서비스 preview를 **중복 렌더링하지 않음**
 > - 시작/도착 위자드 step 전환 시 **패널 외곽 위치는 고정**되고, 카드 내부 내용만 변경됨
@@ -68,7 +75,7 @@
                                       내부 내용만 교체
 ```
 
-- **앵커 대상:** 실제 캔버스의 `placeholder-start`, `placeholder-end`, 또는 service 선택 후 배치된 미완료 노드
+- **앵커 대상:** 실제 캔버스의 `placeholder-start`, `다음 단계`에서 `보낼 곳 설정`을 선택한 위치, 또는 service 선택 후 배치된 미완료 노드
 - **앵커 ↔ 위자드 카드 간격:** 48px (시작·도착 동일)
 - **위자드 카드:** 흰 배경, border `#f2f2f2`, `border-radius: 20px`, `box-shadow: 0 4px 4px rgba(0,0,0,0.25)`, padding 48px
 - **가이드라인 제목:** 카드 상단 중앙, bold 24px, padding-bottom 24px
@@ -196,14 +203,16 @@ node.data.config = {
 - 중간 노드: 설정 완료 전까지 별도 아이콘 없음
 - 서비스 아이콘은 **위자드가 완전히 끝나고 isConfigured: true가 된 후에만** 노드 위에 표시
 
-### 1.8 "생성 방식을 결정하세요" 표시 규칙
+### 1.8 다음 단계 placeholder 통합 규칙
 
-도착 노드 설정 후 나타나는 "생성 방식을 결정하세요" (CreationMethodNode) UI는 **도착 노드의 모든 위자드 단계가 완료된 후에만** 표시한다.
+도착 노드 설정 전에는 leaf 노드마다 `다음 단계` placeholder 하나만 표시한다. 이 placeholder를 클릭하면 캔버스 위에서 다음 두 선택지를 제공한다.
 
-```
-위자드 진행 중 → CreationMethodNode 숨김
-위자드 완료 (isConfigured: true) → CreationMethodNode 표시
-```
+| 선택지 | 동작 |
+|--------|------|
+| `중간 처리 추가` | 해당 leaf 뒤에 중간 노드를 생성하고 `OutputPanel` 위자드로 진입 |
+| `보낼 곳 설정` | 해당 leaf를 `sourceNodeId`로 넘겨 `ServiceSelectionPanel` 도착 노드 설정으로 진입 |
+
+`CreationMethodNode`와 `creationMethod` 상태는 더 이상 사용하지 않는다. 도착 노드가 생성되면 워크플로우의 terminal로 간주하여 후속 `다음 단계` placeholder를 숨긴다.
 
 ---
 
@@ -212,6 +221,8 @@ node.data.config = {
 ### 2.1 시작/도착 노드 설정 흐름
 
 시작/도착 노드는 **ServiceSelectionPanel 내부**에서 모든 단계를 완료한다. 단, SSP는 별도의 왼쪽 노드 영역을 만들지 않고 **실제 캔버스 placeholder/node를 기준으로 오른쪽 48px에 카드만 띄운다**.
+
+v4.4 기준 도착 노드 설정은 독립 `placeholder-end`를 클릭해서 시작하지 않는다. 사용자는 leaf 노드 뒤의 `다음 단계` placeholder를 클릭하고, `보낼 곳 설정`을 선택한다. 이때 Canvas는 `activePlaceholder.kind = "sink"`와 `sourceNodeId`를 저장하고, SSP는 이 `sourceNodeId` 뒤에 도착 노드를 생성한다.
 
 1. Placeholder 클릭  
 레이아웃: `[실제 캔버스 placeholder] ─48px─ [카테고리 카드]`
@@ -349,10 +360,20 @@ v1에서 사용하던 다음 3개 필드를 **store에서 제거**한다:
 
 | 필드 | 용도 |
 |------|------|
-| `activePlaceholder` | ServiceSelectionPanel 표시 여부 + 위치 정보 |
+| `activePlaceholder` | ServiceSelectionPanel 표시 여부 + `kind`, 위치, 도착 source 정보 |
 | `activePanelNodeId` | InputPanel/OutputPanel 표시 대상 노드 |
 | `startNodeId` / `endNodeId` | 시작/도착 노드 추적 |
-| `creationMethod` | 수동/AI 생성 모드 |
+
+```typescript
+type PlaceholderInfo = {
+  id: string;
+  kind: "start" | "sink";
+  position: { x: number; y: number };
+  sourceNodeId?: string | null;
+};
+```
+
+`kind: "sink"`는 `다음 단계` 선택 노드에서 `보낼 곳 설정`을 고른 경우에만 만들어진다. 이때 `sourceNodeId`는 도착 노드의 `prevNodeId`가 된다.
 
 ### 3.3 v4 추가 상태 — 중간 노드 위자드 모드
 
@@ -421,7 +442,6 @@ updateNodeConfig: (nodeId, config) =>
 - `activePanelNodeId`
 - `startNodeId`
 - `endNodeId`
-- `creationMethod`
 
 ---
 
@@ -433,7 +453,8 @@ ServiceSelectionPanel은 **시작/도착 노드 전용**이다. 중간 노드는
 
 | 진입 조건 | 처리 단계 |
 |-----------|-----------|
-| 시작/도착 placeholder 클릭 (`placeholder-start` 또는 `placeholder-end`) | category → service → requirement → auth (전체) |
+| 시작 placeholder 클릭 (`kind: "start"`) | source service → auth → mode → target → confirm |
+| `다음 단계`에서 `보낼 곳 설정` 선택 (`kind: "sink"`) | sink service → auth → confirm |
 
 **표시 원칙:**
 - SSP는 실제 캔버스의 placeholder 또는 미완료 노드를 기준으로 카드만 anchor한다
@@ -485,12 +506,14 @@ ServiceSelectionPanel은 **시작/도착 노드 전용**이다. 중간 노드는
 
 ```typescript
 const isStartOrEndPlaceholder =
-  activePlaceholder?.id === "placeholder-start" ||
-  activePlaceholder?.id === "placeholder-end";
+  activePlaceholder?.kind === "start" ||
+  activePlaceholder?.kind === "sink";
 
 // ServiceSelectionPanel은 isStartOrEndPlaceholder일 때만 렌더링
 if (!isStartOrEndPlaceholder) return null;
 ```
+
+도착 노드 생성 시에는 leaf 재계산보다 `activePlaceholder.sourceNodeId`를 우선 사용한다. fallback leaf 계산은 기존 데이터 복구용으로만 둔다.
 
 ### 4.4 로컬 상태
 
@@ -1124,28 +1147,33 @@ interface FollowUpStepProps {
 // UI: follow_up 또는 branch_config 기반 선택/입력
 ```
 
-### 5.12 중간 placeholder 클릭 시 진입 흐름
+### 5.12 다음 단계 placeholder 클릭 시 진입 흐름
 
-v3에서는 중간 placeholder 클릭 시 ChoicePanel이 열렸다. v4에서는:
+v4.4에서는 중간 placeholder와 도착 placeholder를 분리하지 않는다. leaf 뒤의 `다음 단계` placeholder를 클릭하면 Canvas가 선택 노드를 띄우고, 사용자의 선택에 따라 중간 노드 생성 또는 도착 노드 설정으로 분기한다.
 
 ```typescript
-// Canvas.tsx — handlePlaceholderClick (중간 placeholder)
-const handleMiddlePlaceholderClick = (placeholderId: string) => {
-  const leafId = placeholderId.replace("placeholder-", "");
+// Canvas.tsx — 다음 단계 선택
+const handleNextStepClick = (sourceNodeId: string, position: XYPosition) => {
+  setActiveNextStep({ sourceNodeId, position });
+};
 
-  // 1. 노드 배치 (isConfigured: false)
-  const meta = getDefaultMiddleNodeMeta(); // 또는 적절한 기본 meta
-  const nodeId = placeNode(meta);
-  if (!nodeId) return;
-
-  // 2. 듀얼 패널 열기
-  openPanel(nodeId);
-
+const handleSelectMiddleNode = () => {
+  // 1. sourceNodeId 뒤에 중간 노드 생성 (isConfigured: false)
+  // 2. openPanel(addedNodeId)
   // 3. OutputPanel은 isConfigured === false를 감지하여 위자드 모드 진입
+};
+
+const handleSelectSinkNode = () => {
+  setActivePlaceholder({
+    id: `placeholder-sink-${sourceNodeId}`,
+    kind: "sink",
+    position,
+    sourceNodeId,
+  });
 };
 ```
 
-> **activePlaceholder는 사용하지 않는다.** 중간 노드는 `activePanelNodeId`를 통해 듀얼 패널을 열고, OutputPanel의 위자드 모드를 활성화한다.
+> 중간 노드 생성에는 `activePlaceholder`를 사용하지 않는다. 도착 노드 설정에만 `activePlaceholder.kind = "sink"`를 사용한다.
 
 ### 5.13 applicable_when 필터링
 
@@ -1557,24 +1585,26 @@ const showServiceIcon = node.data.config.isConfigured;
 )}
 ```
 
-### 9.8 CreationMethodNode 표시 조건
+### 9.8 다음 단계 placeholder 표시 조건
 
-"생성 방식을 결정하세요" (CreationMethodNode)는 **도착 노드의 설정이 완전히 완료된 후에만** 표시한다:
+`다음 단계` placeholder는 시작 노드가 있고 도착 노드가 없을 때만 leaf 노드 뒤에 표시한다. 도착 노드가 생성되면 워크플로우 terminal이 확정된 상태이므로 더 이상 후속 placeholder를 표시하지 않는다.
 
 ```typescript
 // Canvas.tsx — nodesWithPlaceholders
-const showCreationMethod = useMemo(() => {
-  if (!endNodeId) return false;
+if (startNodeId && !endNodeId) {
+  const leafIds = getLeafNodeIds(nodes.map((node) => node.id), edges);
 
-  const endNode = nodes.find((n) => n.id === endNodeId);
-  return endNode?.data.config.isConfigured === true;
-}, [endNodeId, nodes]);
-
-// CreationMethodNode는 showCreationMethod가 true일 때만 추가
-if (showCreationMethod) {
-  placeholderNodes.push(creationMethodNode);
+  leafIds.forEach((leafId) => {
+    placeholderNodes.push({
+      id: `placeholder-next-${leafId}`,
+      type: "placeholder",
+      data: { label: "다음 단계", sourceNodeId: leafId },
+    });
+  });
 }
 ```
+
+`CreationMethodNode`는 v4.4에서 사용하지 않는다.
 
 ---
 
@@ -1902,9 +1932,10 @@ removeNode: (id) =>
 | **추가** | 듀얼 패널 레이아웃 컨테이너 (`useDualPanelLayout(canvasRect)` 기반, `wide/compact/stacked`) |
 | **추가** | 패널 열림 시 관련 노드만 표시 (나머지 hidden) |
 | **추가** | 노드 체인 표시 (이전→현재→다음, 화살표) |
+| **추가** | `다음 단계` 선택 노드 — `중간 처리 추가` / `보낼 곳 설정` 분기 |
 | **변경** | edge 렌더링 → `smoothstep` 대신 `flow-arrow` custom edge 적용 |
-| **변경** | 중간 placeholder 클릭 → `activePlaceholder` 대신 `openPanel()` 사용 |
-| **변경** | CreationMethodNode 표시 조건 → 도착 노드 `isConfigured: true` 이후에만 |
+| **변경** | 중간 placeholder와 도착 placeholder → leaf 뒤 `다음 단계` placeholder 하나로 통합 |
+| **변경** | `CreationMethodNode` 표시 흐름 제거 |
 | **변경** | 설정 중 서비스 아이콘 미표시 |
 | 유지 | `onPaneClick`, ESC 키 리스너, 노드 중앙 고정, 드래그 비활성화 |
 
@@ -1929,6 +1960,8 @@ removeNode: (id) =>
 | 변경 | 내용 |
 |------|------|
 | 유지 | wizard 상태 제거 (v2에서 완료) |
+| **변경** | `activePlaceholder.kind`와 `sourceNodeId`로 시작/도착 진입 맥락 구분 |
+| **제거** | `creationMethod` 상태 |
 | 유지 | `updateNodeConfig` merge 방식 |
 | 유지 | `removeNode` 패널 정리 |
 

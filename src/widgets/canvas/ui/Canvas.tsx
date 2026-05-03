@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { type MouseEvent } from "react";
 
 import {
@@ -23,13 +23,13 @@ import {
   CalendarNode,
   CommunicationNode,
   ConditionNode,
-  CreationMethodNode,
   DataProcessNode,
   EarlyExitNode,
   FilterNode,
   LLMNode,
   LoopNode,
   MultiOutputNode,
+  NextStepChoiceNode,
   NodeEditorProvider,
   NotificationNode,
   OutputFormatNode,
@@ -47,11 +47,7 @@ import {
   useAddWorkflowNodeMutation,
   useDeleteWorkflowNodeMutation,
 } from "@/entities/workflow";
-import {
-  canStartProcessingAfterSinkSelection,
-  hydrateStore,
-  useWorkflowStore,
-} from "@/features/workflow-editor";
+import { hydrateStore, useWorkflowStore } from "@/features/workflow-editor";
 import { getLeafNodeIds } from "@/shared";
 import { toaster } from "@/shared/utils/toaster/toaster";
 
@@ -61,8 +57,17 @@ const DEFAULT_FLOW_NODE_WIDTH = 172;
 const DEFAULT_FLOW_NODE_HEIGHT = 176;
 const PLACEHOLDER_NODE_WIDTH = 100;
 const PLACEHOLDER_NODE_HEIGHT = 134;
-const CREATION_METHOD_NODE_WIDTH = 244;
-const CREATION_METHOD_NODE_HEIGHT = 112;
+const NEXT_STEP_CHOICE_NODE_WIDTH = 244;
+const NEXT_STEP_CHOICE_NODE_HEIGHT = 148;
+
+type ActiveNextStep = {
+  centerY: number;
+  position: { x: number; y: number };
+  sourceNodeId: string;
+};
+
+const getNextStepPlaceholderId = (nodeId: string) =>
+  `placeholder-next-${nodeId}`;
 
 const getTopYFromCenter = (centerY: number, height: number) =>
   centerY - height / 2;
@@ -77,13 +82,13 @@ const getNodeHeight = (node: Node, fallbackHeight = DEFAULT_FLOW_NODE_HEIGHT) =>
 
 const getNodeFallbackWidth = (node: Node) => {
   if (node.type === "placeholder") return PLACEHOLDER_NODE_WIDTH;
-  if (node.type === "creation-method") return CREATION_METHOD_NODE_WIDTH;
+  if (node.type === "next-step-choice") return NEXT_STEP_CHOICE_NODE_WIDTH;
   return DEFAULT_FLOW_NODE_WIDTH;
 };
 
 const getNodeFallbackHeight = (node: Node) => {
   if (node.type === "placeholder") return PLACEHOLDER_NODE_HEIGHT;
-  if (node.type === "creation-method") return CREATION_METHOD_NODE_HEIGHT;
+  if (node.type === "next-step-choice") return NEXT_STEP_CHOICE_NODE_HEIGHT;
   return DEFAULT_FLOW_NODE_HEIGHT;
 };
 
@@ -137,7 +142,7 @@ const createVirtualPlaceholderNode = (
   hidden: true,
 });
 
-type CanvasNodeType = NodeType | "placeholder" | "creation-method";
+type CanvasNodeType = NodeType | "placeholder" | "next-step-choice";
 
 const nodeTypes = {
   communication: CommunicationNode,
@@ -156,7 +161,7 @@ const nodeTypes = {
   notification: NotificationNode,
   llm: LLMNode,
   placeholder: PlaceholderNode,
-  "creation-method": CreationMethodNode,
+  "next-step-choice": NextStepChoiceNode,
 } satisfies Record<CanvasNodeType, NodeTypes[string]>;
 
 const edgeTypes = {
@@ -180,10 +185,6 @@ export const Canvas = () => {
   const onConnect = useWorkflowStore((state) => state.onConnect);
   const startNodeId = useWorkflowStore((state) => state.startNodeId);
   const endNodeId = useWorkflowStore((state) => state.endNodeId);
-  const creationMethod = useWorkflowStore((state) => state.creationMethod);
-  const setCreationMethod = useWorkflowStore(
-    (state) => state.setCreationMethod,
-  );
   const canEditNodes = useWorkflowStore(
     (state) => state.editorCapabilities.canEditNodes,
   );
@@ -202,6 +203,9 @@ export const Canvas = () => {
   );
   const openPanel = useWorkflowStore((state) => state.openPanel);
   const closePanel = useWorkflowStore((state) => state.closePanel);
+  const [activeNextStep, setActiveNextStep] = useState<ActiveNextStep | null>(
+    null,
+  );
   const { mutateAsync: addWorkflowNode, isPending: isAddNodePending } =
     useAddWorkflowNodeMutation();
   const { mutateAsync: deleteWorkflowNode, isPending: isDeleteNodePending } =
@@ -265,7 +269,12 @@ export const Canvas = () => {
   const handleNodesChange = useCallback(
     (changes: NodeChange[]) => {
       const filtered = changes.filter(
-        (change) => !("id" in change && change.id.startsWith("placeholder-")),
+        (change) =>
+          !(
+            "id" in change &&
+            (change.id.startsWith("placeholder-") ||
+              change.id.startsWith("next-step-choice-"))
+          ),
       );
       if (filtered.length > 0) {
         onNodesChange(filtered);
@@ -276,16 +285,102 @@ export const Canvas = () => {
 
   const { getZoom, setCenter } = useReactFlow();
 
+  const handleCreateMiddleNode = useCallback(
+    async ({
+      position,
+      sourceNodeId,
+    }: {
+      position: { x: number; y: number };
+      sourceNodeId: string;
+    }) => {
+      if (isAddNodePending || isDeleteNodePending) {
+        return;
+      }
+
+      const sourceNode = nodes.find(
+        (currentNode) => currentNode.id === sourceNodeId,
+      );
+      const sourceOutputType = sourceNode?.data.outputTypes[0] ?? null;
+
+      if (!workflowId) {
+        toaster.create({
+          title: "워크플로우 정보를 불러오지 못했습니다",
+          description: "페이지를 새로고침해주세요.",
+          type: "error",
+        });
+        return;
+      }
+
+      try {
+        const previousNodes = useWorkflowStore.getState().nodes;
+        const nextWorkflow = await addWorkflowNode({
+          workflowId,
+          body: toNodeAddRequest({
+            type: "data-process",
+            position,
+            role: "middle",
+            prevNodeId: sourceNodeId,
+            inputTypes: sourceNode
+              ? [...sourceNode.data.outputTypes]
+              : undefined,
+            outputTypes: sourceOutputType ? [sourceOutputType] : undefined,
+          }),
+        });
+
+        const addedNodeId =
+          findAddedNodeId(previousNodes, nextWorkflow.nodes) ??
+          nextWorkflow.nodes.at(-1)?.id ??
+          null;
+        const addedNode =
+          addedNodeId !== null
+            ? (nextWorkflow.nodes.find(
+                (currentNode) => currentNode.id === addedNodeId,
+              ) ?? null)
+            : null;
+
+        if (!addedNodeId || !addedNode) {
+          toaster.create({
+            title: "노드 추가 실패",
+            description: "서버 응답을 해석하지 못했습니다.",
+            type: "error",
+          });
+          return;
+        }
+
+        syncWorkflowFromResponse(nextWorkflow);
+        setActivePlaceholder(null);
+        setActiveNextStep(null);
+        openPanel(addedNodeId);
+      } catch {
+        toaster.create({
+          title: "노드 추가 실패",
+          description: "노드를 추가하지 못했습니다. 잠시 후 다시 시도해주세요.",
+          type: "error",
+        });
+      }
+    },
+    [
+      addWorkflowNode,
+      isAddNodePending,
+      isDeleteNodePending,
+      nodes,
+      openPanel,
+      setActivePlaceholder,
+      syncWorkflowFromResponse,
+      workflowId,
+    ],
+  );
+
   const handleNodeClick = useCallback(
     async (_event: MouseEvent, node: Node) => {
       if (
         !canEditNodes &&
-        (node.type === "creation-method" || node.type === "placeholder")
+        (node.type === "next-step-choice" || node.type === "placeholder")
       ) {
         return;
       }
 
-      if (node.type === "creation-method") {
+      if (node.type === "next-step-choice") {
         return;
       }
 
@@ -297,117 +392,51 @@ export const Canvas = () => {
           y: getTopYFromCenter(centerY, DEFAULT_FLOW_NODE_HEIGHT),
         };
 
-        const isStartOrEndPlaceholder =
-          node.id === "placeholder-start" || node.id === "placeholder-end";
-        const isMiddlePlaceholder = !isStartOrEndPlaceholder;
-
-        if (isMiddlePlaceholder && (isAddNodePending || isDeleteNodePending)) {
-          return;
-        }
-
         closePanel();
 
-        if (isStartOrEndPlaceholder) {
+        if (node.id === "placeholder-start") {
+          setActiveNextStep(null);
           setActivePlaceholder({
             id: node.id,
+            kind: "start",
             position: panelNodePosition,
           });
-        } else {
-          const sourceNodeId = node.id.replace("placeholder-", "");
-          const sourceNode = nodes.find(
-            (currentNode) => currentNode.id === sourceNodeId,
-          );
-          const sourceOutputType = sourceNode?.data.outputTypes[0] ?? null;
 
-          if (!workflowId) {
-            toaster.create({
-              title: "워크플로우 정보를 불러오지 못했습니다",
-              description: "페이지를 새로고침해주세요.",
-              type: "error",
-            });
-            return;
-          }
-
-          try {
-            const previousNodes = useWorkflowStore.getState().nodes;
-            const nextWorkflow = await addWorkflowNode({
-              workflowId,
-              body: toNodeAddRequest({
-                type: "data-process",
-                position: panelNodePosition,
-                role: "middle",
-                prevNodeId: sourceNodeId,
-                inputTypes: sourceNode
-                  ? [...sourceNode.data.outputTypes]
-                  : undefined,
-                outputTypes: sourceOutputType ? [sourceOutputType] : undefined,
-              }),
-            });
-
-            const addedNodeId =
-              findAddedNodeId(previousNodes, nextWorkflow.nodes) ??
-              nextWorkflow.nodes.at(-1)?.id ??
-              null;
-            const addedNode =
-              addedNodeId !== null
-                ? (nextWorkflow.nodes.find(
-                    (currentNode) => currentNode.id === addedNodeId,
-                  ) ?? null)
-                : null;
-
-            if (!addedNodeId || !addedNode) {
-              toaster.create({
-                title: "노드 추가 실패",
-                description: "서버 응답을 해석하지 못했습니다.",
-                type: "error",
-              });
-              return;
-            }
-
-            syncWorkflowFromResponse(nextWorkflow);
-            setActivePlaceholder(null);
-            openPanel(addedNodeId);
-          } catch {
-            toaster.create({
-              title: "노드 추가 실패",
-              description:
-                "노드를 추가하지 못했습니다. 잠시 후 다시 시도해주세요.",
-              type: "error",
-            });
-            return;
-          }
-        }
-
-        const viewportWidth = window.innerWidth;
-        const offsetX = viewportWidth * 0.2;
-
-        if (isStartOrEndPlaceholder) {
+          const viewportWidth = window.innerWidth;
+          const offsetX = viewportWidth * 0.2;
           setCenter(node.position.x + offsetX, centerY, {
             zoom: 1,
             duration: 300,
           });
+          return;
         }
+
+        const rawSourceNodeId = node.data?.sourceNodeId;
+        const sourceNodeId =
+          typeof rawSourceNodeId === "string"
+            ? rawSourceNodeId
+            : node.id.replace("placeholder-next-", "");
+
+        setActivePlaceholder(null);
+        setActiveNextStep({
+          centerY,
+          position: panelNodePosition,
+          sourceNodeId,
+        });
       } else {
+        setActiveNextStep(null);
         setActivePlaceholder(null);
         openPanel(node.id);
       }
     },
-    [
-      addWorkflowNode,
-      canEditNodes,
-      closePanel,
-      isAddNodePending,
-      isDeleteNodePending,
-      nodes,
-      openPanel,
-      setActivePlaceholder,
-      setCenter,
-      syncWorkflowFromResponse,
-      workflowId,
-    ],
+    [canEditNodes, closePanel, openPanel, setActivePlaceholder, setCenter],
   );
 
   const handlePaneClick = useCallback(() => {
+    if (activeNextStep) {
+      setActiveNextStep(null);
+    }
+
     if (activePlaceholder) {
       setActivePlaceholder(null);
     }
@@ -415,15 +444,13 @@ export const Canvas = () => {
     if (activePanelNodeId) {
       closePanel();
     }
-  }, [activePanelNodeId, activePlaceholder, closePanel, setActivePlaceholder]);
-
-  const handleSelectManual = useCallback(() => {
-    if (!canEditNodes) {
-      return;
-    }
-
-    setCreationMethod("manual");
-  }, [canEditNodes, setCreationMethod]);
+  }, [
+    activeNextStep,
+    activePanelNodeId,
+    activePlaceholder,
+    closePanel,
+    setActivePlaceholder,
+  ]);
 
   const handleConnect = useCallback(
     (connection: Parameters<typeof onConnect>[0]) => {
@@ -450,12 +477,50 @@ export const Canvas = () => {
     [canEditNodes, nodes, onConnect],
   );
 
+  const handleSelectMiddleNode = useCallback(() => {
+    if (!activeNextStep) {
+      return;
+    }
+
+    void handleCreateMiddleNode({
+      position: activeNextStep.position,
+      sourceNodeId: activeNextStep.sourceNodeId,
+    });
+  }, [activeNextStep, handleCreateMiddleNode]);
+
+  const handleSelectSinkNode = useCallback(() => {
+    if (!activeNextStep) {
+      return;
+    }
+
+    closePanel();
+    setActivePlaceholder({
+      id: `placeholder-sink-${activeNextStep.sourceNodeId}`,
+      kind: "sink",
+      position: activeNextStep.position,
+      sourceNodeId: activeNextStep.sourceNodeId,
+    });
+    setActiveNextStep(null);
+
+    const viewportWidth = window.innerWidth;
+    const offsetX = viewportWidth * 0.2;
+    setCenter(activeNextStep.position.x + offsetX, activeNextStep.centerY, {
+      zoom: 1,
+      duration: 300,
+    });
+  }, [activeNextStep, closePanel, setActivePlaceholder, setCenter]);
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
 
       if (activePlaceholder) {
         setActivePlaceholder(null);
+        return;
+      }
+
+      if (activeNextStep) {
+        setActiveNextStep(null);
         return;
       }
 
@@ -466,20 +531,17 @@ export const Canvas = () => {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [activePanelNodeId, activePlaceholder, closePanel, setActivePlaceholder]);
+  }, [
+    activeNextStep,
+    activePanelNodeId,
+    activePlaceholder,
+    closePanel,
+    setActivePlaceholder,
+  ]);
 
   const nodesWithPlaceholders = useMemo(() => {
     const result: Node[] = [...nodes];
-    const endNode = endNodeId
-      ? (nodes.find((node) => node.id === endNodeId) ?? null)
-      : null;
-    const showCreationMethod = canStartProcessingAfterSinkSelection({
-      creationMethod,
-      endNode,
-      startNodeId,
-    });
 
-    // 분기 1: 시작/도착 미설정 → placeholder 표시
     if (!startNodeId) {
       result.push({
         id: "placeholder-start",
@@ -496,94 +558,23 @@ export const Canvas = () => {
       });
     }
 
-    if (!endNodeId && !creationMethod) {
-      // 도착 노드 미설정 & 수동 모드 아님 → 시작 노드 옆에 도착 placeholder
-      const startNode = nodes.find((n) => n.id === startNodeId);
-      const anchorX = startNode
-        ? startNode.position.x + getNodeWidth(startNode) + NODE_GAP_X
-        : PLACEHOLDER_NODE_WIDTH + NODE_GAP_X;
-      const anchorCenterY = startNode
-        ? getNodeCenterY(startNode)
-        : DEFAULT_ROW_CENTER_Y;
-
-      result.push({
-        id: "placeholder-end",
-        type: "placeholder",
-        position: {
-          x: anchorX,
-          y: getTopYFromCenter(anchorCenterY, PLACEHOLDER_NODE_HEIGHT),
-        },
-        data: { label: "도착" },
-        initialWidth: PLACEHOLDER_NODE_WIDTH,
-        initialHeight: PLACEHOLDER_NODE_HEIGHT,
-        selectable: false,
-        draggable: false,
-      });
-    }
-
-    // 분기 2: 둘 다 설정됨 + 생성 방식 미결정
-    if (showCreationMethod) {
-      const startNode = nodes.find((n) => n.id === startNodeId);
-      const startX = startNode?.position.x ?? 0;
-      const startWidth = startNode
-        ? getNodeWidth(startNode)
-        : DEFAULT_FLOW_NODE_WIDTH;
-      const startCenterY = startNode
-        ? getNodeCenterY(startNode)
-        : DEFAULT_ROW_CENTER_Y;
-
-      // 도착 노드를 오른쪽으로 밀어 겹침 방지
-      const endNodeIndex = result.findIndex((n) => n.id === endNodeId);
-      if (endNodeIndex !== -1) {
-        result[endNodeIndex] = {
-          ...result[endNodeIndex],
-          position: {
-            x:
-              startX +
-              startWidth +
-              NODE_GAP_X +
-              CREATION_METHOD_NODE_WIDTH +
-              NODE_GAP_X,
-            y: result[endNodeIndex].position.y,
-          },
-        };
-      }
-
-      result.push({
-        id: "placeholder-creation-method",
-        type: "creation-method",
-        position: {
-          x: startX + startWidth + NODE_GAP_X,
-          y: getTopYFromCenter(startCenterY, CREATION_METHOD_NODE_HEIGHT),
-        },
-        data: { onSelectManual: handleSelectManual },
-        initialWidth: CREATION_METHOD_NODE_WIDTH,
-        initialHeight: CREATION_METHOD_NODE_HEIGHT,
-        selectable: false,
-        draggable: false,
-      });
-    }
-
-    // 분기 3: 수동 생성 모드
-    if (startNodeId && creationMethod === "manual") {
-      // endNode가 있으면 제외하고 leaf 계산
-      const nodeIds = nodes.map((n) => n.id).filter((id) => id !== endNodeId);
+    if (startNodeId && !endNodeId) {
+      const nodeIds = nodes.map((node) => node.id);
       const leafIds = getLeafNodeIds(nodeIds, edges);
 
-      let maxPlaceholderX = 0;
-
       for (const leafId of leafIds) {
-        const leafNode = nodes.find((n) => n.id === leafId);
+        if (activeNextStep?.sourceNodeId === leafId) {
+          continue;
+        }
+
+        const leafNode = nodes.find((node) => node.id === leafId);
         if (!leafNode) continue;
 
         const placeholderX =
           leafNode.position.x + getNodeWidth(leafNode) + NODE_GAP_X;
-        if (placeholderX > maxPlaceholderX) {
-          maxPlaceholderX = placeholderX;
-        }
 
         result.push({
-          id: `placeholder-${leafId}`,
+          id: getNextStepPlaceholderId(leafId),
           type: "placeholder",
           position: {
             x: placeholderX,
@@ -592,7 +583,7 @@ export const Canvas = () => {
               PLACEHOLDER_NODE_HEIGHT,
             ),
           },
-          data: { label: "다음" },
+          data: { label: "다음 단계", sourceNodeId: leafId },
           initialWidth: PLACEHOLDER_NODE_WIDTH,
           initialHeight: PLACEHOLDER_NODE_HEIGHT,
           selectable: false,
@@ -600,41 +591,24 @@ export const Canvas = () => {
         });
       }
 
-      if (endNodeId) {
-        // 도착 노드를 "다음" placeholder 뒤로 밀기
-        const endNodeIndex = result.findIndex((n) => n.id === endNodeId);
-        if (endNodeIndex !== -1) {
-          result[endNodeIndex] = {
-            ...result[endNodeIndex],
-            position: {
-              x: maxPlaceholderX + PLACEHOLDER_NODE_WIDTH + NODE_GAP_X,
-              y: result[endNodeIndex].position.y,
-            },
-          };
-        }
-      } else {
-        // 도착 노드 삭제됨 → 체인 끝에 도착 placeholder 표시
-        const lastLeaf =
-          leafIds.length > 0 ? nodes.find((n) => n.id === leafIds[0]) : null;
-        const placeholderEndX =
-          maxPlaceholderX + PLACEHOLDER_NODE_WIDTH + NODE_GAP_X;
-        const placeholderEndCenterY = lastLeaf
-          ? getNodeCenterY(lastLeaf)
-          : DEFAULT_ROW_CENTER_Y;
-
+      if (activeNextStep && leafIds.includes(activeNextStep.sourceNodeId)) {
         result.push({
-          id: "placeholder-end",
-          type: "placeholder",
+          id: `next-step-choice-${activeNextStep.sourceNodeId}`,
+          type: "next-step-choice",
           position: {
-            x: placeholderEndX,
+            x: activeNextStep.position.x,
             y: getTopYFromCenter(
-              placeholderEndCenterY,
-              PLACEHOLDER_NODE_HEIGHT,
+              activeNextStep.centerY,
+              NEXT_STEP_CHOICE_NODE_HEIGHT,
             ),
           },
-          data: { label: "도착" },
-          initialWidth: PLACEHOLDER_NODE_WIDTH,
-          initialHeight: PLACEHOLDER_NODE_HEIGHT,
+          data: {
+            disabled: isAddNodePending || isDeleteNodePending,
+            onSelectMiddle: handleSelectMiddleNode,
+            onSelectSink: handleSelectSinkNode,
+          },
+          initialWidth: NEXT_STEP_CHOICE_NODE_WIDTH,
+          initialHeight: NEXT_STEP_CHOICE_NODE_HEIGHT,
           selectable: false,
           draggable: false,
         });
@@ -643,12 +617,15 @@ export const Canvas = () => {
 
     return result;
   }, [
-    nodes,
+    activeNextStep,
     edges,
-    startNodeId,
     endNodeId,
-    creationMethod,
-    handleSelectManual,
+    handleSelectMiddleNode,
+    handleSelectSinkNode,
+    isAddNodePending,
+    isDeleteNodePending,
+    nodes,
+    startNodeId,
   ]);
 
   const nodesWithDragControl = useMemo(
@@ -679,7 +656,7 @@ export const Canvas = () => {
     if (outgoingEdge) {
       relatedIds.add(outgoingEdge.target);
     } else {
-      relatedIds.add(`placeholder-${activePanelNodeId}`);
+      relatedIds.add(getNextStepPlaceholderId(activePanelNodeId));
     }
 
     return relatedIds;
@@ -747,10 +724,8 @@ export const Canvas = () => {
       } else {
         const nextPlaceholder =
           nodesWithDragControl.find(
-            (node) => node.id === `placeholder-${nodeId}`,
-          ) ??
-          nodesWithDragControl.find((node) => node.id === "placeholder-end") ??
-          null;
+            (node) => node.id === getNextStepPlaceholderId(nodeId),
+          ) ?? null;
 
         if (nextPlaceholder) {
           chainNodes.push(nextPlaceholder);
