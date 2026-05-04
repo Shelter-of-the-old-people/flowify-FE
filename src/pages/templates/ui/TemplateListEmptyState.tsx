@@ -12,7 +12,7 @@ export const TemplateListEmptyState = () => (
       표시할 템플릿이 없습니다
     </Heading>
     <Text color="text.secondary">
-      현재 표시할 수 있는 템플릿이 없습니다. 잠시 뒤 다시 확인해보세요.
+      현재 사용할 수 있는 템플릿이 없습니다. 잠시 뒤 다시 확인해보세요.
     </Text>
   </Box>
 );

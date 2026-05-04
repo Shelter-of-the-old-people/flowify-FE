@@ -1,12 +1,16 @@
-import { Box, Button, Heading, Text, VStack } from "@chakra-ui/react";
+import { Badge, Box, Button, Heading, Text, VStack } from "@chakra-ui/react";
 
-import { type TemplateDetail } from "@/entities/template";
+import {
+  type TemplateDetail,
+  getTemplateCategoryLabel,
+} from "@/entities/template";
 import { TemplateServiceIcon } from "@/pages/templates/ui";
 
 import {
   getTemplateDescription,
   getTemplateMetaItems,
   getTemplatePreviewSummary,
+  getTemplateRuntimeSummary,
 } from "../model";
 
 import { TemplateMetaSection } from "./TemplateMetaSection";
@@ -26,6 +30,8 @@ export const TemplateInfoPanel = ({
   onBack,
 }: Props) => {
   const metaItems = getTemplateMetaItems(template);
+  const categoryLabel = getTemplateCategoryLabel(template.category);
+  const runtimeSummary = getTemplateRuntimeSummary(template);
 
   return (
     <Box
@@ -44,19 +50,53 @@ export const TemplateInfoPanel = ({
             icon={template.icon}
             requiredServices={template.requiredServices}
           />
+
           <VStack align="stretch" gap={2}>
+            <Badge
+              alignSelf="flex-start"
+              px={2.5}
+              py={1}
+              borderRadius="999px"
+              bg="bg.muted"
+              color="text.secondary"
+              fontSize="11px"
+              fontWeight="medium"
+            >
+              {categoryLabel}
+            </Badge>
+
             <Heading size="xl" color="text.primary">
               {template.name}
             </Heading>
+
             <Text fontSize="sm" color="text.secondary">
-              {getTemplateDescription(template.description)}
+              {getTemplateDescription(template)}
             </Text>
+
+            {runtimeSummary ? (
+              <Box
+                mt={2}
+                px={3}
+                py={2.5}
+                borderRadius="18px"
+                bg="bg.muted"
+                border="1px solid"
+                borderColor="border.default"
+              >
+                <Text fontSize="xs" fontWeight="semibold" color="text.primary">
+                  현재 동작 기준
+                </Text>
+                <Text mt={1} fontSize="xs" color="text.secondary">
+                  {runtimeSummary}
+                </Text>
+              </Box>
+            ) : null}
           </VStack>
         </VStack>
 
         <VStack align="stretch" gap={2}>
           <Text fontSize="sm" fontWeight="semibold" color="text.primary">
-            뭘 하나요?
+            무엇을 하나요?
           </Text>
           <Text fontSize="sm" color="text.secondary">
             {getTemplatePreviewSummary(template)}
@@ -72,7 +112,7 @@ export const TemplateInfoPanel = ({
 
         <VStack align="stretch" gap={3}>
           <Text fontSize="sm" fontWeight="semibold" color="text.primary">
-            필요 서비스
+            필요한 서비스
           </Text>
           <TemplateRequiredServices services={template.requiredServices} />
         </VStack>

@@ -18,7 +18,7 @@ export const TemplateListSection = () => {
           자동화 템플릿 목록
         </Heading>
         <Text mt={1} fontSize="sm" color="text.secondary">
-          가장 기본적인 사용에 관한 템플릿
+          자주 쓰는 자동화를 바로 가져와 시작할 수 있습니다.
         </Text>
       </Box>
 
