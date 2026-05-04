@@ -46,4 +46,5 @@ export const workflowApi = {
   previewSchema: previewWorkflowSchemaAPI,
   share: shareWorkflowAPI,
   generate: generateWorkflowAPI,
+  createGoogleDriveFolder: createGoogleDriveFolderAPI,
 };
