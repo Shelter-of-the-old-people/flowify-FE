@@ -1,9 +1,9 @@
 ﻿# 파일 업로드 자동 공유 템플릿 구체화 및 FE 표시 설계 문서
 
-> **작성일:** 2026-05-04  
-> **이슈:** #128  
-> **브랜치:** `feat#128-file-upload-auto-share-templates`  
-> **대상 화면:** `/templates`, `/templates/:id`  
+> **작성일:** 2026-05-04
+> **이슈:** #128
+> **브랜치:** `feat#128-file-upload-auto-share-templates`
+> **대상 화면:** `/templates`, `/templates/:id`
 > **관련 문서:** `docs/CONVENTION.md`, `docs/TEMPLATE_LIST_PAGE_DESIGN.md`, `docs/FRONTEND_DESIGN_DOCUMENT.md`, `docs/backend/BACKEND_INTEGRATION_DESIGN.md`
 
 ---
@@ -97,11 +97,11 @@ Google Drive 폴더의 새 파일을 확인해 내용을 요약하거나 핵심 
 
 예시:
 
-- 업로드 문서 요약 후 Slack 공유  
+- 업로드 문서 요약 후 Slack 공유
   `지정한 Google Drive 폴더의 새 파일을 확인해 핵심 내용을 요약하고 Slack 채널에 공유합니다.`
-- 새 파일 업로드 알림 메일 발송  
+- 새 파일 업로드 알림 메일 발송
   `지정한 Google Drive 폴더의 새 파일 정보를 정리해 이메일 알림을 발송합니다.`
-- 새 파일 업로드 후 Notion 기록  
+- 새 파일 업로드 후 Notion 기록
   `지정한 Google Drive 폴더의 새 파일 정보를 정리해 Notion 페이지에 기록합니다.`
 
 ### 4.3 상세 화면 안내 포인트
