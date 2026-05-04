@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { MdClose, MdFolder } from "react-icons/md";
+import { MdClose, MdDescription, MdFolder, MdForum } from "react-icons/md";
 
 import {
   Box,
@@ -14,11 +14,14 @@ import {
 import { type FlowNodeData } from "@/entities/node";
 import {
   type SinkSchemaFieldResponse,
+  type SinkTargetOptionItemResponse,
   type SourceTargetOptionItemResponse,
   getNodeStatusMissingFieldLabel,
   toBackendDataType,
   toEdgeDefinition,
   toNodeDefinition,
+  useCreateGoogleDriveFolderMutation,
+  useInfiniteSinkTargetOptionsQuery,
   useInfiniteSourceTargetOptionsQuery,
   useSinkCatalogQuery,
   useSinkSchemaQuery,
@@ -30,6 +33,7 @@ import {
   type RemoteOptionPickerItem,
   getApiErrorMessage,
 } from "@/shared";
+import { toaster } from "@/shared/utils";
 
 import { type NodePanelProps } from "../../model";
 
@@ -49,6 +53,15 @@ const FIELD_LABELS: Record<string, string> = {
 
 const GOOGLE_DRIVE_SERVICE_KEY = "google_drive";
 const GOOGLE_DRIVE_FOLDER_PICKER_MODE = "folder_all_files";
+const REMOTE_PICKER_FIELD_TYPES = new Set([
+  "folder_picker",
+  "channel_picker",
+  "page_picker",
+]);
+const SINK_TARGET_OPTION_TYPES: Partial<Record<string, string>> = {
+  channel_picker: "channel",
+  page_picker: "page",
+};
 
 type DraftValues = Record<string, string>;
 type AuxiliaryDraftValues = Record<string, unknown>;
@@ -56,6 +69,12 @@ type FolderPickerState = {
   folderPath: SourceTargetOptionItemResponse[];
   scope: string;
   searchQuery: string;
+};
+
+type PickerOptionLike = {
+  id: string;
+  label: string;
+  metadata: Record<string, unknown>;
 };
 
 const getFieldInputType = (fieldType: string) => {
@@ -74,9 +93,12 @@ const getAuxiliaryLabelKey = (fieldKey: string) => `${fieldKey}_label`;
 
 const getAuxiliaryMetaKey = (fieldKey: string) => `${fieldKey}_meta`;
 
+const isRemotePickerField = (fieldType: string) =>
+  REMOTE_PICKER_FIELD_TYPES.has(fieldType);
+
 const getAuxiliaryFieldKeys = (fields: SinkSchemaFieldResponse[]) =>
   fields.flatMap((field) =>
-    field.type === "folder_picker"
+    isRemotePickerField(field.type)
       ? [getAuxiliaryLabelKey(field.key), getAuxiliaryMetaKey(field.key)]
       : [],
   );
@@ -187,12 +209,12 @@ const buildCommittedConfigFromDraft = ({
   });
 
   fields.forEach((field) => {
-    if (field.type !== "folder_picker") {
+    if (!isRemotePickerField(field.type)) {
       return;
     }
 
-    const folderValue = draftValues[field.key]?.trim() ?? "";
-    if (folderValue.length === 0) {
+    const pickerValue = draftValues[field.key]?.trim() ?? "";
+    if (pickerValue.length === 0) {
       return;
     }
 
@@ -224,6 +246,11 @@ const createFolderPickerState = (scope: string): FolderPickerState => ({
   searchQuery: "",
 });
 
+const createSearchPickerState = (scope: string) => ({
+  scope,
+  searchQuery: "",
+});
+
 const formatMetadataValue = (value: unknown) => {
   if (typeof value === "string" || typeof value === "number") {
     return String(value);
@@ -232,14 +259,19 @@ const formatMetadataValue = (value: unknown) => {
   return null;
 };
 
-const getMetadataSummary = (
-  metadata: SourceTargetOptionItemResponse["metadata"] | undefined,
-) => {
+const getMetadataSummary = (metadata: Record<string, unknown> | undefined) => {
   if (!metadata) {
     return "";
   }
 
-  const summaryKeys = ["mimeType", "modifiedTime", "size"];
+  const summaryKeys = [
+    "mimeType",
+    "modifiedTime",
+    "size",
+    "memberCount",
+    "lastEditedTime",
+    "parentType",
+  ];
 
   return summaryKeys
     .map((key) => {
@@ -250,7 +282,7 @@ const getMetadataSummary = (
     .join(" · ");
 };
 
-const renderFolderMetadata = (option: RemoteOptionPickerItem) => {
+const renderRemotePickerMetadata = (option: RemoteOptionPickerItem) => {
   const metadataSummary = getMetadataSummary(option.metadata);
 
   return metadataSummary ? (
@@ -258,6 +290,30 @@ const renderFolderMetadata = (option: RemoteOptionPickerItem) => {
       {metadataSummary}
     </Text>
   ) : null;
+};
+
+const getSinkTargetOptionIcon = (option: RemoteOptionPickerItem) => {
+  if (option.type === "channel") {
+    return MdForum;
+  }
+
+  if (option.type === "page") {
+    return MdDescription;
+  }
+
+  return MdFolder;
+};
+
+const getSinkPickerHint = (serviceKey: string, optionType: string) => {
+  if (serviceKey === "slack" && optionType === "channel") {
+    return "공개 채널을 우선 지원합니다.";
+  }
+
+  if (serviceKey === "notion" && optionType === "page") {
+    return "연결된 통합이 접근 가능한 공유 페이지가 표시됩니다.";
+  }
+
+  return null;
 };
 
 type GoogleDriveFolderPickerFieldProps = {
@@ -313,6 +369,11 @@ const GoogleDriveFolderPickerField = ({
   const items =
     targetOptions?.pages.flatMap((page) => page.items) ??
     ([] as SourceTargetOptionItemResponse[]);
+  const [newFolderName, setNewFolderName] = useState("");
+  const createFolderMutation = useCreateGoogleDriveFolderMutation({
+    showErrorToast: true,
+    errorMessage: "Google Drive 새 폴더 생성에 실패했습니다.",
+  });
 
   const setScopedSearchQuery = (nextQuery: string) => {
     setPickerState((current) => {
@@ -376,6 +437,29 @@ const GoogleDriveFolderPickerField = ({
     });
   };
 
+  const handleCreateFolder = async () => {
+    const trimmedFolderName = newFolderName.trim();
+    if (readOnly || trimmedFolderName.length === 0) {
+      return;
+    }
+
+    try {
+      const createdFolder = await createFolderMutation.mutateAsync({
+        name: trimmedFolderName,
+        parentId,
+      });
+      onSelectOption(createdFolder);
+      setNewFolderName("");
+      await refetch();
+      toaster.create({
+        type: "success",
+        description: "새 폴더를 만들고 바로 선택했습니다.",
+      });
+    } catch {
+      // mutation toast handles the error state
+    }
+  };
+
   return (
     <Box display="flex" flexDirection="column" gap={3}>
       {selectedId ? (
@@ -422,7 +506,7 @@ const GoogleDriveFolderPickerField = ({
         isLoadingMore={isFetchingNextPage}
         items={items}
         path={pickerPath}
-        renderItemMetadata={renderFolderMetadata}
+        renderItemMetadata={renderRemotePickerMetadata}
         rootLabel="내 드라이브"
         searchPlaceholder="폴더 검색"
         searchValue={searchQuery}
@@ -435,6 +519,174 @@ const GoogleDriveFolderPickerField = ({
         onSearchChange={setScopedSearchQuery}
         onSelect={handleSelectOption}
       />
+
+      <Box display="flex" flexDirection="column" gap={2}>
+        <Text color="text.secondary" fontSize="xs">
+          현재 위치에 새 폴더를 만들고 바로 선택할 수 있습니다.
+        </Text>
+        <Box display="flex" gap={2}>
+          <Input
+            disabled={readOnly}
+            placeholder="새 폴더 이름"
+            value={newFolderName}
+            onChange={(event) => setNewFolderName(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                void handleCreateFolder();
+              }
+            }}
+          />
+          <Button
+            disabled={readOnly || newFolderName.trim().length === 0}
+            flexShrink={0}
+            loading={createFolderMutation.isPending}
+            onClick={() => void handleCreateFolder()}
+          >
+            새 폴더 만들기
+          </Button>
+        </Box>
+      </Box>
+    </Box>
+  );
+};
+
+type SinkRemotePickerFieldProps = {
+  fieldKey: string;
+  onClear: () => void;
+  onSelectOption: (option: SinkTargetOptionItemResponse) => void;
+  optionType: string;
+  readOnly: boolean;
+  selectedId: string;
+  selectedLabel?: string | null;
+  serviceKey: string;
+};
+
+const SinkRemotePickerField = ({
+  fieldKey,
+  onClear,
+  onSelectOption,
+  optionType,
+  readOnly,
+  selectedId,
+  selectedLabel,
+  serviceKey,
+}: SinkRemotePickerFieldProps) => {
+  const pickerScope = `${serviceKey}:${fieldKey}:${optionType}`;
+  const [pickerState, setPickerState] = useState(() =>
+    createSearchPickerState(pickerScope),
+  );
+  const activePickerState =
+    pickerState.scope === pickerScope
+      ? pickerState
+      : createSearchPickerState(pickerScope);
+  const { searchQuery } = activePickerState;
+  const {
+    data: targetOptions,
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isError,
+    isFetchingNextPage,
+    isLoading,
+    refetch,
+  } = useInfiniteSinkTargetOptionsQuery(
+    serviceKey,
+    {
+      type: optionType,
+      query: searchQuery,
+    },
+    {
+      enabled: !readOnly,
+      staleTime: 1000 * 30,
+    },
+  );
+  const items =
+    targetOptions?.pages.flatMap((page) => page.items) ??
+    ([] as SinkTargetOptionItemResponse[]);
+  const hint = getSinkPickerHint(serviceKey, optionType);
+
+  const setScopedSearchQuery = (nextQuery: string) => {
+    setPickerState((current) => {
+      const base =
+        current.scope === pickerScope
+          ? current
+          : createSearchPickerState(pickerScope);
+
+      return {
+        ...base,
+        searchQuery: nextQuery,
+      };
+    });
+  };
+
+  const handleSelectOption = (option: RemoteOptionPickerItem) => {
+    const sinkOption = items.find((item) => item.id === option.id);
+    if (!sinkOption) {
+      return;
+    }
+
+    onSelectOption(sinkOption);
+  };
+
+  return (
+    <Box display="flex" flexDirection="column" gap={3}>
+      {selectedId ? (
+        <Box
+          alignItems="center"
+          bg="gray.50"
+          borderRadius="xl"
+          display="flex"
+          gap={3}
+          justifyContent="space-between"
+          px={4}
+          py={3}
+        >
+          <Box minW={0}>
+            <Text color="text.secondary" fontSize="xs">
+              선택된 대상
+            </Text>
+            <Text fontSize="sm" fontWeight="semibold" truncate>
+              {selectedLabel || selectedId}
+            </Text>
+          </Box>
+          <IconButton
+            aria-label="Clear selected target"
+            disabled={readOnly}
+            flexShrink={0}
+            size="xs"
+            variant="ghost"
+            onClick={onClear}
+          >
+            <Icon as={MdClose} boxSize={4} />
+          </IconButton>
+        </Box>
+      ) : null}
+
+      <RemoteOptionPicker
+        disabled={readOnly}
+        emptyMessage="선택할 수 있는 항목이 없습니다."
+        errorMessage={isError ? getApiErrorMessage(error) : null}
+        getItemIcon={getSinkTargetOptionIcon}
+        hasMore={Boolean(hasNextPage)}
+        isLoading={isLoading}
+        isLoadingMore={isFetchingNextPage}
+        items={items}
+        renderItemMetadata={renderRemotePickerMetadata}
+        searchPlaceholder="이름으로 검색"
+        searchValue={searchQuery}
+        selectedId={selectedId}
+        onLoadMore={() => void fetchNextPage()}
+        onRetry={() => void refetch()}
+        onSearchChange={setScopedSearchQuery}
+        onSelect={handleSelectOption}
+      />
+
+      {hint ? (
+        <Text color="text.secondary" fontSize="xs">
+          {hint}
+        </Text>
+      ) : null}
     </Box>
   );
 };
@@ -511,9 +763,9 @@ const SinkSchemaEditor = ({
     });
   };
 
-  const handleFolderFieldSelect = (
+  const handleRemotePickerFieldSelect = (
     field: SinkSchemaFieldResponse,
-    option: SourceTargetOptionItemResponse,
+    option: PickerOptionLike,
   ) => {
     handleFieldChange(field.key, option.id);
     setAuxiliaryDraftValues((current) => ({
@@ -523,7 +775,7 @@ const SinkSchemaEditor = ({
     }));
   };
 
-  const handleFolderFieldClear = (field: SinkSchemaFieldResponse) => {
+  const handleRemotePickerFieldClear = (field: SinkSchemaFieldResponse) => {
     handleFieldChange(field.key, "");
     setAuxiliaryDraftValues((current) => {
       const nextAuxiliaryDraftValues = { ...current };
@@ -610,9 +862,31 @@ const SinkSchemaEditor = ({
                         ] as string)
                       : null
                   }
-                  onClear={() => handleFolderFieldClear(field)}
+                  onClear={() => handleRemotePickerFieldClear(field)}
                   onSelectOption={(option) =>
-                    handleFolderFieldSelect(field, option)
+                    handleRemotePickerFieldSelect(field, option)
+                  }
+                />
+              ) : serviceKey &&
+                typeof SINK_TARGET_OPTION_TYPES[field.type] === "string" ? (
+                <SinkRemotePickerField
+                  fieldKey={field.key}
+                  optionType={SINK_TARGET_OPTION_TYPES[field.type] as string}
+                  readOnly={readOnly}
+                  selectedId={stringValue}
+                  selectedLabel={
+                    typeof auxiliaryDraftValues[
+                      getAuxiliaryLabelKey(field.key)
+                    ] === "string"
+                      ? (auxiliaryDraftValues[
+                          getAuxiliaryLabelKey(field.key)
+                        ] as string)
+                      : null
+                  }
+                  serviceKey={serviceKey}
+                  onClear={() => handleRemotePickerFieldClear(field)}
+                  onSelectOption={(option) =>
+                    handleRemotePickerFieldSelect(field, option)
                   }
                 />
               ) : (

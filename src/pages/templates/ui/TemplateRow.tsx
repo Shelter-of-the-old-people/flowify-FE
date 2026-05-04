@@ -1,9 +1,20 @@
 import { type KeyboardEvent, type MouseEvent } from "react";
 import { MdMoreHoriz } from "react-icons/md";
 
-import { Box, Flex, HStack, IconButton, Text, VStack } from "@chakra-ui/react";
+import {
+  Badge,
+  Box,
+  Flex,
+  HStack,
+  IconButton,
+  Text,
+  VStack,
+} from "@chakra-ui/react";
 
-import { type TemplateSummary } from "@/entities/template";
+import {
+  type TemplateSummary,
+  getTemplateCategoryLabel,
+} from "@/entities/template";
 
 import {
   getRelativeCreatedLabel,
@@ -21,6 +32,7 @@ type Props = {
 export const TemplateRow = ({ template, onOpen }: Props) => {
   const relativeCreatedLabel = getRelativeCreatedLabel(template.createdAt);
   const metaLabel = getTemplateMetaLabel(template);
+  const categoryLabel = getTemplateCategoryLabel(template.category);
 
   const handleRowKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "Enter" || event.key === " ") {
@@ -70,7 +82,22 @@ export const TemplateRow = ({ template, onOpen }: Props) => {
             requiredServices={template.requiredServices}
           />
 
-          <VStack align="stretch" gap={0.5} minW={0} flex={1}>
+          <VStack align="stretch" gap={1.5} minW={0} flex={1}>
+            <HStack gap={2} minW={0}>
+              <Badge
+                alignSelf="flex-start"
+                px={2}
+                py={0.5}
+                borderRadius="999px"
+                bg="bg.muted"
+                color="text.secondary"
+                fontSize="10px"
+                fontWeight="medium"
+              >
+                {categoryLabel}
+              </Badge>
+            </HStack>
+
             <Text
               fontSize="md"
               fontWeight="semibold"
@@ -79,9 +106,11 @@ export const TemplateRow = ({ template, onOpen }: Props) => {
             >
               {template.name}
             </Text>
+
             <Text fontSize="xs" color="text.primary" lineClamp={1}>
-              {getTemplateDescription(template.description)}
+              {getTemplateDescription(template)}
             </Text>
+
             <HStack gap={2} color="text.secondary">
               <Text fontSize="xs" lineClamp={1}>
                 {relativeCreatedLabel}

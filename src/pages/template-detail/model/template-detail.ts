@@ -1,7 +1,13 @@
 import { type Edge, type Node } from "@xyflow/react";
 
 import { type FlowNodeData } from "@/entities/node";
-import { type TemplateDetail } from "@/entities/template";
+import {
+  type TemplateDetail,
+  getTemplateCategoryLabel,
+  getTemplateCategorySummary,
+  getTemplateDisplayDescription,
+  getTemplateRuntimeNote,
+} from "@/entities/template";
 import { toFlowEdge, toFlowNode } from "@/entities/workflow";
 
 type TemplateMetaItem = {
@@ -29,25 +35,30 @@ const formatCreatedAt = (value: string) => {
   }).format(date);
 };
 
-export const getTemplateDescription = (description: string) =>
-  description?.trim().length > 0
-    ? description
-    : "설명이 아직 없는 템플릿입니다.";
+export const getTemplateDescription = (
+  template: Pick<TemplateDetail, "category" | "description" | "name">,
+) => getTemplateDisplayDescription(template);
 
 export const getTemplatePreviewSummary = (template: TemplateDetail) => {
-  if (template.description?.trim().length) {
-    return template.description.trim();
+  const description = getTemplateDisplayDescription(template);
+
+  if (description.trim().length > 0) {
+    return description;
   }
 
-  return "템플릿의 핵심 흐름과 연결에 필요한 서비스를 한눈에 확인할 수 있습니다.";
+  return getTemplateCategorySummary(template.category);
 };
+
+export const getTemplateRuntimeSummary = (
+  template: Pick<TemplateDetail, "category" | "description" | "name">,
+) => getTemplateRuntimeNote(template);
 
 export const getTemplateMetaItems = (
   template: TemplateDetail,
 ): TemplateMetaItem[] => [
   {
     label: "카테고리",
-    value: template.category ?? "미분류",
+    value: getTemplateCategoryLabel(template.category),
   },
   {
     label: "노드",

@@ -53,6 +53,11 @@ const RECOMMENDED_DASHBOARD_SERVICES: RecommendedDashboardService[] = [
     label: "Canvas LMS",
   },
   {
+    serviceKey: "gmail",
+    badgeKey: "gmail",
+    label: "Gmail",
+  },
+  {
     serviceKey: "google_drive",
     badgeKey: "google-drive",
     label: "Google Drive",
