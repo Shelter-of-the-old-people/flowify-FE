@@ -114,7 +114,7 @@ export const getTemplateRuntimeNote = ({
   }
 
   if (category === "file_upload_auto_share") {
-    return "현재 Drive 기반 업로드 템플릿은 1차 구현 기준으로 folder_new_file 모드를 중심으로 동작하며, 선택한 폴더의 최신 파일 1건을 기준으로 공유/기록하는 흐름에 가깝습니다. Slack은 공개 채널 기준, Notion은 공유된 페이지 기준으로 설명됩니다.";
+    return "현재 Drive 기반 업로드 템플릿은 1차 구현 기준으로 folder_new_file 모드를 중심으로 동작하며, 선택한 폴더의 최신 파일 1건을 기준으로 공유/기록하는 흐름에 가깝습니다. Slack은 기존 공개 채널 선택, Notion은 기존 공유 페이지 선택을 기준으로 설명됩니다.";
   }
 
   return null;

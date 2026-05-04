@@ -153,8 +153,8 @@ src/shared/libs/oauth-connect-redirect.ts
 POST /api/editor-catalog/sinks/google_drive/folders
 ```
 
-현재 백엔드에는 해당 endpoint가 없다. 따라서 이번 반영 범위에서 제외한다.  
-추후 백엔드 계약이 추가되면 별도 이슈로 진행한다.
+현재 Spring 백엔드에는 해당 endpoint가 구현되어 있다.
+따라서 FE에서는 `GoogleDriveFolderPickerField`에 생성 mutation을 연결해 현재 breadcrumb 위치 기준으로 새 폴더를 만들고, 생성 직후 해당 폴더를 선택 상태로 반영한다.
 
 #### Workflow 이름 인라인 편집
 
