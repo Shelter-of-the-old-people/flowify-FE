@@ -7,6 +7,7 @@ export * from "./useCreateGoogleDriveFolderMutation";
 export * from "./useDeleteWorkflowMutation";
 export * from "./useDeleteWorkflowNodeMutation";
 export * from "./useGenerateWorkflowMutation";
+export * from "./useInfiniteSinkTargetOptionsQuery";
 export * from "./useInfiniteSourceTargetOptionsQuery";
 export * from "./useInfiniteSinkTargetOptionsQuery";
 export * from "./useMappingRulesQuery";
