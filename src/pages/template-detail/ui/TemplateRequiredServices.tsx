@@ -1,5 +1,6 @@
 import { Box, HStack, Text, VStack } from "@chakra-ui/react";
 
+import { getTemplateServiceLabel } from "@/entities/template";
 import { ServiceBadge, getServiceBadgeKeyFromService } from "@/shared";
 
 type Props = {
@@ -32,10 +33,10 @@ export const TemplateRequiredServices = ({ services }: Props) => {
             <ServiceBadge type={getServiceBadgeKeyFromService(service)} />
             <VStack align="stretch" gap={0}>
               <Text fontSize="xs" fontWeight="medium" color="text.secondary">
-                필요 서비스
+                필요한 서비스
               </Text>
               <Text fontSize="sm" fontWeight="semibold" color="text.primary">
-                {service}
+                {getTemplateServiceLabel(service)}
               </Text>
             </VStack>
           </HStack>
