@@ -1,5 +1,6 @@
 import {
   type ChoiceQueryContext,
+  type SinkTargetOptionsParameters,
   type SourceTargetOptionsParameters,
 } from "../api";
 
@@ -21,6 +22,15 @@ const normalizeSourceTargetOptionsParameters = (
   query: params.query?.trim() || null,
 });
 
+const normalizeSinkTargetOptionsParameters = (
+  params: SinkTargetOptionsParameters,
+) => ({
+  cursor: params.cursor?.trim() || null,
+  parentId: params.parentId?.trim() || null,
+  query: params.query?.trim() || null,
+  type: params.type,
+});
+
 export const workflowKeys = {
   all: () => ["workflow"] as const,
   editorCatalog: () => [...workflowKeys.all(), "editor-catalog"] as const,
@@ -36,6 +46,16 @@ export const workflowKeys = {
       normalizeSourceTargetOptionsParameters(params),
     ] as const,
   sinkCatalog: () => [...workflowKeys.editorCatalog(), "sinks"] as const,
+  sinkTargetOptionsRoot: (serviceKey: string) =>
+    [...workflowKeys.sinkCatalog(), serviceKey, "target-options"] as const,
+  sinkTargetOptions: (
+    serviceKey: string,
+    params: SinkTargetOptionsParameters,
+  ) =>
+    [
+      ...workflowKeys.sinkTargetOptionsRoot(serviceKey),
+      normalizeSinkTargetOptionsParameters(params),
+    ] as const,
   sinkSchema: (serviceKey: string, inputType: string) =>
     [...workflowKeys.sinkCatalog(), serviceKey, "schema", inputType] as const,
   mappingRules: () =>

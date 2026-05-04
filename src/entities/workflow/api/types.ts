@@ -51,6 +51,33 @@ export interface SourceTargetOptionsParameters {
   cursor?: string;
 }
 
+export interface CreateGoogleDriveFolderRequest {
+  name: string;
+  parentId?: string;
+}
+
+export type SinkTargetOptionType = "channel" | "page" | "folder";
+
+export interface SinkTargetOptionItemResponse {
+  id: string;
+  label: string;
+  description: string | null;
+  type: SinkTargetOptionType | string;
+  metadata: Record<string, unknown>;
+}
+
+export interface SinkTargetOptionsResponse {
+  items: SinkTargetOptionItemResponse[];
+  nextCursor: string | null;
+}
+
+export interface SinkTargetOptionsParameters {
+  type: string;
+  parentId?: string;
+  query?: string;
+  cursor?: string;
+}
+
 export interface SinkSchemaFieldResponse {
   key: string;
   label: string;
