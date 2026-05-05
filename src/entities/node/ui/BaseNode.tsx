@@ -5,7 +5,7 @@ import { MdCancel } from "react-icons/md";
 import { Box, Icon, IconButton, Text } from "@chakra-ui/react";
 import { Handle, Position } from "@xyflow/react";
 
-import { getNodeStatusMissingFieldLabel } from "@/entities/workflow";
+import { getNodeStatusSummaryLabel } from "@/entities/workflow";
 
 import { getNodePresentation } from "../model";
 import { type FlowNodeData } from "../model/types";
@@ -54,14 +54,11 @@ export const BaseNode = ({ id, data, children }: BaseNodeProps) => {
     startNodeId,
     endNodeId,
   });
-  const missingFieldSummary =
-    nodeStatus && !nodeStatus.configured && nodeStatus.missingFields.length > 0
-      ? `필수 설정: ${nodeStatus.missingFields
-          .map(getNodeStatusMissingFieldLabel)
-          .join(", ")}`
-      : null;
+  const nodeStatusSummary = nodeStatus
+    ? getNodeStatusSummaryLabel(nodeStatus)
+    : null;
   const summaryContent = getSummaryContent(
-    missingFieldSummary ?? presentation.helperText,
+    nodeStatusSummary ?? presentation.helperText,
     children,
   );
   const showNodeIcon = nodeStatus?.configured ?? data.config.isConfigured;

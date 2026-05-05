@@ -11,6 +11,7 @@ const NODE_STATUS_FIELD_LABELS: Record<string, string> = {
   filename_template: "파일명 규칙",
   folder_id: "폴더",
   message_format: "메시지 포맷",
+  oauth_scope_insufficient: "권한 부족",
   oauth_token: "인증 연결",
   page_id: "페이지",
   recipient: "수신자",
@@ -37,3 +38,40 @@ export const normalizeNodeStatusFieldKey = (field: string) =>
 
 export const getNodeStatusMissingFieldLabel = (field: string) =>
   NODE_STATUS_FIELD_LABELS[normalizeNodeStatusFieldKey(field)] ?? field;
+
+type NodeStatusSummarySource = {
+  configured: boolean;
+  executable: boolean;
+  missingFields: readonly string[] | null;
+};
+
+type NodeStatusSummaryKind = "required_config" | "execution_condition";
+
+export const getNodeStatusSummaryKind = (
+  status: Pick<NodeStatusSummarySource, "configured" | "executable">,
+): NodeStatusSummaryKind | null => {
+  if (!status.configured) {
+    return "required_config";
+  }
+
+  if (!status.executable) {
+    return "execution_condition";
+  }
+
+  return null;
+};
+
+export const getNodeStatusSummaryLabel = (status: NodeStatusSummarySource) => {
+  const missingFields = status.missingFields ?? [];
+  const summaryKind = getNodeStatusSummaryKind(status);
+
+  if (!summaryKind || missingFields.length === 0) {
+    return null;
+  }
+
+  const prefix = summaryKind === "required_config" ? "필수 설정" : "실행 조건";
+
+  return `${prefix}: ${missingFields
+    .map(getNodeStatusMissingFieldLabel)
+    .join(", ")}`;
+};
