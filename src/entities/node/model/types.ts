@@ -26,6 +26,14 @@ export type NodeType = DomainNodeType | ProcessingNodeType | AINodeType;
 
 export type NodeCategory = "domain" | "processing" | "ai";
 
+export type ChoiceNodeType =
+  | "LOOP"
+  | "CONDITION_BRANCH"
+  | "AI"
+  | "DATA_FILTER"
+  | "AI_FILTER"
+  | "PASSTHROUGH";
+
 // ─── Config 기반 인터페이스 ──────────────────────────────────
 interface BaseNodeConfig {
   /** 설정 완료 여부 — 캔버스에서 경고 표시 기준 */
@@ -40,6 +48,8 @@ interface BaseNodeConfig {
   trigger_kind?: string | null;
   /** 중간 노드 위자드에서 선택한 액션 ID */
   choiceActionId?: string | null;
+  /** choice wizard runtime semantic node type */
+  choiceNodeType?: ChoiceNodeType | null;
   /** 중간 노드 위자드 후속 설정 값 */
   choiceSelections?: Record<string, string | string[]> | null;
   /** source target display label */

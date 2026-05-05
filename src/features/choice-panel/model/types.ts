@@ -1,3 +1,5 @@
+import { type ChoiceNodeType } from "@/entities/node";
+
 /** 매핑 규칙에서 사용하는 데이터 타입 키 (백엔드 형식) */
 export type MappingDataTypeKey =
   | "FILE_LIST"
@@ -10,13 +12,7 @@ export type MappingDataTypeKey =
   | "TEXT";
 
 /** 매핑 규칙에서 사용하는 노드 타입 (백엔드 형식) */
-export type MappingNodeType =
-  | "LOOP"
-  | "CONDITION_BRANCH"
-  | "AI"
-  | "DATA_FILTER"
-  | "AI_FILTER"
-  | "PASSTHROUGH";
+export type MappingNodeType = ChoiceNodeType;
 
 /** follow_up / branch_config 옵션 */
 export interface FollowUpOption {

@@ -7,6 +7,7 @@ import {
 import {
   MAPPING_NODE_TYPE_MAP,
   type MappingDataTypeKey,
+  type MappingNodeType,
   type MappingRules,
   type ResolvedChoiceOption,
   type ResolvedChoiceResponse,
@@ -24,9 +25,32 @@ const toChoiceNodeType = (value: string | null | undefined): NodeType =>
     ? MAPPING_NODE_TYPE_MAP[value as keyof typeof MAPPING_NODE_TYPE_MAP]
     : "data-process";
 
+const isMappingNodeType = (
+  value: string | null | undefined,
+): value is MappingNodeType => Boolean(value && value in MAPPING_NODE_TYPE_MAP);
+
+const toChoiceSemanticNodeType = ({
+  option,
+  selectionResult,
+}: {
+  option: ResolvedChoiceOption;
+  selectionResult: NodeSelectionResult;
+}): MappingNodeType => {
+  if (isMappingNodeType(selectionResult.nodeType)) {
+    return selectionResult.nodeType;
+  }
+
+  if (isMappingNodeType(option.node_type)) {
+    return option.node_type;
+  }
+
+  return "PASSTHROUGH";
+};
+
 export type ProcessingMethodSelectionIntent = {
   isConfigured: boolean;
   nextActionChoice: ResolvedChoiceResponse;
+  nextChoiceNodeType: MappingNodeType;
   nextDataTypeKey: MappingDataTypeKey;
   nextNodeType: NodeType;
   nextStep: "action" | "complete";
@@ -36,6 +60,7 @@ export type ActionSelectionIntent = {
   branchConfig: ChoiceBranchConfig | null;
   followUp: ChoiceFollowUp | null;
   hasFollowUp: boolean;
+  nextChoiceNodeType: MappingNodeType;
   nextDataTypeKey: MappingDataTypeKey;
   nextNodeType: NodeType;
   nextStep: "follow-up" | "complete";
@@ -68,14 +93,17 @@ export const deriveProcessingMethodSelectionIntent = ({
     "action",
   );
   const nextStep = nextActionChoice.options.length > 0 ? "action" : "complete";
+  const nextChoiceNodeType = toChoiceSemanticNodeType({
+    option,
+    selectionResult,
+  });
 
   return {
     isConfigured: nextStep === "complete",
     nextActionChoice,
+    nextChoiceNodeType,
     nextDataTypeKey,
-    nextNodeType: selectionResult.nodeType
-      ? toChoiceNodeType(selectionResult.nodeType)
-      : toChoiceNodeType(option.node_type),
+    nextNodeType: toChoiceNodeType(nextChoiceNodeType),
     nextStep,
   };
 };
@@ -106,15 +134,18 @@ export const deriveActionSelectionIntent = ({
   const branchConfig =
     selectionResult.branchConfig ?? option.branchConfig ?? null;
   const hasFollowUp = Boolean(followUp || branchConfig);
+  const nextChoiceNodeType = toChoiceSemanticNodeType({
+    option,
+    selectionResult,
+  });
 
   return {
     branchConfig,
     followUp,
     hasFollowUp,
+    nextChoiceNodeType,
     nextDataTypeKey,
-    nextNodeType: selectionResult.nodeType
-      ? toChoiceNodeType(selectionResult.nodeType)
-      : toChoiceNodeType(option.node_type),
+    nextNodeType: toChoiceNodeType(nextChoiceNodeType),
     nextStep: hasFollowUp ? "follow-up" : "complete",
     shouldUseActionLeaf: stagingNodeType === "loop",
   };
