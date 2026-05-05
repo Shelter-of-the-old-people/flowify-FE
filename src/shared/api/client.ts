@@ -5,10 +5,12 @@ import {
   clearAuthSession,
   getAccessToken,
   getRefreshToken,
+  isRefreshTokenValid,
+  shouldRefreshAccessToken,
   storeTokens,
 } from "../libs/auth-session";
 
-import { requestWithClient, type TokenRefreshResponse } from "./core";
+import { type TokenRefreshResponse, requestWithClient } from "./core";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const LOGIN_PATH = "/login";
@@ -59,6 +61,11 @@ const processQueue = (error: unknown, token: string | null) => {
   failedQueue = [];
 };
 
+const clearSessionAndRedirect = () => {
+  clearAuthSession();
+  redirectToLogin();
+};
+
 const refreshAccessToken = async (refreshToken: string) => {
   const result = await requestWithClient<TokenRefreshResponse>(refreshClient, {
     url: "/auth/refresh",
@@ -72,10 +79,41 @@ const refreshAccessToken = async (refreshToken: string) => {
   return result.accessToken;
 };
 
+const refreshAccessTokenWithQueue = async () => {
+  const refreshToken = getRefreshToken();
+
+  if (!refreshToken || !isRefreshTokenValid()) {
+    clearSessionAndRedirect();
+    throw new Error("Refresh token is missing or expired.");
+  }
+
+  if (isRefreshing) {
+    return new Promise<string>((resolve, reject) => {
+      failedQueue.push({ resolve, reject });
+    });
+  }
+
+  isRefreshing = true;
+
+  try {
+    const newAccessToken = await refreshAccessToken(refreshToken);
+    processQueue(null, newAccessToken);
+    return newAccessToken;
+  } catch (refreshError) {
+    processQueue(refreshError, null);
+    clearSessionAndRedirect();
+    throw refreshError;
+  } finally {
+    isRefreshing = false;
+  }
+};
+
 export const apiClient = axios.create(apiClientConfig);
 
-apiClient.interceptors.request.use((config) => {
-  const token = getAccessToken();
+apiClient.interceptors.request.use(async (config) => {
+  const token = shouldRefreshAccessToken()
+    ? await refreshAccessTokenWithQueue()
+    : getAccessToken();
 
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -100,41 +138,15 @@ apiClient.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    const refreshToken = getRefreshToken();
-    if (!refreshToken) {
-      clearAuthSession();
-      redirectToLogin();
-      return Promise.reject(error);
-    }
-
     originalRequest._retry = true;
 
-    if (isRefreshing) {
-      return new Promise<string>((resolve, reject) => {
-        failedQueue.push({ resolve, reject });
-      }).then((token) => {
-        setAuthorizationHeader(originalRequest, token);
-        return apiClient(originalRequest);
-      });
-    }
-
-    isRefreshing = true;
-
     try {
-      const newAccessToken = await refreshAccessToken(refreshToken);
-
-      processQueue(null, newAccessToken);
+      const newAccessToken = await refreshAccessTokenWithQueue();
       setAuthorizationHeader(originalRequest, newAccessToken);
 
       return apiClient(originalRequest);
     } catch (refreshError) {
-      processQueue(refreshError, null);
-      clearAuthSession();
-      redirectToLogin();
-
       return Promise.reject(refreshError);
-    } finally {
-      isRefreshing = false;
     }
   },
 );
