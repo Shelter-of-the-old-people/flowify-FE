@@ -464,6 +464,9 @@ export const useChoiceWizardController = () => {
           config: buildChoiceWizardNodeConfig({
             type: selectionIntent.nextNodeType,
             isConfigured: selectionIntent.isConfigured,
+            overrides: {
+              choiceNodeType: selectionIntent.nextChoiceNodeType,
+            },
           }),
           inputDataTypeKey: initialDataTypeKey,
           outputDataTypeKey: selectionIntent.nextDataTypeKey,
@@ -563,12 +566,11 @@ export const useChoiceWizardController = () => {
         const finalActionConfig = buildChoiceWizardNodeConfig({
           type: selectionIntent.nextNodeType,
           isConfigured: !selectionIntent.hasFollowUp,
-          overrides: selectionIntent.hasFollowUp
-            ? undefined
-            : {
-                choiceActionId: action.id,
-                choiceSelections: null,
-              },
+          overrides: {
+            choiceActionId: action.id,
+            choiceNodeType: selectionIntent.nextChoiceNodeType,
+            choiceSelections: null,
+          },
         });
         let targetNodeId = stagingNode.id;
 
@@ -785,6 +787,7 @@ export const useChoiceWizardController = () => {
             isConfigured: true,
             overrides: {
               choiceActionId: selectedAction.id,
+              choiceNodeType: targetNode.data.config.choiceNodeType,
               choiceSelections: selections,
             },
             preserveExistingConfig: true,
