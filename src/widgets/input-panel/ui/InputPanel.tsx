@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { MdCancel } from "react-icons/md";
 
-import { Box, Icon, Text } from "@chakra-ui/react";
+import { Box, Button, Icon, Text } from "@chakra-ui/react";
 
 import { NODE_REGISTRY } from "@/entities/node";
 import {
@@ -25,6 +25,7 @@ import {
   NodeExecutionStatusBlock,
   SchemaPreviewBlock,
   SourceSummaryBlock,
+  getNodeConfigStatusNotice,
   isEmptyPanelData,
   useNodeDataPanelModel,
 } from "@/widgets/node-data-panel";
@@ -72,6 +73,10 @@ export const InputPanel = () => {
     isMiddleNode && isMiddleWizardCompleted(activeNode);
   const activeNodeMissingFields = (activeNodeStatus?.missingFields ?? []).map(
     getNodeStatusMissingFieldLabel,
+  );
+  const nodeConfigNotice = getNodeConfigStatusNotice(
+    activeNodeStatus,
+    activeNodeMissingFields,
   );
   const activeNodeConfig =
     (activeNode?.data.config as unknown as Record<string, unknown>) ?? null;
@@ -177,6 +182,30 @@ export const InputPanel = () => {
                   source={nodeDataPanel.schemaPreview?.source ?? null}
                 />
               ) : null}
+              {nodeDataPanel.isPreviewSupported ? (
+                <Box display="flex" flexDirection="column" gap={2}>
+                  <Button
+                    alignSelf="flex-start"
+                    size="sm"
+                    variant="outline"
+                    loading={nodeDataPanel.isPreviewLoading}
+                    disabled={!nodeDataPanel.canRequestPreview}
+                    onClick={nodeDataPanel.requestPreview}
+                  >
+                    실행 전 미리보기
+                  </Button>
+                  {isDirty ? (
+                    <Text fontSize="xs" color="orange.500">
+                      저장 후 미리보기를 확인할 수 있습니다.
+                    </Text>
+                  ) : null}
+                  {nodeDataPanel.previewErrorMessage ? (
+                    <Text fontSize="xs" color="red.500">
+                      {nodeDataPanel.previewErrorMessage}
+                    </Text>
+                  ) : null}
+                </Box>
+              ) : null}
               <DataStateNotice
                 state={nodeDataPanel.state}
                 panelKind="input"
@@ -187,7 +216,11 @@ export const InputPanel = () => {
               />
               {hasPreviewData ? (
                 <DataPreviewBlock
-                  title="입력 데이터"
+                  title={
+                    nodeDataPanel.isPreviewDataDisplayed
+                      ? "미리보기 데이터"
+                      : "입력 데이터"
+                  }
                   data={nodeDataPanel.dataToDisplay}
                 />
               ) : null}
@@ -269,23 +302,30 @@ export const InputPanel = () => {
               />
             ) : null}
 
-            {activeNodeStatus ? (
+            {nodeConfigNotice ? (
               <Box>
                 <Text fontSize="md" fontWeight="bold" mb={3}>
                   설정 상태
                 </Text>
-                <Box bg="gray.50" borderRadius="2xl" px={4} py={4}>
-                  <Text fontSize="sm" fontWeight="semibold" mb={1}>
-                    {activeNodeStatus.configured ? "설정 완료" : "설정 필요"}
+                <Box
+                  bg="orange.50"
+                  border="1px solid"
+                  borderColor="orange.100"
+                  borderRadius="2xl"
+                  px={4}
+                  py={4}
+                >
+                  <Text
+                    color="orange.600"
+                    fontSize="sm"
+                    fontWeight="semibold"
+                    mb={1}
+                  >
+                    {nodeConfigNotice.title}
                   </Text>
                   <Text color="text.secondary" fontSize="sm">
-                    실행 가능: {activeNodeStatus.executable ? "예" : "아니오"}
+                    {nodeConfigNotice.description}
                   </Text>
-                  {activeNodeMissingFields.length > 0 ? (
-                    <Text color="text.secondary" fontSize="sm" mt={2}>
-                      확인 항목: {activeNodeMissingFields.join(", ")}
-                    </Text>
-                  ) : null}
                 </Box>
               </Box>
             ) : null}

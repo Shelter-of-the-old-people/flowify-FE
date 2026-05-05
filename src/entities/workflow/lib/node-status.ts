@@ -17,7 +17,7 @@ const NODE_STATUS_FIELD_LABELS: Record<string, string> = {
   recipient: "수신자",
   service: "서비스",
   sheet_name: "시트",
-  source_mode: "source mode",
+  source_mode: "가져오는 방식",
   spreadsheet_id: "스프레드시트",
   subject: "제목",
   target: "대상",

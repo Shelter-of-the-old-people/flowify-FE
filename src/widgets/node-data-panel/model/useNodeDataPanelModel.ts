@@ -1,15 +1,18 @@
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 
 import {
+  getDataTypeDisplayLabel,
   useLatestExecutionNodeDataQuery,
+  useWorkflowNodePreviewMutation,
   useWorkflowNodeSchemaPreviewQuery,
 } from "@/entities";
 import { type FlowNodeData } from "@/entities/node";
-import { OUTPUT_DATA_LABELS } from "@/features/choice-panel";
 import { useWorkflowStore } from "@/features/workflow-editor";
 
 import {
   getPanelData,
+  getPreviewPanelData,
+  isEmptyPanelData,
   resolveNodeDataPanelState,
 } from "./node-data-panel-utils";
 import { type NodeDataPanelKind, type NodeDataPanelModel } from "./types";
@@ -23,7 +26,7 @@ type UseNodeDataPanelModelParameters = {
 };
 
 const getDataTypeLabel = (dataType: FlowNodeData["outputTypes"][number]) =>
-  OUTPUT_DATA_LABELS[dataType] ?? dataType;
+  getDataTypeDisplayLabel(dataType) ?? "데이터";
 
 export const useNodeDataPanelModel = ({
   panelKind,
@@ -56,6 +59,7 @@ export const useNodeDataPanelModel = ({
 
   const isStartNode = Boolean(nodeId && nodeId === startNodeId);
   const isEndNode = Boolean(nodeId && nodeId === endNodeId);
+  const isPreviewSupported = isStartNode;
   const executionDataQuery = useLatestExecutionNodeDataQuery(
     workflowId,
     nodeId ?? undefined,
@@ -72,9 +76,33 @@ export const useNodeDataPanelModel = ({
       showErrorToast: false,
     },
   );
+  const {
+    data: nodePreviewData = null,
+    error: nodePreviewError,
+    isPending: isPreviewLoading,
+    mutate: previewNode,
+    reset: resetNodePreview,
+  } = useWorkflowNodePreviewMutation({
+    showErrorToast: false,
+  });
+
+  useEffect(() => {
+    resetNodePreview();
+  }, [nodeId, panelKind, resetNodePreview, workflowId]);
+
   const executionData = executionDataQuery.data ?? null;
   const schemaPreview = schemaPreviewQuery.data ?? null;
-  const dataToDisplay = getPanelData(panelKind, executionData, isStartNode);
+  const previewDataToDisplay = getPreviewPanelData(
+    panelKind,
+    nodePreviewData,
+    isStartNode,
+  );
+  const executionDataToDisplay = getPanelData(
+    panelKind,
+    executionData,
+    isStartNode,
+  );
+  const dataToDisplay = previewDataToDisplay ?? executionDataToDisplay;
   const schemaToDisplay =
     panelKind === "input"
       ? (schemaPreview?.input?.schema ?? null)
@@ -91,14 +119,42 @@ export const useNodeDataPanelModel = ({
     activeNode?.data.outputTypes[0] !== undefined
       ? getDataTypeLabel(activeNode.data.outputTypes[0])
       : null;
-  const state = resolveNodeDataPanelState({
-    hasActiveNode: Boolean(activeNode),
-    canViewExecutionData,
-    isExecutionDataLoading: executionDataQuery.isLoading,
-    isExecutionDataError: executionDataQuery.isError,
-    executionData,
-    dataToDisplay,
-  });
+  const isPreviewDataDisplayed = !isEmptyPanelData(previewDataToDisplay);
+  const canRequestPreview = Boolean(
+    isPreviewSupported &&
+    workflowId &&
+    nodeId &&
+    activeNode &&
+    canViewExecutionData &&
+    !isWorkflowDirty,
+  );
+  const requestPreview = useCallback(() => {
+    if (!workflowId || !nodeId || !canRequestPreview) {
+      return;
+    }
+
+    previewNode({
+      workflowId,
+      nodeId,
+      limit: 5,
+      includeContent: false,
+    });
+  }, [canRequestPreview, nodeId, previewNode, workflowId]);
+  const state = isPreviewDataDisplayed
+    ? "data-ready"
+    : resolveNodeDataPanelState({
+        hasActiveNode: Boolean(activeNode),
+        canViewExecutionData,
+        isExecutionDataLoading:
+          executionDataQuery.isLoading || isPreviewLoading,
+        isExecutionDataError: executionDataQuery.isError,
+        executionData,
+        dataToDisplay,
+      });
+  const previewErrorMessage =
+    nodePreviewData && !nodePreviewData.available
+      ? (nodePreviewData.reason ?? "PREVIEW_UNAVAILABLE")
+      : (nodePreviewError?.message ?? null);
 
   return {
     activeNode,
@@ -108,6 +164,7 @@ export const useNodeDataPanelModel = ({
     staticInputLabel,
     staticOutputLabel,
     executionData,
+    nodePreviewData,
     schemaPreview,
     state,
     dataToDisplay,
@@ -115,7 +172,13 @@ export const useNodeDataPanelModel = ({
     schemaPreviewLabel,
     canViewExecutionData,
     isExecutionDataLoading: executionDataQuery.isLoading,
+    isPreviewLoading,
     isSchemaPreviewLoading: schemaPreviewQuery.isLoading,
     isStaleAgainstCurrentEditor: isWorkflowDirty,
+    isPreviewDataDisplayed,
+    isPreviewSupported,
+    canRequestPreview,
+    previewErrorMessage,
+    requestPreview,
   };
 };

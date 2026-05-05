@@ -16,7 +16,10 @@ import {
   type SinkSchemaFieldResponse,
   type SinkTargetOptionItemResponse,
   type SourceTargetOptionItemResponse,
+  getDataTypeDisplayLabel,
   getNodeStatusMissingFieldLabel,
+  getSchemaValueTypeLabel,
+  getWorkflowMetadataSummary,
   toBackendDataType,
   toEdgeDefinition,
   toNodeDefinition,
@@ -251,39 +254,8 @@ const createSearchPickerState = (scope: string) => ({
   searchQuery: "",
 });
 
-const formatMetadataValue = (value: unknown) => {
-  if (typeof value === "string" || typeof value === "number") {
-    return String(value);
-  }
-
-  return null;
-};
-
-const getMetadataSummary = (metadata: Record<string, unknown> | undefined) => {
-  if (!metadata) {
-    return "";
-  }
-
-  const summaryKeys = [
-    "mimeType",
-    "modifiedTime",
-    "size",
-    "memberCount",
-    "lastEditedTime",
-    "parentType",
-  ];
-
-  return summaryKeys
-    .map((key) => {
-      const value = formatMetadataValue(metadata[key]);
-      return value ? `${key}: ${value}` : null;
-    })
-    .filter((value): value is string => value !== null)
-    .join(" · ");
-};
-
 const renderRemotePickerMetadata = (option: RemoteOptionPickerItem) => {
-  const metadataSummary = getMetadataSummary(option.metadata);
+  const metadataSummary = getWorkflowMetadataSummary(option.metadata);
 
   return metadataSummary ? (
     <Text color="text.secondary" fontSize="xs">
@@ -1017,6 +989,11 @@ export const SinkNodePanel = ({
 
     return `${nodeId}:${serviceKey}:${JSON.stringify(snapshot)}`;
   }, [nodeId, serviceKey, sinkConfig, sinkSchema]);
+  const shouldShowNodeStatus = Boolean(
+    nodeStatus && (!nodeStatus.configured || !nodeStatus.executable),
+  );
+  const inputTypeLabel =
+    getDataTypeDisplayLabel(sinkInputType) ?? "데이터 확인 필요";
 
   return (
     <NodePanelShell
@@ -1025,31 +1002,32 @@ export const SinkNodePanel = ({
       title={selectedSinkService?.label ?? "Destination"}
     >
       <Box display="flex" flexDirection="column" gap={6}>
-        {nodeStatus ? (
-          <Box bg="gray.50" borderRadius="2xl" px={4} py={4}>
-            <Text fontSize="sm" fontWeight="medium" mb={1}>
-              현재 상태
+        {shouldShowNodeStatus ? (
+          <Box
+            bg="orange.50"
+            border="1px solid"
+            borderColor="orange.100"
+            borderRadius="2xl"
+            px={4}
+            py={4}
+          >
+            <Text color="orange.600" fontSize="sm" fontWeight="semibold" mb={1}>
+              도착 노드 설정을 확인해 주세요.
             </Text>
             <Text color="text.secondary" fontSize="sm">
-              설정 완료: {nodeStatus.configured ? "예" : "아니오"}
+              {missingFields.length > 0
+                ? `확인 항목: ${missingFields.join(", ")}`
+                : "설정 값을 다시 확인해 주세요."}
             </Text>
-            <Text color="text.secondary" fontSize="sm">
-              실행 가능: {nodeStatus.executable ? "예" : "아니오"}
-            </Text>
-            {missingFields.length > 0 ? (
-              <Text color="text.secondary" fontSize="sm" mt={2}>
-                확인 항목: {missingFields.join(", ")}
-              </Text>
-            ) : null}
           </Box>
         ) : null}
 
         <Box display="flex" flexDirection="column" gap={2}>
           <Text fontSize="sm" fontWeight="medium">
-            현재 결과 타입
+            보낼 데이터
           </Text>
           <Text color="text.secondary" fontSize="sm">
-            {inputType ? sinkInputType : "결과 타입 확인 필요"}
+            {inputType ? inputTypeLabel : "데이터 확인 필요"}
           </Text>
         </Box>
 
@@ -1067,22 +1045,30 @@ export const SinkNodePanel = ({
             </Box>
           ) : schemaPreview ? (
             <Box display="flex" flexDirection="column" gap={2}>
-              {schemaPreview.fields.map((field) => (
-                <Box
-                  key={field.key}
-                  bg="gray.50"
-                  borderRadius="xl"
-                  px={4}
-                  py={3}
-                >
-                  <Text fontSize="sm" fontWeight="semibold">
-                    {field.label}
-                  </Text>
-                  <Text color="text.secondary" fontSize="xs">
-                    {field.key} · {field.value_type}
-                  </Text>
-                </Box>
-              ))}
+              {schemaPreview.fields.map((field) => {
+                const valueTypeLabel = getSchemaValueTypeLabel(
+                  field.value_type,
+                );
+
+                return (
+                  <Box
+                    key={field.key}
+                    bg="gray.50"
+                    borderRadius="xl"
+                    px={4}
+                    py={3}
+                  >
+                    <Text fontSize="sm" fontWeight="semibold">
+                      {field.label || "항목"}
+                    </Text>
+                    {valueTypeLabel ? (
+                      <Text color="text.secondary" fontSize="xs">
+                        {valueTypeLabel}
+                      </Text>
+                    ) : null}
+                  </Box>
+                );
+              })}
             </Box>
           ) : (
             <Text color="text.secondary" fontSize="sm">
@@ -1093,7 +1079,7 @@ export const SinkNodePanel = ({
 
         <Box display="flex" flexDirection="column" gap={3}>
           <Text fontSize="sm" fontWeight="medium">
-            sink 상세 설정
+            도착 상세 설정
           </Text>
 
           {selectedSinkService && sinkSchema ? (
@@ -1108,7 +1094,7 @@ export const SinkNodePanel = ({
             />
           ) : (
             <Text color="text.secondary" fontSize="sm">
-              sink 서비스를 먼저 선택하면 상세 설정을 채울 수 있습니다.
+              보낼 서비스를 먼저 선택하면 상세 설정을 채울 수 있습니다.
             </Text>
           )}
         </Box>

@@ -15,6 +15,7 @@ import { getWorkflowListAPI } from "./get-workflow-list.api";
 import { getWorkflowNodeSchemaPreviewAPI } from "./get-workflow-node-schema-preview.api";
 import { getWorkflowSchemaPreviewAPI } from "./get-workflow-schema-preview.api";
 import { getWorkflowAPI } from "./get-workflow.api";
+import { previewWorkflowNodeAPI } from "./preview-workflow-node.api";
 import { previewWorkflowSchemaAPI } from "./preview-workflow-schema.api";
 import { selectWorkflowChoiceAPI } from "./select-workflow-choice.api";
 import { shareWorkflowAPI } from "./share-workflow.api";
@@ -44,6 +45,7 @@ export const workflowApi = {
   getChoices: getWorkflowChoicesAPI,
   selectChoice: selectWorkflowChoiceAPI,
   previewSchema: previewWorkflowSchemaAPI,
+  previewNode: previewWorkflowNodeAPI,
   share: shareWorkflowAPI,
   generate: generateWorkflowAPI,
 };

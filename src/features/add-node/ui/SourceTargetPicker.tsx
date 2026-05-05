@@ -11,6 +11,7 @@ import { Box, Button, Input, Text } from "@chakra-ui/react";
 import {
   type SourceModeResponse,
   type SourceTargetOptionItemResponse,
+  getWorkflowMetadataSummary,
   useInfiniteSourceTargetOptionsQuery,
 } from "@/entities/workflow";
 import {
@@ -52,40 +53,8 @@ const getOptionIcon = (option: RemoteOptionPickerItem) =>
   TARGET_OPTION_ICON_MAP[option.type as keyof typeof TARGET_OPTION_ICON_MAP] ??
   MdFolder;
 
-const formatMetadataValue = (value: unknown) => {
-  if (typeof value === "string" || typeof value === "number") {
-    return String(value);
-  }
-
-  return null;
-};
-
-const getMetadataSummary = (
-  metadata: SourceTargetOptionItemResponse["metadata"] | undefined,
-) => {
-  if (!metadata) {
-    return "";
-  }
-
-  const summaryKeys = [
-    "term",
-    "courseCount",
-    "mimeType",
-    "modifiedTime",
-    "size",
-  ];
-
-  return summaryKeys
-    .map((key) => {
-      const value = formatMetadataValue(metadata[key]);
-      return value ? `${key}: ${value}` : null;
-    })
-    .filter((value): value is string => value !== null)
-    .join(" · ");
-};
-
 const renderOptionMetadata = (option: RemoteOptionPickerItem) => {
-  const metadataSummary = getMetadataSummary(option.metadata);
+  const metadataSummary = getWorkflowMetadataSummary(option.metadata);
 
   return metadataSummary ? (
     <Text color="text.secondary" fontSize="xs">

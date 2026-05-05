@@ -38,6 +38,9 @@ import {
   type SourceModeResponse,
   type SourceServiceResponse,
   findAddedNodeId,
+  getCanonicalInputTypeLabel,
+  getDataTypeDisplayLabel,
+  getTriggerKindLabel,
   getVisualNodeTypeFromServiceKey,
   toBackendDataType,
   toFrontendDataType,
@@ -82,28 +85,6 @@ const CATALOG_SERVICE_ICON_MAP: Record<string, IconType> = {
   google_sheets: SiGooglesheets,
   notion: MdArticle,
   slack: SiSlack,
-};
-
-const CANONICAL_INPUT_TYPE_LABELS: Record<string, string> = {
-  API_RESPONSE: "구조화된 API 응답",
-  EMAIL_LIST: "이메일 목록",
-  FILE_LIST: "파일 목록",
-  SCHEDULE_DATA: "일정 데이터",
-  SINGLE_EMAIL: "단일 이메일",
-  SINGLE_FILE: "단일 파일",
-  SPREADSHEET_DATA: "스프레드시트 데이터",
-  TEXT: "텍스트",
-};
-
-const DATA_TYPE_LABELS: Record<DataType, string> = {
-  "api-response": "API 응답",
-  "email-list": "이메일 목록",
-  "file-list": "파일 목록",
-  "schedule-data": "일정 데이터",
-  "single-email": "단일 이메일",
-  "single-file": "단일 파일",
-  spreadsheet: "스프레드시트 데이터",
-  text: "텍스트",
 };
 
 const TARGET_SCHEMA_LABELS: Record<string, string> = {
@@ -406,10 +387,9 @@ const SourceModeList = ({
             {mode.label}
           </Text>
           <Text color="text.secondary" fontSize="sm">
-            {CANONICAL_INPUT_TYPE_LABELS[mode.canonical_input_type] ??
-              mode.canonical_input_type}
+            {getCanonicalInputTypeLabel(mode.canonical_input_type) ?? "데이터"}
             {" · "}
-            {mode.trigger_kind}
+            {getTriggerKindLabel(mode.trigger_kind) ?? "실행 방식"}
           </Text>
         </Box>
       ))}
@@ -544,7 +524,7 @@ const StartNodeConfirm = ({
       </Box>
       <Box bg="gray.50" borderRadius="2xl" px={5} py={4}>
         <Text color="text.secondary" fontSize="sm">
-          source mode
+          가져오는 방식
         </Text>
         <Text fontSize="md" fontWeight="semibold">
           {mode.label}
@@ -552,17 +532,16 @@ const StartNodeConfirm = ({
       </Box>
       <Box bg="gray.50" borderRadius="2xl" px={5} py={4}>
         <Text color="text.secondary" fontSize="sm">
-          canonical type
+          가져오는 데이터
         </Text>
         <Text fontSize="md" fontWeight="semibold">
-          {CANONICAL_INPUT_TYPE_LABELS[mode.canonical_input_type] ??
-            mode.canonical_input_type}
+          {getCanonicalInputTypeLabel(mode.canonical_input_type) ?? "데이터"}
         </Text>
       </Box>
       {targetValue ? (
         <Box bg="gray.50" borderRadius="2xl" px={5} py={4}>
           <Text color="text.secondary" fontSize="sm">
-            target
+            선택한 대상
           </Text>
           <Text fontSize="md" fontWeight="semibold">
             {targetValue}
@@ -613,7 +592,7 @@ const SinkNodeConfirm = ({
     <VStack align="stretch" gap={3}>
       <Box bg="gray.50" borderRadius="2xl" px={5} py={4}>
         <Text color="text.secondary" fontSize="sm">
-          sink 서비스
+          보낼 서비스
         </Text>
         <Text fontSize="md" fontWeight="semibold">
           {service.label}
@@ -621,10 +600,10 @@ const SinkNodeConfirm = ({
       </Box>
       <Box bg="gray.50" borderRadius="2xl" px={5} py={4}>
         <Text color="text.secondary" fontSize="sm">
-          현재 결과 타입
+          보낼 데이터
         </Text>
         <Text fontSize="md" fontWeight="semibold">
-          {inputType ? DATA_TYPE_LABELS[inputType] : "결과 타입 확인 필요"}
+          {getDataTypeDisplayLabel(inputType) ?? "데이터 확인 필요"}
         </Text>
       </Box>
     </VStack>
@@ -1225,7 +1204,7 @@ export const ServiceSelectionPanel = () => {
                   connectedServiceKeys={connectedServiceKeys}
                   emptyMessage={
                     sinkInputType
-                      ? "현재 결과 타입과 연결할 수 있는 sink 서비스가 없습니다."
+                      ? "현재 데이터와 연결할 수 있는 보낼 서비스가 없습니다."
                       : "먼저 결과를 만들 노드가 필요합니다."
                   }
                   isAuthStatusError={isOAuthTokensError}
