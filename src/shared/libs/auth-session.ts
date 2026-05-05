@@ -1,6 +1,7 @@
 const ACCESS_TOKEN_KEY = "accessToken";
 const REFRESH_TOKEN_KEY = "refreshToken";
 const AUTH_USER_KEY = "authUser";
+const TOKEN_REFRESH_LEEWAY_MS = 1000 * 60;
 
 export interface AuthSessionUser {
   id: string;
@@ -38,12 +39,20 @@ const isTokenValid = (token: string | null) => {
     return false;
   }
 
-  const payload = decodeJwtPayload(token);
-  if (!payload?.exp || typeof payload.exp !== "number") {
-    return false;
+  return getTokenExpiresAt(token) > Date.now();
+};
+
+const getTokenExpiresAt = (token: string | null) => {
+  if (!token) {
+    return 0;
   }
 
-  return payload.exp * 1000 > Date.now();
+  const payload = decodeJwtPayload(token);
+  if (!payload?.exp || typeof payload.exp !== "number") {
+    return 0;
+  }
+
+  return payload.exp * 1000;
 };
 
 export const getAccessToken = () => localStorage.getItem(ACCESS_TOKEN_KEY);
@@ -73,9 +82,28 @@ export const storeAuthUser = (user: AuthSessionUser) => {
   localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
 };
 
+export const isAccessTokenValid = () => isTokenValid(getAccessToken());
+
+export const isRefreshTokenValid = () => isTokenValid(getRefreshToken());
+
+export const shouldRefreshAccessToken = () => {
+  const accessToken = getAccessToken();
+  const refreshToken = getRefreshToken();
+
+  if (!isTokenValid(refreshToken)) {
+    return false;
+  }
+
+  if (!accessToken) {
+    return true;
+  }
+
+  return getTokenExpiresAt(accessToken) - Date.now() <= TOKEN_REFRESH_LEEWAY_MS;
+};
+
 export const isAuthenticated = () => {
-  const hasValidAccessToken = isTokenValid(getAccessToken());
-  const hasValidRefreshToken = isTokenValid(getRefreshToken());
+  const hasValidAccessToken = isAccessTokenValid();
+  const hasValidRefreshToken = isRefreshTokenValid();
 
   if (!hasValidAccessToken && !hasValidRefreshToken) {
     clearAuthSession();
