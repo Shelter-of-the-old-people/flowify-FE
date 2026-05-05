@@ -935,6 +935,7 @@ export const ServiceSelectionPanel = () => {
           position: activePlaceholder.position,
           role: "start",
           config: {
+            isConfigured: true,
             canonical_input_type: selectedSourceMode.canonical_input_type,
             service: selectedSourceService.key,
             source_mode: selectedSourceMode.key,

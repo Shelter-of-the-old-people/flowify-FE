@@ -283,7 +283,7 @@ export const InputPanel = () => {
                   </Text>
                   {activeNodeMissingFields.length > 0 ? (
                     <Text color="text.secondary" fontSize="sm" mt={2}>
-                      누락 항목: {activeNodeMissingFields.join(", ")}
+                      확인 항목: {activeNodeMissingFields.join(", ")}
                     </Text>
                   ) : null}
                 </Box>

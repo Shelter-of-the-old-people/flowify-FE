@@ -336,6 +336,29 @@ export const useChoiceWizardController = () => {
       ],
     );
 
+  const markStagingNodeConfigured = useCallback(async () => {
+    if (!stagingNode || stagingNode.data.config.isConfigured) {
+      return;
+    }
+
+    await updatePersistedNode({
+      node: stagingNode,
+      type: stagingNode.data.type,
+      config: buildChoiceWizardNodeConfig({
+        type: stagingNode.data.type,
+        baseConfig: stagingNode.data.config,
+        isConfigured: true,
+        preserveExistingConfig: true,
+      }),
+      role: baseStagingSnapshot?.role ?? resolveNodeRole(stagingNode.id),
+    });
+  }, [
+    baseStagingSnapshot?.role,
+    resolveNodeRole,
+    stagingNode,
+    updatePersistedNode,
+  ]);
+
   useEffect(() => {
     if (!isWizardMode || !activeNode || !parentNode || initialDataTypeKey) {
       return;
@@ -616,6 +639,10 @@ export const useChoiceWizardController = () => {
           return;
         }
 
+        if (selectionIntent.shouldUseActionLeaf) {
+          await markStagingNodeConfigured();
+        }
+
         finishWizard();
       } catch {
         logChoiceWizardEvent({
@@ -639,6 +666,7 @@ export const useChoiceWizardController = () => {
       getChoiceSelectContext,
       mappingRules,
       applyWizardStatePatch,
+      markStagingNodeConfigured,
       nodes,
       openPanel,
       placeWorkflowNode,
@@ -767,6 +795,10 @@ export const useChoiceWizardController = () => {
               : resolveNodeRole(targetNode.id),
         });
 
+        if (actionNode) {
+          await markStagingNodeConfigured();
+        }
+
         logChoiceWizardEvent({
           anchorNodeId: anchorNodeId ?? rootParentNodeId,
           details: {
@@ -800,6 +832,7 @@ export const useChoiceWizardController = () => {
       anchorNodeId,
       baseStagingSnapshot?.role,
       finishWizard,
+      markStagingNodeConfigured,
       openPanel,
       resolveNodeRole,
       rootParentNodeId,
