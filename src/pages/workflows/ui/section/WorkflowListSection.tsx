@@ -10,7 +10,7 @@ import { WorkflowListEmptyState } from "../WorkflowListEmptyState";
 import { WorkflowListErrorState } from "../WorkflowListErrorState";
 import { WorkflowListHeader } from "../WorkflowListHeader";
 import { WorkflowListLoadingState } from "../WorkflowListLoadingState";
-import { WorkflowRow } from "../WorkflowRow";
+import { WorkflowRowItem } from "../WorkflowRowItem";
 
 export const WorkflowListSection = () => {
   const {
@@ -25,13 +25,8 @@ export const WorkflowListSection = () => {
     isFetchingNextPage,
     handleReload,
   } = useWorkflowListData();
-  const {
-    isCreatePending,
-    togglingWorkflowId,
-    handleCreateWorkflow,
-    handleOpenWorkflow,
-    handleToggleWorkflow,
-  } = useWorkflowListActions();
+  const { isCreatePending, handleCreateWorkflow, handleOpenWorkflow } =
+    useWorkflowListActions();
   const loadMoreRef = useWorkflowListInfiniteScroll({
     hasNextPage,
     isFetchingNextPage,
@@ -58,12 +53,10 @@ export const WorkflowListSection = () => {
         {!isLoading && !isError ? (
           <VStack align="stretch" gap={3}>
             {filteredWorkflows.map((workflow) => (
-              <WorkflowRow
+              <WorkflowRowItem
                 key={workflow.id}
                 workflow={workflow}
-                isTogglePending={togglingWorkflowId === workflow.id}
                 onOpen={() => handleOpenWorkflow(workflow.id)}
-                onToggle={() => void handleToggleWorkflow(workflow)}
               />
             ))}
 

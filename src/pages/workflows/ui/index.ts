@@ -6,3 +6,4 @@ export * from "./WorkflowFilterTabs";
 export * from "./WorkflowListHeader";
 export * from "./WorkflowListLoadingState";
 export * from "./WorkflowRow";
+export * from "./WorkflowRowItem";
