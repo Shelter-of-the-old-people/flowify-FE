@@ -17,7 +17,7 @@ import {
 } from "@chakra-ui/react";
 
 import {
-  DashboardErrorCard,
+  DashboardIssueCardItem,
   DashboardMetricCard,
   ServiceConnectionCard,
 } from "..";
@@ -118,13 +118,7 @@ export const DashboardSection = () => {
     handleConnectService,
     handleDisconnectService,
   } = useDashboardData();
-  const {
-    expandedIssueId,
-    getIssueIsActive,
-    togglingWorkflowId,
-    handleToggleIssue,
-    handleToggleWorkflow,
-  } = useDashboardActions();
+  const { expandedIssueId, handleToggleIssue } = useDashboardActions();
 
   return (
     <VStack align="stretch" gap={12}>
@@ -167,19 +161,11 @@ export const DashboardSection = () => {
           issues.length > 0 ? (
             <VStack align="stretch" gap={3}>
               {issues.map((issue) => (
-                <DashboardErrorCard
+                <DashboardIssueCardItem
                   key={issue.id}
                   issue={issue}
-                  isActive={getIssueIsActive(issue.id, issue.isActive)}
                   isExpanded={expandedIssueId === issue.id}
-                  isTogglePending={togglingWorkflowId === issue.id}
                   onToggle={() => handleToggleIssue(issue.id)}
-                  onToggleWorkflow={() =>
-                    void handleToggleWorkflow(
-                      issue.id,
-                      getIssueIsActive(issue.id, issue.isActive),
-                    )
-                  }
                 />
               ))}
             </VStack>
