@@ -182,28 +182,30 @@ export const InputPanel = () => {
                   source={nodeDataPanel.schemaPreview?.source ?? null}
                 />
               ) : null}
-              <Box display="flex" flexDirection="column" gap={2}>
-                <Button
-                  alignSelf="flex-start"
-                  size="sm"
-                  variant="outline"
-                  loading={nodeDataPanel.isPreviewLoading}
-                  disabled={!nodeDataPanel.canRequestPreview}
-                  onClick={nodeDataPanel.requestPreview}
-                >
-                  실행 전 미리보기
-                </Button>
-                {isDirty ? (
-                  <Text fontSize="xs" color="orange.500">
-                    저장 후 미리보기를 확인할 수 있습니다.
-                  </Text>
-                ) : null}
-                {nodeDataPanel.previewErrorMessage ? (
-                  <Text fontSize="xs" color="red.500">
-                    {nodeDataPanel.previewErrorMessage}
-                  </Text>
-                ) : null}
-              </Box>
+              {nodeDataPanel.isPreviewSupported ? (
+                <Box display="flex" flexDirection="column" gap={2}>
+                  <Button
+                    alignSelf="flex-start"
+                    size="sm"
+                    variant="outline"
+                    loading={nodeDataPanel.isPreviewLoading}
+                    disabled={!nodeDataPanel.canRequestPreview}
+                    onClick={nodeDataPanel.requestPreview}
+                  >
+                    실행 전 미리보기
+                  </Button>
+                  {isDirty ? (
+                    <Text fontSize="xs" color="orange.500">
+                      저장 후 미리보기를 확인할 수 있습니다.
+                    </Text>
+                  ) : null}
+                  {nodeDataPanel.previewErrorMessage ? (
+                    <Text fontSize="xs" color="red.500">
+                      {nodeDataPanel.previewErrorMessage}
+                    </Text>
+                  ) : null}
+                </Box>
+              ) : null}
               <DataStateNotice
                 state={nodeDataPanel.state}
                 panelKind="input"

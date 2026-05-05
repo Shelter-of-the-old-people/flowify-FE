@@ -43,6 +43,7 @@ export type NodeDataPanelModel = {
   isSchemaPreviewLoading: boolean;
   isStaleAgainstCurrentEditor: boolean;
   isPreviewDataDisplayed: boolean;
+  isPreviewSupported: boolean;
   canRequestPreview: boolean;
   previewErrorMessage: string | null;
   requestPreview: () => void;

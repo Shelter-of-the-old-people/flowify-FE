@@ -131,29 +131,43 @@ Response:
 ```json
 {
   "workflowId": "workflow_1",
-  "nodeId": "node_ai",
-  "status": "success",
-  "inputData": {
-    "type": "SINGLE_FILE",
-    "filename": "lecture.pdf",
-    "mime_type": "application/pdf",
-    "url": "https://drive.google.com/file/d/..."
-  },
+  "nodeId": "node_source",
+  "status": "available",
+  "available": true,
+  "reason": null,
   "outputData": {
-    "type": "TEXT",
-    "content": "요약 결과..."
+    "type": "FILE_LIST",
+    "items": [
+      {
+        "file_id": "file_1",
+        "filename": "lecture.pdf",
+        "mime_type": "application/pdf",
+        "size": "2048",
+        "modified_time": "2026-05-01T00:00:00Z",
+        "url": "https://drive.google.com/file/d/file_1"
+      }
+    ],
+    "truncated": false
   },
-  "previewMeta": {
-    "saved": false,
-    "sideEffect": false,
-    "sampled": true,
-    "sampleIndex": 0,
-    "sampleReason": "하나씩 처리 미리보기는 첫 번째 항목만 사용합니다.",
-    "truncated": false,
+  "previewData": {
+    "type": "FILE_LIST",
+    "items": [
+      {
+        "file_id": "file_1",
+        "filename": "lecture.pdf",
+        "mime_type": "application/pdf",
+        "size": "2048",
+        "modified_time": "2026-05-01T00:00:00Z",
+        "url": "https://drive.google.com/file/d/file_1"
+      }
+    ],
+    "truncated": false
+  },
+  "missingFields": null,
+  "metadata": {
     "limit": 50,
-    "executedNodeIds": ["node_source", "node_loop", "node_ai"]
-  },
-  "error": null
+    "preview_scope": "source_metadata"
+  }
 }
 ```
 
@@ -164,22 +178,14 @@ Response:
   "workflowId": "workflow_1",
   "nodeId": "node_ai",
   "status": "unavailable",
+  "available": false,
+  "reason": "PREVIEW_NOT_IMPLEMENTED",
   "inputData": null,
   "outputData": null,
-  "previewMeta": {
-    "saved": false,
-    "sideEffect": false,
-    "sampled": false,
-    "truncated": false,
-    "limit": 50,
-    "executedNodeIds": []
-  },
-  "error": {
-    "code": "NODE_NOT_CONFIGURED",
-    "message": "노드 설정이 완료되지 않았습니다.",
-    "context": {
-      "missingFields": ["prompt"]
-    }
+  "previewData": null,
+  "missingFields": null,
+  "metadata": {
+    "preview_scope": "source_metadata"
   }
 }
 ```
@@ -202,14 +208,13 @@ Request:
   "service_tokens": {
     "google_drive": "ya29..."
   },
-  "options": {
-    "limit": 50,
-    "include_content": false
-  }
+  "limit": 50,
+  "include_content": false
 }
 ```
 
-Response는 Spring response와 동일한 shape를 사용한다.
+Response는 Spring response와 의미상 동일한 shape를 사용하되, FastAPI 모델은 snake_case를 사용한다.
+Spring `FastApiClient.previewNode()`가 이를 camelCase `NodePreviewResponse`로 매핑한다.
 
 ## 6. Spring 설계
 
@@ -233,30 +238,59 @@ Response는 Spring response와 동일한 shape를 사용한다.
 1. `WorkflowService`로 workflow 조회
 2. workflow owner 확인
 3. nodeId 존재 확인
-4. `NodeLifecycleService.evaluate()`로 설정 상태 확인
-5. 설정이 불완전하면 FastAPI 호출 없이 `status=unavailable` 응답
-6. OAuth token 수집
-7. `WorkflowTranslator.toRuntimeModel()` 호출
-8. `FastApiClient.previewNode()` 호출
-9. FastAPI 응답 반환
+4. 1차 preview 지원 범위인지 먼저 확인
+5. 미지원 노드이면 lifecycle/OAuth token 검사 없이 `PREVIEW_NOT_IMPLEMENTED` 응답
+6. 지원 노드이면 `NodeLifecycleService.evaluate()`로 설정 상태 확인
+7. 설정이 불완전하면 FastAPI 호출 없이 `status=unavailable` 응답
+8. 필요한 OAuth token scope 결정
+9. `WorkflowTranslator.toRuntimeModel()` 호출
+10. `FastApiClient.previewNode()` 호출
+11. FastAPI 응답 반환
+
+1차 구현의 지원 범위:
+
+- 지원: `role=start` 또는 FastAPI runtime model 기준 `runtime_type=input`인 source node
+- 미지원: middle node dry-run, loop sample preview, output node no-write preview
+- 미지원 노드는 FastAPI 호출 없이 Spring에서 `status=unavailable`, `reason=PREVIEW_NOT_IMPLEMENTED`로 응답해도 된다.
+- 단, FastAPI가 같은 reason을 반환해도 프론트는 동일하게 처리한다.
+- 미지원 노드는 도착 노드 OAuth token 누락 같은 실행 준비 상태보다 preview 미지원 상태를 우선 반환한다.
 
 ### 6.3 OAuth token 수집
 
 현재 token 수집은 `ExecutionService.collectServiceTokens()` 내부에 묶여 있다.
 
-preview에서도 같은 정책이 필요하므로 다음 중 하나로 정리한다.
+execution과 preview는 토큰 사용 목적이 다르므로 수집 범위를 분리한다.
+
+- execution: 전체 workflow 실행에 필요한 모든 auth-required service token을 수집한다.
+- preview: 선택한 노드 preview에 필요한 service token만 수집한다.
+
+1차 source preview에서 Spring이 수집해야 하는 token:
+
+- 대상 노드가 source node이면 대상 노드의 service token만 수집한다.
+- 예: Google Drive 시작 노드 preview는 `google_drive` token만 필요하다.
+- workflow 뒤쪽에 Gmail, Slack, Notion, Google Drive sink가 있어도 source preview 요청을 막지 않는다.
+- 대상 노드가 preview 미지원 노드이면 token 수집과 FastAPI 호출을 생략하고 `PREVIEW_NOT_IMPLEMENTED`를 반환한다.
+
+후속 dry-run에서 token 수집이 필요한 경우:
+
+- target node까지 실제 preview path에 포함되는 source/service만 수집한다.
+- output node no-write preview는 외부 write를 하지 않으므로 sink token은 원칙적으로 필요하지 않다.
+- sink 설정 검증에 token이 필요한 service가 생기면 해당 service만 예외적으로 명시한다.
+
+구현 선택지:
 
 권장안:
 
 - token 수집 로직을 별도 service로 분리한다.
-- 예: `ExecutionTokenService.collectServiceTokens(userId, nodes)`
-- `ExecutionService`와 `WorkflowPreviewService`가 같이 사용한다.
+- 예: `ExecutionTokenService.collectExecutionTokens(userId, nodes)`
+- 예: `ExecutionTokenService.collectPreviewTokens(userId, targetNode, previewScope)`
+- `ExecutionService`와 `WorkflowPreviewService`가 같은 OAuth 오류 정책을 공유하되 수집 범위는 다르게 가져간다.
 
 임시안:
 
-- `ExecutionService`의 token 수집 로직을 package-private 메서드로 열어 재사용한다.
+- `WorkflowPreviewService` 내부에서 1차 source preview용 target service token만 수집한다.
 
-권장안이 더 낫다. preview와 execution이 같은 OAuth 정책을 공유해야 하기 때문이다.
+권장안이 더 낫다. 다만 1차 구현에서는 source preview 범위가 좁으므로 임시안으로 시작해도 된다.
 
 ### 6.4 Spring 오류 정책
 
@@ -282,7 +316,7 @@ preview는 사용자 보조 기능이므로 가능한 한 UI가 처리하기 쉬
 
 ### 7.2 WorkflowPreviewExecutor 책임
 
-`preview(workflow_id, node_id, workflow, service_tokens, options)` 흐름:
+`preview(workflow_id, node_id, workflow, service_tokens, limit, include_content)` 흐름:
 
 1. node map, edge map 구성
 2. target node까지 필요한 upstream ancestor 계산
@@ -443,6 +477,14 @@ preview data와 execution data는 라벨을 분리한다.
 - AI 노드 preview는 비용이 발생할 수 있으므로 자동 호출하지 않는다.
 - source preview도 외부 API 호출이 있으므로 설정 저장 후 명시 액션으로 호출한다.
 
+1차 구현의 CTA 노출 범위:
+
+- 시작/source node에서만 `실행 전 미리보기` 버튼을 노출한다.
+- middle node와 output node는 dry-run/no-write preview가 구현되기 전까지 버튼을 숨기거나 비활성화한다.
+- middle/output node에는 schema preview, 설정 요약, 최신 실행 결과만 표시한다.
+- 프론트는 `PREVIEW_NOT_IMPLEMENTED`를 일반 오류처럼 노출하지 않고 "아직 지원하지 않는 미리보기" 안내로 처리한다.
+- dirty 상태에서는 1차 구현 기준으로 preview 버튼을 비활성화하고 저장 안내를 보여준다.
+
 ### 8.3 dirty 상태
 
 1차 구현은 저장된 workflow 기준으로 preview한다.
@@ -515,17 +557,24 @@ Raw JSON은 기본 화면에 노출하지 않고 상세 영역에만 둔다.
 - Google Drive, Canvas LMS, Gmail source metadata preview
 - source 목록은 `limit`을 적용하고 `truncated`를 응답한다.
 - 기본값은 metadata-only이며 파일 본문은 가져오지 않는다.
+- Spring은 target source node에 필요한 OAuth token만 수집한다.
+- workflow의 downstream node나 output node token 누락은 source preview를 막지 않는다.
+- 프론트는 시작/source node에만 preview CTA를 노출한다.
 
 제외:
 
 - 중간 노드 처리 결과 preview
 - LLM 호출
 - output no-write preview
+- 전체 workflow token 수집
+- dirty editor 상태의 draft preview
 
 완료 기준:
 
 - 시작 노드에서 Google Drive 폴더/Canvas 과목/Gmail label의 예상 입력 목록이 보인다.
 - preview 결과가 execution history에 저장되지 않는다.
+- 같은 workflow에 다른 OAuth service node가 있어도 대상 source token이 있으면 preview가 가능하다.
+- 중간/도착 노드에서 source preview 버튼이 잘못 노출되지 않는다.
 
 ### Milestone 3. 하나씩 처리 sample preview
 
@@ -625,7 +674,7 @@ preview-safe whitelist:
 권장 1차 범위:
 
 1. Milestone 1: 실행 후 canonical payload 표시 개선
-2. Milestone 2 중 일부: 시작 노드 source metadata preview API skeleton
+2. Milestone 2: 시작/source node metadata preview
 
 더 보수적인 1차 범위:
 
@@ -637,6 +686,15 @@ preview-safe whitelist:
 - 현재 백엔드는 실행 후 canonical payload를 이미 제공한다.
 - 사용자가 즉시 체감하는 문제인 JSON 원문 노출을 프론트만으로 줄일 수 있다.
 - preview/dry-run은 source, LLM, output no-write가 얽히므로 별도 백엔드 이슈로 분리하는 편이 안전하다.
+
+1차 계약 요약:
+
+- Preview endpoint는 저장된 workflow 기준으로 동작한다.
+- Spring은 소유자와 대상 노드 설정 상태를 검증한다.
+- Spring은 대상 source node의 token만 수집한다.
+- FastAPI는 source/start node metadata preview만 실제 구현한다.
+- Middle/output preview는 `PREVIEW_NOT_IMPLEMENTED`로 닫는다.
+- Frontend는 시작/source node에서만 preview 버튼을 보여준다.
 
 ## 11. 구현 단계
 
@@ -650,7 +708,8 @@ preview-safe whitelist:
 ### Step 2. Spring FastAPI bridge
 
 - `FastApiClient.previewNode()` 추가
-- token 수집 로직 공용화
+- 1차 구현에서는 대상 source node token만 수집
+- execution용 전체 token 수집과 preview용 token 수집 범위 분리
 - runtime model과 service token을 FastAPI에 전달
 
 ### Step 3. FastAPI preview endpoint
@@ -685,37 +744,52 @@ preview-safe whitelist:
 ### Step 8. Frontend 연결
 
 - preview API 타입과 hook 추가
-- 노드 패널에 preview 버튼 추가
+- 시작/source node 패널에 preview 버튼 추가
+- middle/output node는 preview-safe dry-run 구현 전까지 버튼 미노출 또는 비활성화
 - preview/execution/schema 표시 우선순위 적용
 - canonical type별 renderer 적용
 
 ## 12. 테스트 계획
 
-### 12.1 Spring 테스트
+테스트는 1차 source preview 계약과 후속 dry-run 계약을 분리한다.
+
+- 1차 테스트: Milestone 1, Milestone 2만 검증한다.
+- 후속 테스트: Milestone 3 이후 기능이 실제 구현될 때 추가한다.
+
+### 12.1 Spring 1차 테스트
 
 - 소유자가 preview 요청하면 FastAPI 호출
 - 공유 사용자는 preview 거부
 - nodeId가 없으면 오류
 - 설정 미완료 노드는 `status=unavailable`
 - OAuth token이 없으면 `status=unavailable`
+- source preview는 대상 source service token만 요청
+- workflow downstream service token 누락은 source preview를 막지 않음
+- preview 미지원 노드는 token 수집 없이 `PREVIEW_NOT_IMPLEMENTED`
 - FastAPI 오류는 `status=failed` 또는 기존 오류 정책에 맞게 변환
 
-### 12.2 FastAPI 테스트
+### 12.2 FastAPI 1차 테스트
 
 - source preview가 DB에 execution 기록을 만들지 않음
 - Google Drive folder preview가 `FILE_LIST` 반환
 - Canvas course preview가 `FILE_LIST` 반환
-- LLM preview가 `TEXT` 반환
-- `FILE_LIST -> loop -> LLM` preview에서 첫 번째 파일만 sample 처리
-- output preview에서 upload/send/create 메서드가 호출되지 않음
+- source/start node가 아니면 `PREVIEW_NOT_IMPLEMENTED` 반환
 
-### 12.3 Frontend 테스트
+### 12.3 Frontend 1차 테스트
 
-- 실행 전 preview 버튼으로 preview data 표시
+- 실행 전 preview 버튼으로 source preview data 표시
+- 1차 구현에서 시작/source node에만 preview 버튼 표시
+- middle/output node는 schema/설정 요약 또는 최신 실행 결과만 표시
 - preview 실패가 실제 실행 실패처럼 보이지 않음
 - 최신 실행 데이터와 preview data 라벨이 분리됨
 - dirty 상태에서 저장 안내 표시
 - canonical type별 renderer가 JSON 원문보다 우선 표시됨
+
+### 12.4 후속 dry-run 테스트
+
+- LLM preview가 `TEXT` 반환
+- `FILE_LIST -> loop -> LLM` preview에서 첫 번째 파일만 sample 처리
+- output preview에서 upload/send/create 메서드가 호출되지 않음
 
 ## 13. 결정 사항
 

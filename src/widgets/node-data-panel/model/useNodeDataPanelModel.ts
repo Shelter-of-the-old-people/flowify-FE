@@ -59,6 +59,7 @@ export const useNodeDataPanelModel = ({
 
   const isStartNode = Boolean(nodeId && nodeId === startNodeId);
   const isEndNode = Boolean(nodeId && nodeId === endNodeId);
+  const isPreviewSupported = isStartNode;
   const executionDataQuery = useLatestExecutionNodeDataQuery(
     workflowId,
     nodeId ?? undefined,
@@ -120,6 +121,7 @@ export const useNodeDataPanelModel = ({
       : null;
   const isPreviewDataDisplayed = !isEmptyPanelData(previewDataToDisplay);
   const canRequestPreview = Boolean(
+    isPreviewSupported &&
     workflowId &&
     nodeId &&
     activeNode &&
@@ -174,6 +176,7 @@ export const useNodeDataPanelModel = ({
     isSchemaPreviewLoading: schemaPreviewQuery.isLoading,
     isStaleAgainstCurrentEditor: isWorkflowDirty,
     isPreviewDataDisplayed,
+    isPreviewSupported,
     canRequestPreview,
     previewErrorMessage,
     requestPreview,
