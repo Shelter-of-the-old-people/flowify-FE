@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { type QueryPolicyOptions, toQueryMeta } from "@/shared/api";
 
 import { oauthApi } from "../api";
+
 import { oauthKeys } from "./query-keys";
 
 export const useOAuthTokensQuery = (
@@ -15,9 +16,9 @@ export const useOAuthTokensQuery = (
     select: options?.select,
     retry: options?.retry,
     staleTime: options?.staleTime,
+    refetchOnMount: options?.refetchOnMount,
     refetchInterval: options?.refetchInterval,
     placeholderData: options?.placeholderData,
     meta: toQueryMeta(options),
     throwOnError: false,
   });
-

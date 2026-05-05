@@ -34,8 +34,14 @@ export const useWorkflowExecutionAction = (
 
   const latestExecution = latestExecutionQuery.data ?? null;
   const isRunning = isExecutionInFlight(latestExecution?.state);
+  const isCheckingLatestExecution =
+    latestExecutionQuery.isFetching &&
+    !latestExecutionQuery.isFetchedAfterMount;
   const isActionPending =
-    latestExecutionQuery.isLoading || isExecutePending || isStopPending;
+    latestExecutionQuery.isLoading ||
+    isCheckingLatestExecution ||
+    isExecutePending ||
+    isStopPending;
   const actionKind: WorkflowExecutionActionKind = isRunning ? "stop" : "run";
   const actionLabel = isRunning ? "워크플로우 중지" : "워크플로우 실행";
 
