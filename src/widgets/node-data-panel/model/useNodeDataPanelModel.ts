@@ -1,11 +1,11 @@
 import { useMemo } from "react";
 
 import {
+  getDataTypeDisplayLabel,
   useLatestExecutionNodeDataQuery,
   useWorkflowNodeSchemaPreviewQuery,
 } from "@/entities";
 import { type FlowNodeData } from "@/entities/node";
-import { OUTPUT_DATA_LABELS } from "@/features/choice-panel";
 import { useWorkflowStore } from "@/features/workflow-editor";
 
 import {
@@ -23,7 +23,7 @@ type UseNodeDataPanelModelParameters = {
 };
 
 const getDataTypeLabel = (dataType: FlowNodeData["outputTypes"][number]) =>
-  OUTPUT_DATA_LABELS[dataType] ?? dataType;
+  getDataTypeDisplayLabel(dataType) ?? "데이터";
 
 export const useNodeDataPanelModel = ({
   panelKind,
