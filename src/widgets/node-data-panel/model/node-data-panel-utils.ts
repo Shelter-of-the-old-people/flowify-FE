@@ -1,4 +1,4 @@
-import { type ExecutionNodeData } from "@/entities";
+import { type ExecutionNodeData, type NodePreviewResponse } from "@/entities";
 
 import { type NodeDataPanelKind, type NodeDataPanelState } from "./types";
 
@@ -50,6 +50,24 @@ export const getPanelData = (
   }
 
   return executionData.outputData ?? null;
+};
+
+export const getPreviewPanelData = (
+  panelKind: NodeDataPanelKind,
+  previewData: NodePreviewResponse | null,
+  isStartNode: boolean,
+) => {
+  if (!previewData?.available) {
+    return null;
+  }
+
+  if (panelKind === "input") {
+    return isStartNode
+      ? (previewData.outputData ?? previewData.previewData ?? null)
+      : (previewData.inputData ?? null);
+  }
+
+  return previewData.outputData ?? previewData.previewData ?? null;
 };
 
 export const resolveNodeDataPanelState = ({

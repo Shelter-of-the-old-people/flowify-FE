@@ -2,6 +2,7 @@ import { type Node } from "@xyflow/react";
 
 import {
   type ExecutionNodeData,
+  type NodePreviewResponse,
   type NodeSchemaPreviewResponse,
   type SchemaPreviewResponse,
 } from "@/entities";
@@ -30,6 +31,7 @@ export type NodeDataPanelModel = {
   staticInputLabel: string | null;
   staticOutputLabel: string | null;
   executionData: ExecutionNodeData | null;
+  nodePreviewData: NodePreviewResponse | null;
   schemaPreview: NodeSchemaPreviewResponse | null;
   state: NodeDataPanelState;
   dataToDisplay: unknown;
@@ -37,6 +39,11 @@ export type NodeDataPanelModel = {
   schemaPreviewLabel: string | null;
   canViewExecutionData: boolean;
   isExecutionDataLoading: boolean;
+  isPreviewLoading: boolean;
   isSchemaPreviewLoading: boolean;
   isStaleAgainstCurrentEditor: boolean;
+  isPreviewDataDisplayed: boolean;
+  canRequestPreview: boolean;
+  previewErrorMessage: string | null;
+  requestPreview: () => void;
 };

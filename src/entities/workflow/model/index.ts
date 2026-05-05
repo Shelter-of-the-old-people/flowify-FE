@@ -22,6 +22,7 @@ export * from "./useUpdateWorkflowNodeMutation";
 export * from "./useWorkflowChoicesQuery";
 export * from "./useWorkflowListQuery";
 export * from "./useWorkflowNodeSchemaPreviewQuery";
+export * from "./useWorkflowNodePreviewMutation";
 export * from "./useWorkflowQuery";
 export * from "./useWorkflowSchemaPreviewMutation";
 export * from "./useWorkflowSchemaPreviewQuery";

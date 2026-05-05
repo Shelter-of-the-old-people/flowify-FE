@@ -221,6 +221,29 @@ export interface NodeSchemaPreviewResponse {
   nodeStatus?: NodeStatusSummaryResponse | null;
 }
 
+export interface NodePreviewRequest {
+  limit?: number;
+  includeContent?: boolean;
+}
+
+export interface NodePreviewResponse {
+  workflowId: string;
+  nodeId: string;
+  status: "available" | "unavailable" | "failed" | string;
+  available: boolean;
+  reason: string | null;
+  inputData?: Record<string, unknown> | null;
+  outputData?: Record<string, unknown> | null;
+  previewData?: Record<string, unknown> | null;
+  missingFields?: string[] | null;
+  metadata?: Record<string, unknown> | null;
+}
+
+export interface PreviewWorkflowNodeCommand extends NodePreviewRequest {
+  workflowId: string;
+  nodeId: string;
+}
+
 export interface CreateWorkflowRequest {
   name: string;
   description?: string;
