@@ -37,6 +37,7 @@ export const useWorkflowChoicesQuery = (
     select: options?.select,
     retry: options?.retry,
     staleTime: options?.staleTime,
+    refetchOnMount: options?.refetchOnMount,
     refetchInterval: options?.refetchInterval,
     placeholderData: options?.placeholderData,
     meta: toQueryMeta(options),

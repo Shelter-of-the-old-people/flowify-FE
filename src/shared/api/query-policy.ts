@@ -21,6 +21,11 @@ export type QueryPolicyOptions<
   select?: UseQueryOptions<TQueryFnData, ApiError, TData>["select"];
   retry?: UseQueryOptions<TQueryFnData, ApiError, TData>["retry"];
   staleTime?: UseQueryOptions<TQueryFnData, ApiError, TData>["staleTime"];
+  refetchOnMount?: UseQueryOptions<
+    TQueryFnData,
+    ApiError,
+    TData
+  >["refetchOnMount"];
   refetchInterval?: UseQueryOptions<
     TQueryFnData,
     ApiError,

@@ -2,8 +2,8 @@ import { type KeyboardEvent, type MouseEvent } from "react";
 import {
   MdErrorOutline,
   MdMoreHoriz,
-  MdPause,
   MdPlayArrow,
+  MdStop,
 } from "react-icons/md";
 
 import {
@@ -31,16 +31,20 @@ import { ServiceBadge } from "./ServiceBadge";
 
 type Props = {
   workflow: WorkflowResponse;
-  isTogglePending: boolean;
+  executionActionKind: "run" | "stop";
+  executionActionLabel: string;
+  isExecutionActionPending: boolean;
   onOpen: () => void;
-  onToggle: () => void;
+  onExecutionAction: () => void;
 };
 
 export const WorkflowRow = ({
   workflow,
-  isTogglePending,
+  executionActionKind,
+  executionActionLabel,
+  isExecutionActionPending,
   onOpen,
-  onToggle,
+  onExecutionAction,
 }: Props) => {
   const { startNode, endNode } = getEndpointNodes(workflow);
   const startBadgeKey = getServiceBadgeKey(startNode);
@@ -48,7 +52,6 @@ export const WorkflowRow = ({
   const relativeUpdate = getRelativeUpdateLabel(workflow.updatedAt);
   const buildProgress = getBuildProgressLabel(workflow);
   const warningMessages = getWorkflowWarningMessages(workflow);
-  const quickActionLabel = workflow.active ? "자동화 중지" : "자동화 실행";
 
   const handleRowKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "Enter" || event.key === " ") {
@@ -120,16 +123,16 @@ export const WorkflowRow = ({
 
         <HStack gap={0} flexShrink={0}>
           <IconButton
-            aria-label={quickActionLabel}
+            aria-label={executionActionLabel}
             variant="ghost"
             size="sm"
-            disabled={isTogglePending}
-            onClick={(event) => handleInnerAction(event, onToggle)}
+            disabled={isExecutionActionPending}
+            onClick={(event) => handleInnerAction(event, onExecutionAction)}
           >
-            {isTogglePending ? (
+            {isExecutionActionPending ? (
               <Spinner size="xs" />
-            ) : workflow.active ? (
-              <MdPause />
+            ) : executionActionKind === "stop" ? (
+              <MdStop />
             ) : (
               <MdPlayArrow />
             )}

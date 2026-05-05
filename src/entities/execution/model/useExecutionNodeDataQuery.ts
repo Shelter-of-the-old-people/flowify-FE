@@ -39,6 +39,7 @@ export const useExecutionNodeDataQuery = (
     select: options?.select,
     retry: options?.retry,
     staleTime: options?.staleTime,
+    refetchOnMount: options?.refetchOnMount,
     refetchInterval:
       options?.refetchInterval ??
       ((query) => {
