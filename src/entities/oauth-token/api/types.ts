@@ -3,6 +3,9 @@ export interface OAuthTokenSummary {
   connected: boolean;
   accountEmail: string | null;
   expiresAt: string | null;
+  aliasOf?: string | null;
+  disconnectable?: boolean | null;
+  reason?: string | null;
 }
 
 export type RawOAuthConnectResponse =
