@@ -2,27 +2,44 @@ import { Box, Text } from "@chakra-ui/react";
 
 import { type ExecutionNodeData } from "@/entities";
 
+import { getExecutionStatusNotice } from "../model";
+
 type Props = {
   executionData: ExecutionNodeData | null;
 };
 
 export const NodeExecutionStatusBlock = ({ executionData }: Props) => {
-  if (!executionData) {
+  const notice = getExecutionStatusNotice(executionData);
+
+  if (!notice) {
     return null;
   }
+
+  const isError = notice.tone === "error";
 
   return (
     <Box display="flex" flexDirection="column" gap={1}>
       <Text fontSize="md" fontWeight="bold">
-        노드 상태
+        실행 상태
       </Text>
-      <Box px={4} py={3} borderRadius="xl" bg="gray.50">
-        <Text fontSize="sm" fontWeight="semibold">
-          {executionData.status ?? executionData.reason ?? "상태 없음"}
+      <Box
+        px={4}
+        py={3}
+        borderRadius="xl"
+        bg={isError ? "red.50" : "orange.50"}
+        border="1px solid"
+        borderColor={isError ? "red.100" : "orange.100"}
+      >
+        <Text
+          fontSize="sm"
+          fontWeight="semibold"
+          color={isError ? "red.500" : "orange.600"}
+        >
+          {notice.title}
         </Text>
-        {executionData.reason ? (
+        {notice.description ? (
           <Text mt={1} fontSize="xs" color="text.secondary">
-            {executionData.reason}
+            {notice.description}
           </Text>
         ) : null}
       </Box>
