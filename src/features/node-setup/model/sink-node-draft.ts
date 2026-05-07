@@ -105,7 +105,7 @@ export const isSinkNodeSetupComplete = (
   fields
     .filter((field) => field.required)
     .every((field) => {
-      const value = (config as Record<string, unknown>)[field.key];
+      const value = (config as unknown as Record<string, unknown>)[field.key];
       return (
         value !== undefined && value !== null && String(value).trim() !== ""
       );
@@ -120,7 +120,7 @@ export const buildSinkNodeConfigDraft = ({
   const schemaFieldKeys = new Set(fields.map((field) => field.key));
   const auxiliaryFieldKeys = new Set(getSinkAuxiliaryFieldKeys(fields));
   const preservedConfigEntries = Object.entries(
-    currentConfig as Record<string, unknown>,
+    currentConfig as unknown as Record<string, unknown>,
   ).filter(
     ([key]) =>
       !schemaFieldKeys.has(key) &&

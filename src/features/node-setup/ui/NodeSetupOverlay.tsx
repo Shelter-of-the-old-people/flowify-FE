@@ -45,18 +45,20 @@ type SourceTargetDraftState = {
   value: SourceTargetSetupValue;
 };
 
+const toConfigRecord = (config: FlowNodeData["config"] | null | undefined) =>
+  (config ?? {}) as unknown as Record<string, unknown>;
+
 const getServiceKey = (config: FlowNodeData["config"]) =>
-  typeof (config as Record<string, unknown>).service === "string"
-    ? ((config as Record<string, unknown>).service as string)
+  typeof toConfigRecord(config).service === "string"
+    ? (toConfigRecord(config).service as string)
     : null;
 
 const createInitialSourceTargetValue = (
   config: FlowNodeData["config"],
 ): SourceTargetSetupValue => {
+  const configRecord = toConfigRecord(config);
   const target =
-    typeof (config as Record<string, unknown>).target === "string"
-      ? ((config as Record<string, unknown>).target as string)
-      : "";
+    typeof configRecord.target === "string" ? configRecord.target : "";
 
   return {
     option: null,
@@ -143,9 +145,8 @@ export const NodeSetupOverlay = () => {
         ) ?? null)
       : null;
   const sourceModeKey =
-    typeof (nodeConfig as Record<string, unknown> | null)?.source_mode ===
-    "string"
-      ? ((nodeConfig as Record<string, unknown>).source_mode as string)
+    typeof toConfigRecord(nodeConfig).source_mode === "string"
+      ? (toConfigRecord(nodeConfig).source_mode as string)
       : null;
   const sourceMode =
     sourceService?.source_modes.find((mode) => mode.key === sourceModeKey) ??
@@ -250,19 +251,18 @@ export const NodeSetupOverlay = () => {
     });
   };
 
-  const handleApplySinkSetup = (config: Record<string, unknown>) => {
+  const handleApplySinkSetup = (config: FlowNodeData["config"]) => {
     if (!activeNode) {
       return;
     }
 
-    replaceNodeConfig(activeNode.id, config as FlowNodeData["config"]);
+    replaceNodeConfig(activeNode.id, config);
     closeNodeSetup();
   };
 
   const existingTargetLabel =
-    typeof (nodeConfig as Record<string, unknown> | null)?.target_label ===
-    "string"
-      ? ((nodeConfig as Record<string, unknown>).target_label as string)
+    typeof toConfigRecord(nodeConfig).target_label === "string"
+      ? (toConfigRecord(nodeConfig).target_label as string)
       : null;
   const sourceNextConfig =
     activeNode && sourceMode
@@ -446,7 +446,7 @@ export const NodeSetupOverlay = () => {
                   fields={sinkSchema.fields}
                   readOnly={!canEditSetup}
                   serviceKey={activeService.key}
-                  sinkConfig={activeNode.data.config as never}
+                  sinkConfig={activeNode.data.config}
                   onApply={handleApplySinkSetup}
                 />
               ) : (

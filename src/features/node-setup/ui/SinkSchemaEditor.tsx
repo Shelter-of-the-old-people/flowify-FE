@@ -3,6 +3,7 @@ import { MdClose, MdDescription, MdFolder, MdForum } from "react-icons/md";
 
 import { Box, Button, Icon, IconButton, Input, Text } from "@chakra-ui/react";
 
+import { type FlowNodeData } from "@/entities/node";
 import {
   type SinkSchemaFieldResponse,
   type SinkTargetOptionItemResponse,
@@ -32,10 +33,10 @@ import {
 
 type Props = {
   fields: SinkSchemaFieldResponse[];
-  onApply: (config: Record<string, unknown>) => void;
+  onApply: (config: FlowNodeData["config"]) => void;
   readOnly?: boolean;
   serviceKey: string;
-  sinkConfig: Record<string, unknown>;
+  sinkConfig: FlowNodeData["config"];
 };
 
 type FolderPickerState = {
@@ -438,13 +439,14 @@ export const SinkSchemaEditor = ({
   serviceKey,
   sinkConfig,
 }: Props) => {
+  const sinkConfigRecord = sinkConfig as unknown as Record<string, unknown>;
   const initialDraftValues = useMemo(
-    () => getInitialSinkDraftValues(fields, sinkConfig),
-    [fields, sinkConfig],
+    () => getInitialSinkDraftValues(fields, sinkConfigRecord),
+    [fields, sinkConfigRecord],
   );
   const initialAuxiliaryDraftValues = useMemo(
-    () => getInitialSinkAuxiliaryDraftValues(fields, sinkConfig),
-    [fields, sinkConfig],
+    () => getInitialSinkAuxiliaryDraftValues(fields, sinkConfigRecord),
+    [fields, sinkConfigRecord],
   );
   const [draftValues, setDraftValues] =
     useState<SinkSetupDraftValues>(initialDraftValues);
@@ -533,10 +535,10 @@ export const SinkSchemaEditor = ({
     onApply(
       buildSinkNodeConfigDraft({
         auxiliaryDraftValues,
-        currentConfig: sinkConfig as never,
+        currentConfig: sinkConfig,
         draftValues,
         fields,
-      }) as Record<string, unknown>,
+      }),
     );
   };
 

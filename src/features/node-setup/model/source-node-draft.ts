@@ -25,11 +25,8 @@ export const isSourceTargetRequired = (
     : true;
 };
 
-const hasStringConfigValue = (
-  config: FlowNodeData["config"],
-  key: keyof FlowNodeData["config"],
-) => {
-  const value = config[key];
+const hasStringConfigValue = (config: FlowNodeData["config"], key: string) => {
+  const value = (config as unknown as Record<string, unknown>)[key];
   return typeof value === "string" && value.trim().length > 0;
 };
 
