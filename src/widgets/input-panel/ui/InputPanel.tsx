@@ -39,6 +39,9 @@ export const InputPanel = () => {
   const activePlaceholder = useWorkflowStore(
     (state) => state.activePlaceholder,
   );
+  const activeNodeSetupSession = useWorkflowStore(
+    (state) => state.activeNodeSetupSession,
+  );
   const workflowId = useWorkflowStore((state) => state.workflowId);
   const nodeStatuses = useWorkflowStore((state) => state.nodeStatuses);
   const canViewExecutionData = useWorkflowStore(
@@ -47,7 +50,10 @@ export const InputPanel = () => {
   const isDirty = useWorkflowStore((state) => state.isDirty);
   const closePanel = useWorkflowStore((state) => state.closePanel);
   const layout = useDualPanelLayout();
-  const isOpen = Boolean(activePanelNodeId) && activePlaceholder === null;
+  const isOpen =
+    Boolean(activePanelNodeId) &&
+    activePlaceholder === null &&
+    activeNodeSetupSession === null;
   const { data: mappingRulesResponse } = useMappingRulesQuery();
   const mappingRules = useMemo(
     () => toChoiceMappingRules(mappingRulesResponse),

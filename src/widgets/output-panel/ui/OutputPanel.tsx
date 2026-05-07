@@ -54,6 +54,8 @@ type OutputPanelWizardController = {
   selectedProcessingOption: WizardChoiceOption | null;
   selectedFollowUp: ChoiceFollowUp | null;
   selectedBranchConfig: ChoiceBranchConfig | null;
+  initialFollowUpSelections: Record<string, string | string[]> | null;
+  isExistingChoiceEditMode: boolean;
   wizardError: string | null;
   isWorkflowBusy: boolean;
   isChoiceStepLoading: boolean;
@@ -111,7 +113,12 @@ export const OutputPanel = ({ wizardController }: Props) => {
   const activePlaceholder = useWorkflowStore(
     (state) => state.activePlaceholder,
   );
+  const activeNodeSetupSession = useWorkflowStore(
+    (state) => state.activeNodeSetupSession,
+  );
   const workflowId = useWorkflowStore((state) => state.workflowId);
+  const nodeStatuses = useWorkflowStore((state) => state.nodeStatuses);
+  const activePanelMode = useWorkflowStore((state) => state.activePanelMode);
   const canEditNodes = useWorkflowStore(
     (state) => state.editorCapabilities.canEditNodes,
   );
@@ -120,15 +127,31 @@ export const OutputPanel = ({ wizardController }: Props) => {
   );
   const isDirty = useWorkflowStore((state) => state.isDirty);
   const closePanel = useWorkflowStore((state) => state.closePanel);
+  const setActivePanelMode = useWorkflowStore(
+    (state) => state.setActivePanelMode,
+  );
   const layout = useDualPanelLayout();
-  const isOpen = Boolean(activePanelNodeId) && activePlaceholder === null;
+  const isOpen =
+    Boolean(activePanelNodeId) &&
+    activePlaceholder === null &&
+    activeNodeSetupSession === null;
 
   const activeNode = useMemo(
     () => nodes.find((node) => node.id === activePanelNodeId) ?? null,
     [activePanelNodeId, nodes],
   );
 
-  const isDetailMode = isMiddleWizardCompleted(activeNode);
+  const activeNodeStatus = activePanelNodeId
+    ? (nodeStatuses[activePanelNodeId] ?? null)
+    : null;
+  const hasConfigIssue = Boolean(
+    activeNodeStatus &&
+    (!activeNodeStatus.configured ||
+      !activeNodeStatus.executable ||
+      (activeNodeStatus.missingFields?.length ?? 0) > 0),
+  );
+  const isEditMode = activePanelMode === "edit" && canEditNodes;
+  const isDetailMode = !isEditMode && isMiddleWizardCompleted(activeNode);
   const nodeDataPanel = useNodeDataPanelModel({
     panelKind: "output",
     workflowId: workflowId || undefined,
@@ -271,10 +294,15 @@ export const OutputPanel = ({ wizardController }: Props) => {
               <FollowUpStep
                 followUp={wizardController.selectedFollowUp}
                 branchConfig={wizardController.selectedBranchConfig}
+                initialSelections={wizardController.initialFollowUpSelections}
                 onComplete={(selections) =>
                   void wizardController.completeFollowUp(selections)
                 }
-                onBack={() => void wizardController.backToAction()}
+                onBack={
+                  wizardController.isExistingChoiceEditMode
+                    ? undefined
+                    : () => void wizardController.backToAction()
+                }
               />
             ) : null}
           </Box>
@@ -343,6 +371,33 @@ export const OutputPanel = ({ wizardController }: Props) => {
                 nodeDataPanel.isStaleAgainstCurrentEditor
               }
             />
+            {hasConfigIssue ? (
+              <Box
+                bg="orange.50"
+                border="1px solid"
+                borderColor="orange.100"
+                borderRadius="2xl"
+                px={4}
+                py={4}
+              >
+                <Text color="orange.600" fontSize="sm" fontWeight="semibold">
+                  설정 확인 필요
+                </Text>
+                <Text mt={1} color="text.secondary" fontSize="sm">
+                  실행 전에 이 노드의 설정을 다시 확인해 주세요.
+                </Text>
+              </Box>
+            ) : null}
+            {canEditNodes ? (
+              <Button
+                alignSelf="flex-start"
+                size="sm"
+                variant="outline"
+                onClick={() => setActivePanelMode("edit")}
+              >
+                설정 수정
+              </Button>
+            ) : null}
             {nodeDataPanel.isPreviewSupported ? (
               <Box display="flex" flexDirection="column" gap={2}>
                 <Button

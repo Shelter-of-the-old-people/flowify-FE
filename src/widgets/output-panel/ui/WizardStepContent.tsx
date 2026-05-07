@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MdArrowBack } from "react-icons/md";
 
 import { Box, Button, Icon, Input, Text, VStack } from "@chakra-ui/react";
@@ -141,8 +141,9 @@ type SelectionValue = string | string[];
 interface FollowUpStepProps {
   followUp: ChoiceFollowUp | null;
   branchConfig: ChoiceBranchConfig | null;
+  initialSelections?: Record<string, SelectionValue> | null;
   onComplete: (selections: Record<string, SelectionValue>) => void;
-  onBack: () => void;
+  onBack?: () => void;
 }
 
 type QuestionBlock = {
@@ -196,9 +197,28 @@ const buildQuestionBlocks = (
   return blocks;
 };
 
+const readInitialOptionSelections = (
+  initialSelections: Record<string, SelectionValue> | null | undefined,
+) =>
+  Object.fromEntries(
+    Object.entries(initialSelections ?? {}).filter(
+      ([key]) => !key.includes(":"),
+    ),
+  ) as Record<string, SelectionValue>;
+
+const readInitialCustomInputs = (
+  initialSelections: Record<string, SelectionValue> | null | undefined,
+) =>
+  Object.fromEntries(
+    Object.entries(initialSelections ?? {})
+      .filter(([key]) => key.includes(":"))
+      .filter(([, value]) => typeof value === "string"),
+  ) as Record<string, string>;
+
 export const FollowUpStep = ({
   followUp,
   branchConfig,
+  initialSelections,
   onComplete,
   onBack,
 }: FollowUpStepProps) => {
@@ -207,12 +227,19 @@ export const FollowUpStep = ({
     [branchConfig, followUp],
   );
   const [selections, setSelections] = useState<Record<string, SelectionValue>>(
-    {},
+    () => readInitialOptionSelections(initialSelections),
   );
-  const [customInputs, setCustomInputs] = useState<Record<string, string>>({});
+  const [customInputs, setCustomInputs] = useState<Record<string, string>>(() =>
+    readInitialCustomInputs(initialSelections),
+  );
   const hasUnresolvedDynamicOptions = questionBlocks.some(
     (block) => block.isDynamicOptionsUnresolved,
   );
+
+  useEffect(() => {
+    setSelections(readInitialOptionSelections(initialSelections));
+    setCustomInputs(readInitialCustomInputs(initialSelections));
+  }, [initialSelections]);
 
   const updateSelection = (
     blockId: string,
@@ -269,18 +296,20 @@ export const FollowUpStep = ({
 
   return (
     <VStack align="stretch" gap={6}>
-      <Box
-        display="inline-flex"
-        alignItems="center"
-        gap={1}
-        cursor="pointer"
-        color="gray.500"
-        onClick={onBack}
-        w="fit-content"
-      >
-        <Icon as={MdArrowBack} boxSize={5} />
-        <Text fontSize="sm">뒤로</Text>
-      </Box>
+      {onBack ? (
+        <Box
+          display="inline-flex"
+          alignItems="center"
+          gap={1}
+          cursor="pointer"
+          color="gray.500"
+          onClick={onBack}
+          w="fit-content"
+        >
+          <Icon as={MdArrowBack} boxSize={5} />
+          <Text fontSize="sm">뒤로</Text>
+        </Box>
+      ) : null}
 
       {questionBlocks.map((block) => (
         <VStack key={block.id} align="stretch" gap={3}>
