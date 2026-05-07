@@ -1,11 +1,17 @@
 # 노드 설정 위자드 상세 설계
 
 > **작성일:** 2026-04-05
-> **최종 수정:** 2026-05-07 (v4.5 — 기존 시작/도착 노드 재설정 설계 보정)
+> **최종 수정:** 2026-05-07 (v4.6 — 기존 노드 패널 내부 재설정 설계 보정)
 > **선행 문서:** [FRONTEND_DESIGN_DOCUMENT.md](./FRONTEND_DESIGN_DOCUMENT.md), [FOUNDATION_IMPLEMENTATION_PLAN.md](./FOUNDATION_IMPLEMENTATION_PLAN.md)
 > **목적:** 시작/도착 노드 및 중간 노드의 설정 위자드 흐름을 설계한다.
 >
-> **v4.5 변경 요약:**
+> **v4.6 변경 요약:**
+> - 기존 시작/도착 노드 재설정은 별도 `NodeSetupOverlay`가 아니라 기존 `InputPanel`/`OutputPanel` 내부 edit mode로 통합
+> - `activeNodeSetupSession` 제거 방향을 명시하고, `activePanelMode`를 시작/중간/도착 노드의 공통 보기/수정 상태로 사용
+> - 시작 노드는 `InputPanel` 내부에서 target 재설정 폼을 렌더링하고, 도착 노드는 `OutputPanel` edit mode에서 기존 `PanelRenderer/SinkNodePanel`을 재사용
+> - 도착 노드의 중복 `설정 수정` 버튼과 오버레이 진입 경로를 제거
+>
+> **v4.5 변경 요약(폐기된 오버레이 기반 설계):**
 > - 템플릿에서 생성된 기존 시작/도착 노드를 사용자 계정과 대상 리소스에 맞게 다시 설정하는 흐름 추가
 > - `activePlaceholder`는 새 노드 생성 전용으로 유지하고, 기존 노드 재설정은 `activeNodeSetupSession`으로 분리
 > - 기존 노드 재설정 중 Input/Output 패널과 설정 오버레이가 동시에 열리지 않도록 상호 배타 규칙 추가
@@ -48,7 +54,7 @@
 11. [상태 전이 다이어그램](#11-상태-전이-다이어그램)
 12. [비정상 종료 및 상태 정리](#12-비정상-종료-및-상태-정리)
 13. [파일별 변경 요약](#13-파일별-변경-요약)
-14. [v4.5 기존 노드 재설정 설계 보정](#14-v45-기존-노드-재설정-설계-보정)
+14. [v4.6 기존 노드 패널 내부 재설정 설계 보정](#14-v46-기존-노드-패널-내부-재설정-설계-보정)
 
 ---
 
@@ -1985,15 +1991,15 @@ removeNode: (id) =>
 |------|------|
 | `serviceMap.ts` | 데이터 변경 없음 |
 | `serviceRequirements.ts` | 데이터 변경 없음 |
-| `PanelRenderer.tsx` | 기존 동작 유지 (시작/도착 미설정 노드용) |
+| `PanelRenderer.tsx` | 도착 노드 edit mode에서 `SinkNodePanel` 라우팅 재사용 |
 | `choice-panel/model/*` | 타입, 데이터, 유틸 변경 없음 |
 
 ---
 
-## 14. v4.5 기존 노드 재설정 설계 보정
+## 14. v4.6 기존 노드 패널 내부 재설정 설계 보정
 
 > **작성일:** 2026-05-07
-> **배경:** 템플릿에서 생성된 워크플로우의 시작/도착 노드는 사용자의 실제 계정과 대상 리소스에 맞게 다시 설정할 수 있어야 한다.
+> **배경:** 템플릿에서 생성된 워크플로우의 시작/도착 노드는 사용자의 실제 계정과 대상 리소스에 맞게 다시 설정할 수 있어야 한다. 이때 별도 설정 창을 열지 않고, 중간 노드와 동일하게 기존 좌/우 패널 안에서 보기/수정 모드를 전환한다.
 
 ### 14.1 문제 정의
 
@@ -2011,7 +2017,7 @@ removeNode: (id) =>
 → 실행
 ```
 
-이번 보정의 핵심은 새 노드 생성 흐름을 확장하는 것이 아니라, 기존 노드의 설정값을 안전하게 다시 입력할 수 있는 편집 흐름을 추가하는 것이다.
+이번 보정의 핵심은 새 노드 생성 흐름을 확장하는 것이 아니라, 기존 노드의 설정값을 **현재 열려 있는 패널 내부에서** 안전하게 다시 입력할 수 있게 만드는 것이다. 시작 노드는 왼쪽 `InputPanel`, 중간/도착 노드는 오른쪽 `OutputPanel`을 사용한다.
 
 ### 14.2 1차 범위
 
@@ -2067,64 +2073,82 @@ removeNode: (id) =>
 
 ### 14.4 상태 설계
 
-새 노드 생성 상태와 기존 노드 수정 상태를 분리한다.
+기존 노드 수정 상태는 별도 세션을 만들지 않고 `activePanelMode`로 통일한다.
 
 ```typescript
-type NodeSetupRole = "start" | "middle" | "end";
-
-type ActiveNodeSetupSession =
-  | {
-      mode: "edit";
-      role: NodeSetupRole;
-      nodeId: string;
-    }
-  | null;
+type ActivePanelMode = "view" | "edit";
 ```
 
-`workflowStore`에는 아래 상태와 action을 추가한다.
-
-```typescript
-activeNodeSetupSession: ActiveNodeSetupSession;
-openNodeSetup: (session: Exclude<ActiveNodeSetupSession, null>) => void;
-closeNodeSetup: () => void;
-```
-
-기존 `activePlaceholder`는 새 시작/도착 노드 생성 전용으로 유지한다.
+`workflowStore`의 기준 상태는 아래 세 가지다.
 
 ```text
 activePlaceholder
 → 새 시작/도착 노드 생성
 
-activeNodeSetupSession
-→ 기존 시작/도착 노드 재설정
+activePanelNodeId
+→ 현재 좌/우 패널이 바라보는 노드
+
+activePanelMode
+→ 현재 노드 패널의 보기/수정 모드
 ```
 
-이렇게 분리해야 수정 흐름에서 실수로 새 노드를 생성하는 문제를 막을 수 있다.
+`activeNodeSetupSession`, `openNodeSetup`, `closeNodeSetup`, `NodeSetupOverlay`는 이번 설계에서 제거 대상이다. 기존 노드 수정은 중간 노드 Choice Wizard처럼 패널 내부 mode 전환으로 처리한다.
 
-#### 패널 상호 배타 규칙
+#### 패널 표시 규칙
 
-현재 `InputPanel`, `OutputPanel`은 `activePlaceholder === null`일 때만 열린다. 기존 노드 재설정 세션이 추가되면 같은 기준만으로는 데이터 패널과 재설정 오버레이가 동시에 보일 수 있다.
-
-따라서 패널 표시 조건은 아래처럼 확장한다.
+`InputPanel`, `OutputPanel`은 새 노드 생성용 `ServiceSelectionPanel`이 열려 있을 때만 숨긴다. 다만 노드 역할별로 실제 표시하는 내용은 분리한다.
 
 ```typescript
-const isNodeSetupOpen = activeNodeSetupSession !== null;
-const isOpen =
-  Boolean(activePanelNodeId) &&
-  activePlaceholder === null &&
-  !isNodeSetupOpen;
+const isOpen = Boolean(activePanelNodeId) && activePlaceholder === null;
 ```
+
+역할별 패널 표시 기준은 아래와 같다.
+
+| 노드 역할 | `InputPanel` | `OutputPanel` |
+|---|---|---|
+| 시작 노드 | 보기/수정 모두 표시 | 표시하지 않음 |
+| 중간 노드 | 들어오는 데이터 보기 표시 | 보기/수정 모두 표시 |
+| 도착 노드 | 들어오는 데이터 보기 표시 | 보기/수정 모두 표시 |
+
+즉, 시작 노드의 수정 UI는 왼쪽 패널에만 존재하고, 도착 노드의 수정 UI는 오른쪽 패널에만 존재한다. 이 규칙을 지켜야 시작 노드 클릭 시 빈 오른쪽 패널이 뜨거나, 도착 노드 클릭 시 왼쪽 패널에서 잘못된 수정 UI가 뜨는 문제를 막을 수 있다.
 
 상태 전환 규칙은 아래와 같다.
 
 | 동작 | 처리 |
 |---|---|
-| 새 시작/도착 노드 생성 시작 | `activePlaceholder` 설정, `activeNodeSetupSession`은 `null` |
-| 기존 시작/도착 노드 재설정 시작 | `activeNodeSetupSession` 설정, `activePlaceholder`는 `null` |
-| 중간 노드 Choice Wizard 수정 | `activePanelMode = "edit"`, `activeNodeSetupSession`은 `null` |
-| Esc 또는 X 버튼 | 현재 열린 세션만 닫고 다른 세션은 새로 열지 않음 |
+| 새 시작/도착 노드 생성 시작 | `activePlaceholder` 설정, 기존 패널 닫힘 |
+| 기존 노드 클릭 | `openPanel(nodeId, { mode: "view" })` |
+| 기존 시작 노드 설정 수정 | `setActivePanelMode("edit")`, `InputPanel` 내부 편집 UI 표시 |
+| 기존 중간 노드 Choice Wizard 수정 | `setActivePanelMode("edit")`, `OutputPanel` 내부 Choice Wizard 표시 |
+| 기존 도착 노드 설정 수정 | `setActivePanelMode("edit")`, `OutputPanel` 내부 `SinkNodePanel` 표시 |
+| 저장/취소 | `setActivePanelMode("view")` |
+| Esc 또는 X 버튼 | `closePanel()` |
 
-이 규칙을 지켜야 기존 노드 재설정 중에 Input/Output 상세 패널이 뒤에서 살아 있는 상태를 막을 수 있다.
+이 규칙을 지켜야 시작/중간/도착 노드가 같은 mental model로 동작하고, 도착 노드에서 `설정 수정` 버튼이 중첩되는 문제를 막을 수 있다.
+
+#### 수정 완료 콜백 규칙
+
+패널 내부 설정 컴포넌트는 저장/취소 후 view mode 복귀를 호출할 수 있어야 한다.
+
+```typescript
+type NodePanelProps = {
+  nodeId: string;
+  data: FlowNodeData;
+  readOnly?: boolean;
+  onComplete?: () => void;
+  onCancel?: () => void;
+};
+```
+
+1차 구현에서는 아래 책임을 따른다.
+
+| 패널 | 저장 처리 | 저장 후 처리 | 취소 처리 |
+|---|---|---|---|
+| `SourceNodePanel` | `updateNodeConfig` | `onComplete()` → `setActivePanelMode("view")` | `onCancel()` → `setActivePanelMode("view")` |
+| `SinkNodePanel` | `replaceNodeConfig` | `onComplete()` → `setActivePanelMode("view")` | `onCancel()` → `setActivePanelMode("view")` |
+| 중간 Choice Wizard | 기존 저장 흐름 | 기존 `setActivePanelMode("view")` 유지 | 기존 wizard reset/close 흐름 유지 |
+
+`SinkNodePanel`은 현재 내부 저장 버튼이 `replaceNodeConfig`만 호출하는 구조이므로, 도착 노드 패널 내부 수정으로 통합할 때 `onComplete`/`onCancel`을 받을 수 있게 확장한다.
 
 ### 14.5 데이터 수정 action
 
@@ -2191,33 +2215,30 @@ replaceNodeConfig(nodeId, {
 
 ### 14.6 UI 구조
 
-FSD 컨벤션상 `features/add-node`의 생성 컴포넌트를 `features/configure-node`에서 직접 의존하지 않는다. 생성/수정 양쪽에서 재사용할 UI는 별도 feature로 점진 분리한다.
+FSD 컨벤션상 `features/add-node`의 생성 컴포넌트를 기존 노드 설정 수정 흐름에서 직접 의존하지 않는다. 기존 노드 설정은 `features/configure-node` 책임으로 정리한다.
 
 권장 구조는 아래와 같다.
 
 ```text
-src/features/node-setup/
+src/features/configure-node/
   model/
-    types.ts
     source-node-draft.ts
     sink-node-draft.ts
   ui/
-    NodeSetupOverlay.tsx
-    AuthPrompt.tsx
-    SourceTargetForm.tsx
-    SinkSchemaEditor.tsx
-  index.ts
+    PanelRenderer.tsx
+    panels/
+      SourceNodePanel.tsx
+      SinkNodePanel.tsx
+      ...
 ```
 
-1차 구현에서는 모든 컴포넌트를 한 번에 이동하지 않아도 된다. 다만 새로 추가하는 기존 노드 재설정 UI는 `features/node-setup`에 둔다.
+`ServiceSelectionPanel`은 새 노드 생성 책임을 유지한다. 기존 시작/도착 노드 수정은 별도 오버레이가 아니라 `InputPanel`/`OutputPanel`이 `activePanelMode`에 따라 `configure-node` 패널을 렌더링하는 방식으로 처리한다.
 
 #### 의존성 보정
 
 구현 시 아래 의존성은 허용하지 않는다.
 
 ```text
-features/node-setup → features/add-node/ui/ServiceSelectionPanel
-features/node-setup → features/configure-node/ui/panels/SinkNodePanel
 features/configure-node → features/add-node
 ```
 
@@ -2226,11 +2247,24 @@ features/configure-node → features/add-node
 | 대상 | 처리 |
 |---|---|
 | source/target option 조회 hook | 기존 entities/api hook 재사용 |
-| picker UI | `features/node-setup`에 신규 작성하거나 shared 가능한 단위로 추출 |
-| sink schema field draft builder | `features/node-setup/model`에 순수 함수로 작성 |
+| picker UI | `features/configure-node` 내부 패널에 두거나 shared 가능한 단위로 추출 |
+| source/sink draft builder | `features/configure-node/model`에 순수 함수로 작성 |
 | 기존 생성 패널 전체 | 직접 재사용하지 않음 |
 
-즉, `ServiceSelectionPanel`은 새 시작/도착 노드 생성 책임을 유지하고, `NodeSetupOverlay`는 기존 노드 재설정 책임만 가진다.
+즉, `ServiceSelectionPanel`은 새 시작/도착 노드 생성 책임을 유지하고, `configure-node`는 기존 노드 설정 수정 책임을 가진다.
+
+#### 중복 로직 정리 기준
+
+기존 구현에는 sink 설정 draft 로직이 `SinkNodePanel` 내부와 `features/node-setup/model` 쪽에 중복될 수 있다. v4.6 구현에서는 아래 기준으로 하나로 정리한다.
+
+| 로직 | 최종 위치 |
+|---|---|
+| 시작 노드 target 초기값/완료 판정/config build | `features/configure-node/model/source-node-draft.ts` |
+| 도착 노드 schema field 초기값/완료 판정/config build | `features/configure-node/model/sink-node-draft.ts` |
+| Google Drive/Slack/Notion 등 원격 대상 선택 UI | 우선 `features/configure-node/ui/panels` 내부 유지, 반복이 커지면 `shared`로 추출 |
+| `features/node-setup`의 overlay 전용 UI | 제거 대상 |
+
+구현 시 새 model 함수를 추가한 뒤 `SinkNodePanel` 내부의 동일한 draft builder를 제거한다. 같은 판정 로직이 두 군데 남으면 저장 후 `isConfigured` 결과가 달라질 수 있으므로 허용하지 않는다.
 
 ### 14.7 시작 노드 재설정 흐름
 
@@ -2253,13 +2287,15 @@ config.trigger_kind
 ```text
 시작 노드 클릭
 → 설정 수정
-→ activeNodeSetupSession = { mode: "edit", role: "start", nodeId }
-→ 기존 service/source_mode 표시
+→ setActivePanelMode("edit")
+→ InputPanel 내부에 SourceNodePanel 표시
+→ 기존 service/source_mode는 읽기 전용으로 표시
 → OAuth 연결 상태 확인
 → target_schema 기준 대상 picker 표시
 → 대상 선택
 → updateNodeConfig
 → dirty 표시
+→ setActivePanelMode("view")
 ```
 
 저장 시 반영할 config 예:
@@ -2282,6 +2318,20 @@ const nextConfig = {
 
 source mode별 target 필수 여부는 backend catalog의 `target_schema`를 기준으로 판단한다. 예를 들어 특정 source mode가 target 없이 동작할 수 있다면 target이 없어도 `isConfigured`가 true가 될 수 있고, Google Drive 폴더/파일처럼 target이 필수인 mode는 target이 없으면 false가 되어야 한다.
 
+#### 시작 노드 OAuth 처리
+
+1차 범위에서는 OAuth 미연결 또는 권한 부족 상태를 패널 내부 안내로 표시한다. 인증 버튼은 제공하되, 인증 후 편집 draft를 자동 복원하지 않는다.
+
+```text
+OAuth 미연결/권한 부족
+→ SourceNodePanel 안에서 인증 안내 표시
+→ 사용자가 인증 진행
+→ editor로 복귀
+→ 사용자가 같은 시작 노드를 다시 클릭하고 설정 수정 재진입
+```
+
+인증 후 같은 편집 화면과 선택 중이던 target draft까지 복원하는 기능은 후속 개선으로 둔다.
+
 ### 14.8 도착 노드 재설정 흐름
 
 도착 노드는 service를 고정하고 target/schema 값만 다시 선택한다.
@@ -2301,13 +2351,16 @@ field_meta
 ```text
 도착 노드 클릭
 → 설정 수정
-→ activeNodeSetupSession = { mode: "edit", role: "end", nodeId }
-→ 기존 service 표시
+→ setActivePanelMode("edit")
+→ OutputPanel 내부에 PanelRenderer 표시
+→ PanelRenderer가 end node를 SinkNodePanel로 라우팅
+→ 기존 service는 읽기 전용으로 표시
 → OAuth 연결 상태 확인
 → sink schema field 표시
 → folder/channel/page/email 등 필드 입력
 → replaceNodeConfig 또는 sink config builder
 → dirty 표시
+→ setActivePanelMode("view")
 ```
 
 도착 노드는 write 노드이므로 1차 범위에서는 아래 값을 유지한다.
@@ -2331,17 +2384,29 @@ schema field 저장 시에는 사용자에게 보이는 label/meta도 함께 보
 
 필수 schema field가 비어 있으면 저장 자체는 허용하되 `isConfigured: false`로 저장한다. 그래야 템플릿 사용자가 일부 값을 지우고 저장했을 때 캔버스와 실행 상태가 실제 설정 부족 상태를 그대로 보여줄 수 있다.
 
+#### 도착 노드 OAuth 처리
+
+도착 노드도 시작 노드와 동일하게 1차에서는 OAuth 상태 안내와 인증 진입만 제공한다. 인증 후 같은 `SinkNodePanel` draft 복원은 하지 않는다.
+
+```text
+OAuth 미연결/권한 부족
+→ SinkNodePanel 안에서 인증 안내 표시
+→ 사용자가 인증 진행
+→ editor로 복귀
+→ 사용자가 같은 도착 노드를 다시 클릭하고 설정 수정 재진입
+```
+
 ### 14.9 설정 수정 진입점
 
 기존 노드의 보기 패널에서 설정 수정 버튼을 제공한다.
 
 ```typescript
 if (isStartNode) {
-  openNodeSetup({ mode: "edit", role: "start", nodeId });
+  setActivePanelMode("edit");
 }
 
 if (isEndNode) {
-  openNodeSetup({ mode: "edit", role: "end", nodeId });
+  setActivePanelMode("edit");
 }
 
 if (isMiddleNode && isChoiceWizardNode) {
@@ -2349,7 +2414,18 @@ if (isMiddleNode && isChoiceWizardNode) {
 }
 ```
 
-시작/도착 노드는 `NodeSetupOverlay`로 들어가고, Choice Wizard 중간 노드는 기존 OutputPanel edit mode를 유지한다.
+시작/중간/도착 노드는 모두 `activePanelMode = "edit"`로 진입한다. 실제 렌더링은 현재 노드의 역할에 따라 `InputPanel` 또는 `OutputPanel`에서 분기한다.
+
+```text
+start node + edit
+→ InputPanel 내부 SourceNodePanel
+
+middle node + edit
+→ OutputPanel 내부 Choice Wizard
+
+end node + edit
+→ OutputPanel 내부 PanelRenderer → SinkNodePanel
+```
 
 진입 버튼 노출 기준은 아래와 같다.
 
@@ -2371,10 +2447,10 @@ if (isMiddleNode && isChoiceWizardNode) {
 → 현재 URL 저장
 → OAuth redirect
 → editor로 복귀
-→ 사용자가 다시 설정 수정 진입
+→ 사용자가 같은 노드를 다시 열고 설정 수정 진입
 ```
 
-후속 개선에서는 `nodeId`, `role`, `step`을 sessionStorage에 저장해 인증 후 같은 재설정 단계로 복귀할 수 있게 한다.
+후속 개선에서는 `nodeId`, `activePanelMode`, 편집 draft step을 sessionStorage에 저장해 인증 후 같은 패널 수정 단계로 복귀할 수 있게 한다.
 
 ### 14.11 상태 표시 정책
 
@@ -2392,28 +2468,34 @@ if (isMiddleNode && isChoiceWizardNode) {
 1. 템플릿에서 워크플로우 생성
 2. 시작 Google Drive 노드 클릭
 3. 설정 수정 버튼 클릭
-4. 기존 service/mode는 고정되어 보이는지 확인
-5. Google Drive 폴더를 사용자 폴더로 변경
-6. dirty 표시 확인
-7. 저장
-8. 새로고침 후 선택한 폴더 유지 확인
-9. 도착 Google Drive 노드 클릭
-10. 저장 폴더 변경
-11. dirty 표시 확인
-12. 저장
-13. 새로고침 후 선택한 저장 폴더 유지 확인
-14. 설정 완료 후 nodeStatuses가 실행 가능 상태로 갱신되는지 확인
+4. 별도 창이 뜨지 않고 왼쪽 `InputPanel` 내부에서 편집 UI로 전환되는지 확인
+5. 기존 service/mode는 고정되어 보이는지 확인
+6. Google Drive 폴더를 사용자 폴더로 변경
+7. dirty 표시 확인
+8. 저장
+9. 새로고침 후 선택한 폴더 유지 확인
+10. 도착 Google Drive 노드 클릭
+11. 설정 수정 버튼 클릭
+12. 별도 창이 뜨지 않고 오른쪽 `OutputPanel` 내부에서 `SinkNodePanel`이 보이는지 확인
+13. 도착 노드 편집 화면 안에 두 번째 `설정 수정` 버튼이 없는지 확인
+14. 저장 폴더 변경
+15. dirty 표시 확인
+16. 저장
+17. 새로고침 후 선택한 저장 폴더 유지 확인
+18. 설정 완료 후 nodeStatuses가 실행 가능 상태로 갱신되는지 확인
 
 ### 14.13 구현 단계
 
-1. `workflowStore`에 기존 노드 설정 세션 상태 추가
-2. `InputPanel`, `OutputPanel` 표시 조건에 `activeNodeSetupSession` 배타 조건 추가
-3. `features/node-setup` 골격 추가
-4. source/sink draft builder와 setup complete validator 구현
-5. 시작 노드 target edit overlay 구현
-6. 도착 노드 sink schema edit overlay 구현
-7. Input/Output 패널의 설정 수정 CTA 연결
-8. dirty-save 흐름과 nodeStatuses 갱신 검증
+1. `workflowStore`에서 `activeNodeSetupSession`, `openNodeSetup`, `closeNodeSetup` 제거
+2. `WorkflowEditorPage`에서 `NodeSetupOverlay` 렌더링 제거
+3. `InputPanel`에 `activePanelMode` 기반 시작 노드 view/edit 분기 추가
+4. `features/configure-node`에 시작 노드 target 수정 패널과 draft validator 추가
+5. `SinkNodePanel` 내부 draft builder를 `features/configure-node/model/sink-node-draft.ts`로 추출
+6. `NodePanelProps`에 `onComplete`/`onCancel` 콜백을 추가하고 `SourceNodePanel`, `SinkNodePanel` 저장/취소 후 view mode 복귀 연결
+7. `OutputPanel`의 도착 노드 중복 `설정 수정 → overlay` 진입 경로 제거
+8. 도착 노드 edit mode에서 `PanelRenderer → SinkNodePanel`을 그대로 렌더링
+9. 시작/도착/중간 노드 설정 저장 후 `setActivePanelMode("view")` 복귀
+10. dirty-save 흐름과 nodeStatuses 갱신 검증
 
 ### 14.14 1차 이후 확장 후보
 
