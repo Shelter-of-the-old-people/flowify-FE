@@ -119,6 +119,8 @@ export const OutputPanel = ({ wizardController }: Props) => {
   const workflowId = useWorkflowStore((state) => state.workflowId);
   const nodeStatuses = useWorkflowStore((state) => state.nodeStatuses);
   const activePanelMode = useWorkflowStore((state) => state.activePanelMode);
+  const startNodeId = useWorkflowStore((state) => state.startNodeId);
+  const endNodeId = useWorkflowStore((state) => state.endNodeId);
   const canEditNodes = useWorkflowStore(
     (state) => state.editorCapabilities.canEditNodes,
   );
@@ -130,6 +132,7 @@ export const OutputPanel = ({ wizardController }: Props) => {
   const setActivePanelMode = useWorkflowStore(
     (state) => state.setActivePanelMode,
   );
+  const openNodeSetup = useWorkflowStore((state) => state.openNodeSetup);
   const layout = useDualPanelLayout();
   const isOpen =
     Boolean(activePanelNodeId) &&
@@ -160,6 +163,8 @@ export const OutputPanel = ({ wizardController }: Props) => {
     isWorkflowDirty: isDirty,
   });
   const activeMeta = activeNode ? NODE_REGISTRY[activeNode.data.type] : null;
+  const isStartNode = Boolean(activeNode && activeNode.id === startNodeId);
+  const isEndNode = Boolean(activeNode && activeNode.id === endNodeId);
   const outputDataLabel = nodeDataPanel.staticOutputLabel ?? "출력 데이터";
   const hasPreviewData = !isEmptyPanelData(nodeDataPanel.dataToDisplay);
   const shouldShowSchemaPreview =
@@ -462,6 +467,23 @@ export const OutputPanel = ({ wizardController }: Props) => {
           </Box>
 
           <Box flex={1} overflow="auto">
+            {canEditNodes && activeNode && (isStartNode || isEndNode) ? (
+              <Box px={3} pb={4}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() =>
+                    openNodeSetup({
+                      mode: "edit",
+                      nodeId: activeNode.id,
+                      role: isStartNode ? "start" : "end",
+                    })
+                  }
+                >
+                  설정 수정
+                </Button>
+              </Box>
+            ) : null}
             <PanelRenderer readOnly={!canEditNodes} />
           </Box>
         </>

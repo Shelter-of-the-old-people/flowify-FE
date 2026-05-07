@@ -7,6 +7,7 @@ import { ReactFlowProvider } from "@xyflow/react";
 
 import { useWorkflowQuery } from "@/entities/workflow";
 import { ServiceSelectionPanel } from "@/features/add-node";
+import { NodeSetupOverlay } from "@/features/node-setup";
 import { hydrateStore, useWorkflowStore } from "@/features/workflow-editor";
 import { EDITOR_CANVAS_AREA_ID, ROUTE_PATHS, getAuthUser } from "@/shared";
 import { Canvas, EditorRemoteBar, InputPanel, OutputPanel } from "@/widgets";
@@ -157,6 +158,7 @@ const WorkflowEditorInner = () => {
       <Canvas />
       <EditorRemoteBar />
       <ServiceSelectionPanel />
+      <NodeSetupOverlay />
       <InputPanel />
       <OutputPanel wizardController={choiceWizardController} />
     </Box>

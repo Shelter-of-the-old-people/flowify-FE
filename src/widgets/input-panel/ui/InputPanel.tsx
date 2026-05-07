@@ -47,8 +47,12 @@ export const InputPanel = () => {
   const canViewExecutionData = useWorkflowStore(
     (state) => state.editorCapabilities.canRunWorkflow,
   );
+  const canEditNodes = useWorkflowStore(
+    (state) => state.editorCapabilities.canEditNodes,
+  );
   const isDirty = useWorkflowStore((state) => state.isDirty);
   const closePanel = useWorkflowStore((state) => state.closePanel);
+  const openNodeSetup = useWorkflowStore((state) => state.openNodeSetup);
   const layout = useDualPanelLayout();
   const isOpen =
     Boolean(activePanelNodeId) &&
@@ -183,10 +187,28 @@ export const InputPanel = () => {
 
             <Box display="flex" flexDirection="column" gap={4}>
               {isStartNode ? (
-                <SourceSummaryBlock
-                  config={activeNodeConfig}
-                  source={nodeDataPanel.schemaPreview?.source ?? null}
-                />
+                <>
+                  <SourceSummaryBlock
+                    config={activeNodeConfig}
+                    source={nodeDataPanel.schemaPreview?.source ?? null}
+                  />
+                  {canEditNodes ? (
+                    <Button
+                      alignSelf="flex-start"
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        openNodeSetup({
+                          mode: "edit",
+                          nodeId: activeNode.id,
+                          role: "start",
+                        })
+                      }
+                    >
+                      설정 수정
+                    </Button>
+                  ) : null}
+                </>
               ) : null}
               {nodeDataPanel.isPreviewSupported ? (
                 <Box display="flex" flexDirection="column" gap={2}>
