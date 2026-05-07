@@ -14,7 +14,6 @@ import {
   readSelectionSummary,
   toChoiceMappingRules,
 } from "@/features/choice-panel";
-import { SourceNodePanel } from "@/features/configure-node";
 import {
   isMiddleWizardCompleted,
   useWorkflowStore,
@@ -25,7 +24,6 @@ import {
   DataStateNotice,
   NodeExecutionStatusBlock,
   SchemaPreviewBlock,
-  SourceSummaryBlock,
   getNodeConfigStatusNotice,
   isEmptyPanelData,
   useNodeDataPanelModel,
@@ -40,20 +38,13 @@ export const InputPanel = () => {
   const activePlaceholder = useWorkflowStore(
     (state) => state.activePlaceholder,
   );
-  const activePanelMode = useWorkflowStore((state) => state.activePanelMode);
   const workflowId = useWorkflowStore((state) => state.workflowId);
   const nodeStatuses = useWorkflowStore((state) => state.nodeStatuses);
   const canViewExecutionData = useWorkflowStore(
     (state) => state.editorCapabilities.canRunWorkflow,
   );
-  const canEditNodes = useWorkflowStore(
-    (state) => state.editorCapabilities.canEditNodes,
-  );
   const isDirty = useWorkflowStore((state) => state.isDirty);
   const closePanel = useWorkflowStore((state) => state.closePanel);
-  const setActivePanelMode = useWorkflowStore(
-    (state) => state.setActivePanelMode,
-  );
   const layout = useDualPanelLayout();
   const isOpen = Boolean(activePanelNodeId) && activePlaceholder === null;
   const { data: mappingRulesResponse } = useMappingRulesQuery();
@@ -79,8 +70,6 @@ export const InputPanel = () => {
     nodeDataPanel.schemaPreview?.nodeStatus ?? storeNodeStatus;
   const isConfiguredMiddleNode =
     isMiddleNode && isMiddleWizardCompleted(activeNode);
-  const isStartEditMode =
-    isStartNode && activePanelMode === "edit" && canEditNodes;
   const activeNodeMissingFields = (activeNodeStatus?.missingFields ?? []).map(
     getNodeStatusMissingFieldLabel,
   );
@@ -88,8 +77,6 @@ export const InputPanel = () => {
     activeNodeStatus,
     activeNodeMissingFields,
   );
-  const activeNodeConfig =
-    (activeNode?.data.config as unknown as Record<string, unknown>) ?? null;
   const selectedAction = findActionById(
     mappingRules,
     activeNode?.data.config.choiceActionId,
@@ -186,31 +173,6 @@ export const InputPanel = () => {
             </Box>
 
             <Box display="flex" flexDirection="column" gap={4}>
-              {isStartEditMode && activeNode ? (
-                <SourceNodePanel
-                  data={activeNode.data}
-                  nodeId={activeNode.id}
-                  onCancel={() => setActivePanelMode("view")}
-                  onComplete={() => setActivePanelMode("view")}
-                />
-              ) : isStartNode ? (
-                <>
-                  <SourceSummaryBlock
-                    config={activeNodeConfig}
-                    source={nodeDataPanel.schemaPreview?.source ?? null}
-                  />
-                  {canEditNodes ? (
-                    <Button
-                      alignSelf="flex-start"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setActivePanelMode("edit")}
-                    >
-                      설정 수정
-                    </Button>
-                  ) : null}
-                </>
-              ) : null}
               {nodeDataPanel.isPreviewSupported ? (
                 <Box display="flex" flexDirection="column" gap={2}>
                   <Button
