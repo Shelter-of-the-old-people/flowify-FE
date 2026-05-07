@@ -24,7 +24,6 @@ import {
   DataStateNotice,
   NodeExecutionStatusBlock,
   SchemaPreviewBlock,
-  SourceSummaryBlock,
   getNodeConfigStatusNotice,
   isEmptyPanelData,
   useNodeDataPanelModel,
@@ -78,8 +77,6 @@ export const InputPanel = () => {
     activeNodeStatus,
     activeNodeMissingFields,
   );
-  const activeNodeConfig =
-    (activeNode?.data.config as unknown as Record<string, unknown>) ?? null;
   const selectedAction = findActionById(
     mappingRules,
     activeNode?.data.config.choiceActionId,
@@ -176,12 +173,6 @@ export const InputPanel = () => {
             </Box>
 
             <Box display="flex" flexDirection="column" gap={4}>
-              {isStartNode ? (
-                <SourceSummaryBlock
-                  config={activeNodeConfig}
-                  source={nodeDataPanel.schemaPreview?.source ?? null}
-                />
-              ) : null}
               {nodeDataPanel.isPreviewSupported ? (
                 <Box display="flex" flexDirection="column" gap={2}>
                   <Button

@@ -1,9 +1,21 @@
 # 노드 설정 위자드 상세 설계
 
 > **작성일:** 2026-04-05
-> **최종 수정:** 2026-05-03 (v4.4 — 다음 단계 placeholder 통합 설계 반영)
+> **최종 수정:** 2026-05-07 (v4.6 — 기존 노드 패널 내부 재설정 설계 보정)
 > **선행 문서:** [FRONTEND_DESIGN_DOCUMENT.md](./FRONTEND_DESIGN_DOCUMENT.md), [FOUNDATION_IMPLEMENTATION_PLAN.md](./FOUNDATION_IMPLEMENTATION_PLAN.md)
 > **목적:** 시작/도착 노드 및 중간 노드의 설정 위자드 흐름을 설계한다.
+>
+> **v4.6 변경 요약:**
+> - 기존 시작/도착 노드 재설정은 별도 `NodeSetupOverlay`가 아니라 기존 `InputPanel`/`OutputPanel` 내부 edit mode로 통합
+> - `activeNodeSetupSession` 제거 방향을 명시하고, `activePanelMode`를 시작/중간/도착 노드의 공통 보기/수정 상태로 사용
+> - 시작 노드는 `InputPanel` 내부에서 target 재설정 폼을 렌더링하고, 도착 노드는 `OutputPanel` edit mode에서 기존 `PanelRenderer/SinkNodePanel`을 재사용
+> - 도착 노드의 중복 `설정 수정` 버튼과 오버레이 진입 경로를 제거
+>
+> **v4.5 변경 요약(폐기된 오버레이 기반 설계):**
+> - 템플릿에서 생성된 기존 시작/도착 노드를 사용자 계정과 대상 리소스에 맞게 다시 설정하는 흐름 추가
+> - `activePlaceholder`는 새 노드 생성 전용으로 유지하고, 기존 노드 재설정은 `activeNodeSetupSession`으로 분리
+> - 기존 노드 재설정 중 Input/Output 패널과 설정 오버레이가 동시에 열리지 않도록 상호 배타 규칙 추가
+> - `isConfigured`는 버튼 클릭이 아니라 source/sink schema validator 결과로 명시 저장
 >
 > **v4.4 변경 요약:**
 > - `다음` placeholder와 `도착` placeholder를 **`다음 단계` placeholder 하나로 통합**
@@ -42,6 +54,7 @@
 11. [상태 전이 다이어그램](#11-상태-전이-다이어그램)
 12. [비정상 종료 및 상태 정리](#12-비정상-종료-및-상태-정리)
 13. [파일별 변경 요약](#13-파일별-변경-요약)
+14. [v4.6 기존 노드 패널 내부 재설정 설계 보정](#14-v46-기존-노드-패널-내부-재설정-설계-보정)
 
 ---
 
@@ -1978,5 +1991,516 @@ removeNode: (id) =>
 |------|------|
 | `serviceMap.ts` | 데이터 변경 없음 |
 | `serviceRequirements.ts` | 데이터 변경 없음 |
-| `PanelRenderer.tsx` | 기존 동작 유지 (시작/도착 미설정 노드용) |
+| `PanelRenderer.tsx` | 도착 노드 edit mode에서 `SinkNodePanel` 라우팅 재사용 |
 | `choice-panel/model/*` | 타입, 데이터, 유틸 변경 없음 |
+
+---
+
+## 14. v4.6 기존 노드 패널 내부 재설정 설계 보정
+
+> **작성일:** 2026-05-07
+> **배경:** 템플릿에서 생성된 워크플로우의 시작/도착 노드는 사용자의 실제 계정과 대상 리소스에 맞게 다시 설정할 수 있어야 한다. 이때 별도 설정 창을 열지 않고, 중간 노드와 동일하게 기존 좌/우 패널 안에서 보기/수정 모드를 전환한다.
+
+### 14.1 문제 정의
+
+현재 `ServiceSelectionPanel`은 `activePlaceholder`가 있을 때만 열리는 새 노드 생성 전용 흐름이다. 따라서 템플릿에서 이미 생성된 시작/도착 노드를 클릭했을 때 사용자가 Google Drive 폴더, Gmail 라벨, Notion 페이지, Slack 채널 같은 실제 대상 리소스를 다시 선택하기 어렵다.
+
+템플릿 사용자가 실제로 원하는 흐름은 아래에 가깝다.
+
+```text
+템플릿 워크플로우 가져오기
+→ 시작 노드 클릭
+→ 내 계정 인증 및 대상 폴더/파일/라벨 선택
+→ 도착 노드 클릭
+→ 내 저장 위치/전송 대상 선택
+→ 저장
+→ 실행
+```
+
+이번 보정의 핵심은 새 노드 생성 흐름을 확장하는 것이 아니라, 기존 노드의 설정값을 **현재 열려 있는 패널 내부에서** 안전하게 다시 입력할 수 있게 만드는 것이다. 시작 노드는 왼쪽 `InputPanel`, 중간/도착 노드는 오른쪽 `OutputPanel`을 사용한다.
+
+### 14.2 1차 범위
+
+1차 구현은 템플릿 사용 문제를 해결하는 데 필요한 최소 범위로 제한한다.
+
+#### 포함
+
+- 기존 시작 노드의 OAuth 연결 상태 확인
+- 기존 시작 노드의 대상 리소스 재선택
+  - 예: Google Drive 폴더/파일
+  - 예: Canvas LMS 과목/학기
+  - 예: Gmail 라벨
+- 기존 도착 노드의 OAuth 연결 상태 확인
+- 기존 도착 노드의 대상 리소스 및 schema 값 재선택
+  - 예: Google Drive 저장 폴더
+  - 예: Slack 채널
+  - 예: Notion 페이지
+  - 예: Gmail 수신자/제목/본문 템플릿
+- 기존 Choice Wizard 기반 중간 노드의 follow-up 설정 수정 유지
+- 설정 수정 후 `workflowStore`를 dirty 상태로 만들고, 기존 저장 버튼으로 전체 워크플로우 저장
+
+#### 제외
+
+- 시작 노드의 service 변경
+- 시작 노드의 `source_mode` 변경
+- 도착 노드의 service 변경
+- 모든 중간 노드 타입별 전용 설정 패널 완성
+- 설정 수정 즉시 백엔드 저장
+
+### 14.3 저장 원칙
+
+현재 에디터의 기본 저장 흐름은 아래와 같다.
+
+```text
+패널에서 설정 수정
+→ workflowStore node config 변경
+→ isDirty = true
+→ 사용자가 저장 버튼 클릭
+→ PUT /workflows/{id}
+→ nodeStatuses 재동기화
+```
+
+따라서 기존 노드의 대상 리소스나 schema 값만 바꾸는 수정은 이 흐름을 따른다.
+
+```text
+설정값 수정
+→ store 수정
+→ dirty 표시
+→ 사용자가 저장
+```
+
+단, Choice Wizard처럼 후속 노드 생성/삭제/교체가 필요한 구조 변경은 기존 노드 단위 mutation 흐름을 유지한다.
+
+### 14.4 상태 설계
+
+기존 노드 수정 상태는 별도 세션을 만들지 않고 `activePanelMode`로 통일한다.
+
+```typescript
+type ActivePanelMode = "view" | "edit";
+```
+
+`workflowStore`의 기준 상태는 아래 세 가지다.
+
+```text
+activePlaceholder
+→ 새 시작/도착 노드 생성
+
+activePanelNodeId
+→ 현재 좌/우 패널이 바라보는 노드
+
+activePanelMode
+→ 현재 노드 패널의 보기/수정 모드
+```
+
+`activeNodeSetupSession`, `openNodeSetup`, `closeNodeSetup`, `NodeSetupOverlay`는 이번 설계에서 제거 대상이다. 기존 노드 수정은 중간 노드 Choice Wizard처럼 패널 내부 mode 전환으로 처리한다.
+
+#### 패널 표시 규칙
+
+`InputPanel`, `OutputPanel`은 새 노드 생성용 `ServiceSelectionPanel`이 열려 있을 때만 숨긴다. 다만 노드 역할별로 실제 표시하는 내용은 분리한다.
+
+```typescript
+const isOpen = Boolean(activePanelNodeId) && activePlaceholder === null;
+```
+
+역할별 패널 표시 기준은 아래와 같다.
+
+| 노드 역할 | `InputPanel` | `OutputPanel` |
+|---|---|---|
+| 시작 노드 | 보기/수정 모두 표시 | 표시하지 않음 |
+| 중간 노드 | 들어오는 데이터 보기 표시 | 보기/수정 모두 표시 |
+| 도착 노드 | 들어오는 데이터 보기 표시 | 보기/수정 모두 표시 |
+
+즉, 시작 노드의 수정 UI는 왼쪽 패널에만 존재하고, 도착 노드의 수정 UI는 오른쪽 패널에만 존재한다. 이 규칙을 지켜야 시작 노드 클릭 시 빈 오른쪽 패널이 뜨거나, 도착 노드 클릭 시 왼쪽 패널에서 잘못된 수정 UI가 뜨는 문제를 막을 수 있다.
+
+상태 전환 규칙은 아래와 같다.
+
+| 동작 | 처리 |
+|---|---|
+| 새 시작/도착 노드 생성 시작 | `activePlaceholder` 설정, 기존 패널 닫힘 |
+| 기존 노드 클릭 | `openPanel(nodeId, { mode: "view" })` |
+| 기존 시작 노드 설정 수정 | `setActivePanelMode("edit")`, `InputPanel` 내부 편집 UI 표시 |
+| 기존 중간 노드 Choice Wizard 수정 | `setActivePanelMode("edit")`, `OutputPanel` 내부 Choice Wizard 표시 |
+| 기존 도착 노드 설정 수정 | `setActivePanelMode("edit")`, `OutputPanel` 내부 `SinkNodePanel` 표시 |
+| 저장/취소 | `setActivePanelMode("view")` |
+| Esc 또는 X 버튼 | `closePanel()` |
+
+이 규칙을 지켜야 시작/중간/도착 노드가 같은 mental model로 동작하고, 도착 노드에서 `설정 수정` 버튼이 중첩되는 문제를 막을 수 있다.
+
+#### 수정 완료 콜백 규칙
+
+패널 내부 설정 컴포넌트는 저장/취소 후 view mode 복귀를 호출할 수 있어야 한다.
+
+```typescript
+type NodePanelProps = {
+  nodeId: string;
+  data: FlowNodeData;
+  readOnly?: boolean;
+  onComplete?: () => void;
+  onCancel?: () => void;
+};
+```
+
+1차 구현에서는 아래 책임을 따른다.
+
+| 패널 | 저장 처리 | 저장 후 처리 | 취소 처리 |
+|---|---|---|---|
+| `SourceNodePanel` | `updateNodeConfig` | `onComplete()` → `setActivePanelMode("view")` | `onCancel()` → `setActivePanelMode("view")` |
+| `SinkNodePanel` | `replaceNodeConfig` | `onComplete()` → `setActivePanelMode("view")` | `onCancel()` → `setActivePanelMode("view")` |
+| 중간 Choice Wizard | 기존 저장 흐름 | 기존 `setActivePanelMode("view")` 유지 | 기존 wizard reset/close 흐름 유지 |
+
+`SinkNodePanel`은 현재 내부 저장 버튼이 `replaceNodeConfig`만 호출하는 구조이므로, 도착 노드 패널 내부 수정으로 통합할 때 `onComplete`/`onCancel`을 받을 수 있게 확장한다.
+
+### 14.5 데이터 수정 action
+
+기존 `updateNodeConfig`, `replaceNodeConfig`는 config 중심이다. 1차 범위에서는 service와 mode 변경을 막기 때문에 대부분 config 수정만으로 충분하다.
+
+다만 향후 범위를 확장할 수 있도록 노드 데이터 patch action은 별도 설계해 둔다.
+
+```typescript
+updateNodeData: (
+  id: string,
+  patch: Partial<
+    Pick<
+      FlowNodeData,
+      "type" | "label" | "config" | "inputTypes" | "outputTypes" | "authWarning"
+    >
+  >,
+) => void;
+```
+
+1차 구현에서는 아래 기준을 따른다.
+
+| 수정 대상 | 사용 action |
+|---|---|
+| 시작 노드 target, target_label, target_meta | `updateNodeConfig` |
+| 도착 노드 schema field 값 | `replaceNodeConfig` 또는 schema 전용 config builder |
+| AI/Choice Wizard follow-up 값 | 기존 Choice Wizard 저장 흐름 |
+| service/source_mode/outputTypes 변경 | 1차 제외 |
+
+#### 설정 완료 판정 보정
+
+`updateNodeConfig()`는 전달받은 config에 `isConfigured`가 없으면 기존 값을 유지한다. 따라서 기존에 `isConfigured: true`였던 템플릿 노드에서 target을 비우거나 잘못된 값으로 바꿔도, `isConfigured`를 명시하지 않으면 계속 설정 완료로 남을 수 있다.
+
+기존 노드 재설정에서는 UI draft를 저장하기 직전에 role/service/schema 기준 validator로 완료 여부를 계산하고, 그 결과를 config에 반드시 포함한다.
+
+```typescript
+const nextConfig = buildSourceNodeConfigDraft({
+  currentConfig,
+  selectedTarget,
+  targetSchema,
+});
+
+updateNodeConfig(nodeId, {
+  ...nextConfig,
+  isConfigured: isSourceNodeSetupComplete(nextConfig, targetSchema),
+});
+```
+
+도착 노드도 동일하게 schema field 필수값을 기준으로 계산한다.
+
+```typescript
+const nextConfig = buildSinkNodeConfigDraft({
+  currentConfig,
+  fields,
+  values,
+});
+
+replaceNodeConfig(nodeId, {
+  ...nextConfig,
+  isConfigured: isSinkNodeSetupComplete(nextConfig, fields),
+});
+```
+
+완료 판정은 버튼 클릭 여부가 아니라 실제 필수 설정값 존재 여부로만 결정한다.
+
+### 14.6 UI 구조
+
+FSD 컨벤션상 `features/add-node`의 생성 컴포넌트를 기존 노드 설정 수정 흐름에서 직접 의존하지 않는다. 기존 노드 설정은 `features/configure-node` 책임으로 정리한다.
+
+권장 구조는 아래와 같다.
+
+```text
+src/features/configure-node/
+  model/
+    source-node-draft.ts
+    sink-node-draft.ts
+  ui/
+    PanelRenderer.tsx
+    panels/
+      SourceNodePanel.tsx
+      SinkNodePanel.tsx
+      ...
+```
+
+`ServiceSelectionPanel`은 새 노드 생성 책임을 유지한다. 기존 시작/도착 노드 수정은 별도 오버레이가 아니라 `InputPanel`/`OutputPanel`이 `activePanelMode`에 따라 `configure-node` 패널을 렌더링하는 방식으로 처리한다.
+
+#### 의존성 보정
+
+구현 시 아래 의존성은 허용하지 않는다.
+
+```text
+features/configure-node → features/add-node
+```
+
+재사용이 필요한 로직은 아래 중 하나로 정리한다.
+
+| 대상 | 처리 |
+|---|---|
+| source/target option 조회 hook | 기존 entities/api hook 재사용 |
+| picker UI | `features/configure-node` 내부 패널에 두거나 shared 가능한 단위로 추출 |
+| source/sink draft builder | `features/configure-node/model`에 순수 함수로 작성 |
+| 기존 생성 패널 전체 | 직접 재사용하지 않음 |
+
+즉, `ServiceSelectionPanel`은 새 시작/도착 노드 생성 책임을 유지하고, `configure-node`는 기존 노드 설정 수정 책임을 가진다.
+
+#### 중복 로직 정리 기준
+
+기존 구현에는 sink 설정 draft 로직이 `SinkNodePanel` 내부와 `features/node-setup/model` 쪽에 중복될 수 있다. v4.6 구현에서는 아래 기준으로 하나로 정리한다.
+
+| 로직 | 최종 위치 |
+|---|---|
+| 시작 노드 target 초기값/완료 판정/config build | `features/configure-node/model/source-node-draft.ts` |
+| 도착 노드 schema field 초기값/완료 판정/config build | `features/configure-node/model/sink-node-draft.ts` |
+| Google Drive/Slack/Notion 등 원격 대상 선택 UI | 우선 `features/configure-node/ui/panels` 내부 유지, 반복이 커지면 `shared`로 추출 |
+| `features/node-setup`의 overlay 전용 UI | 제거 대상 |
+
+구현 시 새 model 함수를 추가한 뒤 `SinkNodePanel` 내부의 동일한 draft builder를 제거한다. 같은 판정 로직이 두 군데 남으면 저장 후 `isConfigured` 결과가 달라질 수 있으므로 허용하지 않는다.
+
+### 14.7 시작 노드 재설정 흐름
+
+시작 노드는 service와 source mode를 고정하고 target만 다시 선택한다.
+
+초기값은 기존 config에서 읽는다.
+
+```typescript
+config.service
+config.source_mode
+config.target
+config.target_label
+config.target_meta
+config.canonical_input_type
+config.trigger_kind
+```
+
+흐름:
+
+```text
+시작 노드 클릭
+→ 설정 수정
+→ setActivePanelMode("edit")
+→ InputPanel 내부에 SourceNodePanel 표시
+→ 기존 service/source_mode는 읽기 전용으로 표시
+→ OAuth 연결 상태 확인
+→ target_schema 기준 대상 picker 표시
+→ 대상 선택
+→ updateNodeConfig
+→ dirty 표시
+→ setActivePanelMode("view")
+```
+
+저장 시 반영할 config 예:
+
+```typescript
+const nextConfig = {
+  ...currentConfig,
+  target: selectedTarget?.id ?? "",
+  target_label: selectedTarget?.label ?? "",
+  target_meta: selectedTarget?.metadata,
+};
+
+{
+  ...nextConfig,
+  isConfigured: isSourceNodeSetupComplete(nextConfig, targetSchema),
+}
+```
+
+`service`, `source_mode`, `canonical_input_type`, `trigger_kind`, `outputTypes`는 1차에서 변경하지 않는다.
+
+source mode별 target 필수 여부는 backend catalog의 `target_schema`를 기준으로 판단한다. 예를 들어 특정 source mode가 target 없이 동작할 수 있다면 target이 없어도 `isConfigured`가 true가 될 수 있고, Google Drive 폴더/파일처럼 target이 필수인 mode는 target이 없으면 false가 되어야 한다.
+
+#### 시작 노드 OAuth 처리
+
+1차 범위에서는 OAuth 미연결 또는 권한 부족 상태를 패널 내부 안내로 표시한다. 인증 버튼은 제공하되, 인증 후 편집 draft를 자동 복원하지 않는다.
+
+```text
+OAuth 미연결/권한 부족
+→ SourceNodePanel 안에서 인증 안내 표시
+→ 사용자가 인증 진행
+→ editor로 복귀
+→ 사용자가 같은 시작 노드를 다시 클릭하고 설정 수정 재진입
+```
+
+인증 후 같은 편집 화면과 선택 중이던 target draft까지 복원하는 기능은 후속 개선으로 둔다.
+
+### 14.8 도착 노드 재설정 흐름
+
+도착 노드는 service를 고정하고 target/schema 값만 다시 선택한다.
+
+초기값은 기존 config와 sink schema에서 읽는다.
+
+```typescript
+config.service
+sink schema fields
+field value
+field_label
+field_meta
+```
+
+흐름:
+
+```text
+도착 노드 클릭
+→ 설정 수정
+→ setActivePanelMode("edit")
+→ OutputPanel 내부에 PanelRenderer 표시
+→ PanelRenderer가 end node를 SinkNodePanel로 라우팅
+→ 기존 service는 읽기 전용으로 표시
+→ OAuth 연결 상태 확인
+→ sink schema field 표시
+→ folder/channel/page/email 등 필드 입력
+→ replaceNodeConfig 또는 sink config builder
+→ dirty 표시
+→ setActivePanelMode("view")
+```
+
+도착 노드는 write 노드이므로 1차 범위에서는 아래 값을 유지한다.
+
+```text
+inputTypes: 기존 값 유지
+outputTypes: []
+role: end
+service: 기존 값 유지
+```
+
+schema field 저장 시에는 사용자에게 보이는 label/meta도 함께 보존한다.
+
+```typescript
+{
+  [field.key]: selectedOption.id,
+  [`${field.key}_label`]: selectedOption.label,
+  [`${field.key}_meta`]: selectedOption.metadata,
+}
+```
+
+필수 schema field가 비어 있으면 저장 자체는 허용하되 `isConfigured: false`로 저장한다. 그래야 템플릿 사용자가 일부 값을 지우고 저장했을 때 캔버스와 실행 상태가 실제 설정 부족 상태를 그대로 보여줄 수 있다.
+
+#### 도착 노드 OAuth 처리
+
+도착 노드도 시작 노드와 동일하게 1차에서는 OAuth 상태 안내와 인증 진입만 제공한다. 인증 후 같은 `SinkNodePanel` draft 복원은 하지 않는다.
+
+```text
+OAuth 미연결/권한 부족
+→ SinkNodePanel 안에서 인증 안내 표시
+→ 사용자가 인증 진행
+→ editor로 복귀
+→ 사용자가 같은 도착 노드를 다시 클릭하고 설정 수정 재진입
+```
+
+### 14.9 설정 수정 진입점
+
+기존 노드의 보기 패널에서 설정 수정 버튼을 제공한다.
+
+```typescript
+if (isStartNode) {
+  setActivePanelMode("edit");
+}
+
+if (isEndNode) {
+  setActivePanelMode("edit");
+}
+
+if (isMiddleNode && isChoiceWizardNode) {
+  setActivePanelMode("edit");
+}
+```
+
+시작/중간/도착 노드는 모두 `activePanelMode = "edit"`로 진입한다. 실제 렌더링은 현재 노드의 역할에 따라 `InputPanel` 또는 `OutputPanel`에서 분기한다.
+
+```text
+start node + edit
+→ InputPanel 내부 SourceNodePanel
+
+middle node + edit
+→ OutputPanel 내부 Choice Wizard
+
+end node + edit
+→ OutputPanel 내부 PanelRenderer → SinkNodePanel
+```
+
+진입 버튼 노출 기준은 아래와 같다.
+
+| 노드 | CTA |
+|---|---|
+| 시작 노드 | `설정 수정` |
+| 도착 노드 | `설정 수정` |
+| Choice Wizard 중간 노드 | 기존 `수정` 또는 `설정 수정` |
+| 전용 설정 패널이 없는 중간 노드 | 1차에서는 보기만 제공 |
+
+템플릿 사용 시 가장 중요한 대상은 시작/도착 노드이므로, 1차 구현에서는 시작/도착 노드 CTA를 우선한다.
+
+### 14.10 OAuth 복귀 정책
+
+1차에서는 기존 OAuth return path 저장 방식을 유지한다.
+
+```text
+인증 필요
+→ 현재 URL 저장
+→ OAuth redirect
+→ editor로 복귀
+→ 사용자가 같은 노드를 다시 열고 설정 수정 진입
+```
+
+후속 개선에서는 `nodeId`, `activePanelMode`, 편집 draft step을 sessionStorage에 저장해 인증 후 같은 패널 수정 단계로 복귀할 수 있게 한다.
+
+### 14.11 상태 표시 정책
+
+설정 수정 직후 백엔드 `nodeStatuses`는 아직 최신이 아닐 수 있다. 따라서 저장 전에는 아래처럼 안내한다.
+
+```text
+변경 사항이 저장되지 않았습니다.
+저장 후 실행 가능 상태가 다시 확인됩니다.
+```
+
+저장 후 응답으로 받은 `nodeStatuses`를 기준으로 미설정/실행 가능 상태를 갱신한다.
+
+### 14.12 수동 검증 시나리오
+
+1. 템플릿에서 워크플로우 생성
+2. 시작 Google Drive 노드 클릭
+3. 설정 수정 버튼 클릭
+4. 별도 창이 뜨지 않고 왼쪽 `InputPanel` 내부에서 편집 UI로 전환되는지 확인
+5. 기존 service/mode는 고정되어 보이는지 확인
+6. Google Drive 폴더를 사용자 폴더로 변경
+7. dirty 표시 확인
+8. 저장
+9. 새로고침 후 선택한 폴더 유지 확인
+10. 도착 Google Drive 노드 클릭
+11. 설정 수정 버튼 클릭
+12. 별도 창이 뜨지 않고 오른쪽 `OutputPanel` 내부에서 `SinkNodePanel`이 보이는지 확인
+13. 도착 노드 편집 화면 안에 두 번째 `설정 수정` 버튼이 없는지 확인
+14. 저장 폴더 변경
+15. dirty 표시 확인
+16. 저장
+17. 새로고침 후 선택한 저장 폴더 유지 확인
+18. 설정 완료 후 nodeStatuses가 실행 가능 상태로 갱신되는지 확인
+
+### 14.13 구현 단계
+
+1. `workflowStore`에서 `activeNodeSetupSession`, `openNodeSetup`, `closeNodeSetup` 제거
+2. `WorkflowEditorPage`에서 `NodeSetupOverlay` 렌더링 제거
+3. `InputPanel`에 `activePanelMode` 기반 시작 노드 view/edit 분기 추가
+4. `features/configure-node`에 시작 노드 target 수정 패널과 draft validator 추가
+5. `SinkNodePanel` 내부 draft builder를 `features/configure-node/model/sink-node-draft.ts`로 추출
+6. `NodePanelProps`에 `onComplete`/`onCancel` 콜백을 추가하고 `SourceNodePanel`, `SinkNodePanel` 저장/취소 후 view mode 복귀 연결
+7. `OutputPanel`의 도착 노드 중복 `설정 수정 → overlay` 진입 경로 제거
+8. 도착 노드 edit mode에서 `PanelRenderer → SinkNodePanel`을 그대로 렌더링
+9. 시작/도착/중간 노드 설정 저장 후 `setActivePanelMode("view")` 복귀
+10. dirty-save 흐름과 nodeStatuses 갱신 검증
+
+### 14.14 1차 이후 확장 후보
+
+- 시작 노드 service 변경
+- 시작 노드 source mode 변경
+- 도착 노드 service 변경
+- OAuth 인증 후 같은 설정 단계 복귀
+- `llm`, `loop`, `condition`, `filter` 등 중간 노드 타입별 전용 설정 패널

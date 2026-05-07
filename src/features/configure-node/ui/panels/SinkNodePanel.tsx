@@ -160,11 +160,6 @@ const validateDraft = (
     const rawValue = draftValues[field.key] ?? "";
     const trimmedValue = rawValue.trim();
 
-    if (field.required && trimmedValue.length === 0) {
-      nextValidationErrors[field.key] = `${field.label} 항목을 입력해 주세요.`;
-      return;
-    }
-
     if (field.type === "number" && trimmedValue.length > 0) {
       const parsedValue = Number(rawValue);
       if (!Number.isFinite(parsedValue)) {
@@ -665,6 +660,8 @@ const SinkRemotePickerField = ({
 
 type SinkSchemaEditorProps = {
   fields: SinkSchemaFieldResponse[];
+  onCancel?: () => void;
+  onComplete?: () => void;
   nodeId: string;
   onSaveConfig: (config: FlowNodeData["config"]) => void;
   readOnly: boolean;
@@ -675,6 +672,8 @@ type SinkSchemaEditorProps = {
 const SinkSchemaEditor = ({
   fields,
   nodeId,
+  onCancel,
+  onComplete,
   onSaveConfig,
   readOnly,
   serviceKey,
@@ -778,6 +777,7 @@ const SinkSchemaEditor = ({
     });
 
     onSaveConfig(nextConfig);
+    onComplete?.();
     setValidationErrors({});
   };
 
@@ -902,6 +902,11 @@ const SinkSchemaEditor = ({
         </Text>
 
         <Box display="flex" gap={2} justifyContent="flex-end">
+          {onCancel ? (
+            <Button size="sm" variant="outline" onClick={onCancel}>
+              취소
+            </Button>
+          ) : null}
           <Button
             disabled={readOnly || !hasChanges}
             size="sm"
@@ -926,6 +931,8 @@ const SinkSchemaEditor = ({
 export const SinkNodePanel = ({
   data,
   nodeId,
+  onCancel,
+  onComplete,
   readOnly = false,
 }: NodePanelProps) => {
   const edges = useWorkflowStore((state) => state.edges);
@@ -1087,6 +1094,8 @@ export const SinkNodePanel = ({
               key={sinkEditorKey ?? nodeId}
               fields={sinkSchema.fields}
               nodeId={nodeId}
+              onCancel={onCancel}
+              onComplete={onComplete}
               readOnly={readOnly}
               serviceKey={selectedSinkService.key}
               sinkConfig={sinkConfig}

@@ -24,6 +24,8 @@ export type PlaceholderInfo = {
   sourceNodeId?: string | null;
 };
 
+export type ActivePanelMode = "view" | "edit";
+
 type NodePosition = {
   x: number;
   y: number;
@@ -41,6 +43,7 @@ interface WorkflowEditorState {
   edges: Edge[];
   nodeStatuses: WorkflowNodeStatusMap;
   activePanelNodeId: string | null;
+  activePanelMode: ActivePanelMode;
   startNodeId: string | null;
   endNodeId: string | null;
   activePlaceholder: PlaceholderInfo | null;
@@ -61,7 +64,8 @@ interface WorkflowEditorActions {
     config: Partial<FlowNodeData["config"]>,
   ) => void;
   replaceNodeConfig: (id: string, config: FlowNodeData["config"]) => void;
-  openPanel: (nodeId: string) => void;
+  openPanel: (nodeId: string, options?: { mode?: ActivePanelMode }) => void;
+  setActivePanelMode: (mode: ActivePanelMode) => void;
   closePanel: () => void;
   setWorkflowMeta: (id: string, name: string) => void;
   hydrateWorkflow: (payload: WorkflowHydratedState) => void;
@@ -91,6 +95,7 @@ const initialState: WorkflowEditorState = {
   edges: [],
   nodeStatuses: {},
   activePanelNodeId: null,
+  activePanelMode: "view",
   startNodeId: null,
   endNodeId: null,
   activePlaceholder: null,
@@ -227,14 +232,21 @@ export const useWorkflowStore = create<
         }
       }),
 
-    openPanel: (nodeId) =>
+    openPanel: (nodeId, options) =>
       set((state) => {
         state.activePanelNodeId = nodeId;
+        state.activePanelMode = options?.mode ?? "view";
+      }),
+
+    setActivePanelMode: (mode) =>
+      set((state) => {
+        state.activePanelMode = mode;
       }),
 
     closePanel: () =>
       set((state) => {
         state.activePanelNodeId = null;
+        state.activePanelMode = "view";
       }),
 
     setStartNodeId: (id) =>
@@ -309,6 +321,7 @@ export const useWorkflowStore = create<
         state.startNodeId = payload.startNodeId;
         state.endNodeId = payload.endNodeId;
         state.activePanelNodeId = null;
+        state.activePanelMode = "view";
         state.activePlaceholder = null;
         state.unsavedNodePositions = {};
         state.isDirty = false;
@@ -345,6 +358,9 @@ export const useWorkflowStore = create<
             ? state.activePanelNodeId
             : null
           : null;
+        if (!state.activePanelNodeId) {
+          state.activePanelMode = "view";
+        }
         if (!preserveActivePlaceholder) {
           state.activePlaceholder = null;
         }

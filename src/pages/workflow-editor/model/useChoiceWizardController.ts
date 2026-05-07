@@ -13,14 +13,17 @@ import {
 } from "@/entities/workflow";
 import {
   type ResolvedChoiceOption,
+  buildFallbackChoiceResponse,
   resolveActionChoiceResponse,
   resolveInitialChoiceResponse,
   toChoiceMappingRules,
   toMappingKey,
+  toResolvedChoiceResponse,
 } from "@/features/choice-panel";
 import { type MappingDataTypeKey } from "@/features/choice-panel";
 import {
   isMiddleWizardPending,
+  isMiddleWorkflowNode,
   useWorkflowStore,
 } from "@/features/workflow-editor";
 
@@ -57,12 +60,72 @@ type WizardChoiceOption = ResolvedChoiceOption;
 
 const DEFAULT_FLOW_NODE_WIDTH = 172;
 const NODE_GAP_X = 96;
+
+const findResolvedActionById = (
+  mappingRules: ReturnType<typeof toChoiceMappingRules>,
+  actionId: string,
+  preferredDataTypeKey: MappingDataTypeKey | null,
+) => {
+  const dataTypeKeys = Object.keys(
+    mappingRules.data_types,
+  ) as MappingDataTypeKey[];
+  const orderedDataTypeKeys = preferredDataTypeKey
+    ? [
+        preferredDataTypeKey,
+        ...dataTypeKeys.filter(
+          (dataTypeKey) => dataTypeKey !== preferredDataTypeKey,
+        ),
+      ]
+    : dataTypeKeys;
+
+  for (const dataTypeKey of orderedDataTypeKeys) {
+    const action = buildFallbackChoiceResponse(
+      mappingRules,
+      dataTypeKey,
+      "action",
+    ).options.find((option) => option.id === actionId);
+
+    if (action) {
+      return action;
+    }
+  }
+
+  return null;
+};
+
+const mergeResolvedAction = (
+  serverAction: ResolvedChoiceOption | null,
+  fallbackAction: ResolvedChoiceOption | null,
+) => {
+  if (!serverAction) {
+    return fallbackAction;
+  }
+
+  if (!fallbackAction) {
+    return serverAction;
+  }
+
+  return {
+    ...fallbackAction,
+    ...serverAction,
+    branchConfig: serverAction.branchConfig ?? fallbackAction.branchConfig,
+    description: serverAction.description ?? fallbackAction.description,
+    followUp: serverAction.followUp ?? fallbackAction.followUp,
+    node_type: serverAction.node_type ?? fallbackAction.node_type,
+    output_data_type:
+      serverAction.output_data_type ?? fallbackAction.output_data_type,
+    priority: serverAction.priority ?? fallbackAction.priority,
+    type: serverAction.type ?? fallbackAction.type,
+  };
+};
+
 export const useChoiceWizardController = () => {
   const nodes = useWorkflowStore((state) => state.nodes);
   const edges = useWorkflowStore((state) => state.edges);
   const activePanelNodeId = useWorkflowStore(
     (state) => state.activePanelNodeId,
   );
+  const activePanelMode = useWorkflowStore((state) => state.activePanelMode);
   const workflowId = useWorkflowStore((state) => state.workflowId);
   const startNodeId = useWorkflowStore((state) => state.startNodeId);
   const endNodeId = useWorkflowStore((state) => state.endNodeId);
@@ -70,6 +133,9 @@ export const useChoiceWizardController = () => {
     (state) => state.syncWorkflowGraph,
   );
   const openPanel = useWorkflowStore((state) => state.openPanel);
+  const setActivePanelMode = useWorkflowStore(
+    (state) => state.setActivePanelMode,
+  );
 
   const { mutateAsync: addWorkflowNode, isPending: isAddNodePending } =
     useAddWorkflowNodeMutation();
@@ -208,11 +274,20 @@ export const useChoiceWizardController = () => {
     [resolveNodeRole],
   );
 
-  const isWizardMode = isMiddleWizardPending(
+  const activeChoiceActionId = activeNode?.data.config.choiceActionId ?? null;
+  const activeNodeDataTypeKey =
+    toSnapshotDataTypeKey(activeNode?.data.inputTypes[0]) ??
+    toSnapshotDataTypeKey(activeNode?.data.outputTypes[0]);
+  const isPendingWizardMode = isMiddleWizardPending(
     activeNode,
     startNodeId,
     endNodeId,
   );
+  const isExistingChoiceEditMode =
+    activePanelMode === "edit" &&
+    isMiddleWorkflowNode(activeNode, startNodeId, endNodeId) &&
+    Boolean(activeChoiceActionId);
+  const isWizardMode = isPendingWizardMode || isExistingChoiceEditMode;
   const activeChoiceAnchorNodeId = isWizardMode
     ? (anchorNodeId ?? parentNode?.id ?? null)
     : null;
@@ -304,6 +379,48 @@ export const useChoiceWizardController = () => {
       ? activeActionChoiceSource
       : initialChoiceSource) === "fallback";
 
+  const existingEditActionFromServer = useMemo(() => {
+    if (
+      !isExistingChoiceEditMode ||
+      !activeChoiceActionId ||
+      !serverChoiceResponse
+    ) {
+      return null;
+    }
+
+    return (
+      toResolvedChoiceResponse(serverChoiceResponse).options.find(
+        (option) => option.id === activeChoiceActionId,
+      ) ?? null
+    );
+  }, [activeChoiceActionId, isExistingChoiceEditMode, serverChoiceResponse]);
+
+  const existingEditFallbackAction = useMemo(() => {
+    if (!isExistingChoiceEditMode || !activeChoiceActionId) {
+      return null;
+    }
+
+    return findResolvedActionById(
+      mappingRules,
+      activeChoiceActionId,
+      activeNodeDataTypeKey,
+    );
+  }, [
+    activeChoiceActionId,
+    activeNodeDataTypeKey,
+    isExistingChoiceEditMode,
+    mappingRules,
+  ]);
+
+  const existingEditAction = useMemo(
+    () =>
+      mergeResolvedAction(
+        existingEditActionFromServer,
+        existingEditFallbackAction,
+      ),
+    [existingEditFallbackAction, existingEditActionFromServer],
+  );
+
   const isWorkflowBusy =
     isChoicesLoading ||
     isAddNodePending ||
@@ -360,7 +477,12 @@ export const useChoiceWizardController = () => {
   ]);
 
   useEffect(() => {
-    if (!isWizardMode || !activeNode || !parentNode || initialDataTypeKey) {
+    if (
+      !isPendingWizardMode ||
+      !activeNode ||
+      !parentNode ||
+      initialDataTypeKey
+    ) {
       return;
     }
 
@@ -380,12 +502,12 @@ export const useChoiceWizardController = () => {
     activeNode,
     createSnapshot,
     initialDataTypeKey,
-    isWizardMode,
+    isPendingWizardMode,
     parentNode,
   ]);
 
   useEffect(() => {
-    if (!isWizardMode || wizardStep || !initialChoiceResponse) {
+    if (!isPendingWizardMode || wizardStep || !initialChoiceResponse) {
       return;
     }
 
@@ -405,9 +527,70 @@ export const useChoiceWizardController = () => {
     initialChoiceResponse,
     initialChoiceSource,
     activeChoiceAnchorNodeId,
-    isWizardMode,
+    isPendingWizardMode,
     wizardStep,
   ]);
+
+  useEffect(() => {
+    if (
+      !isExistingChoiceEditMode ||
+      !activeNode ||
+      wizardStep ||
+      !activeChoiceActionId
+    ) {
+      return;
+    }
+
+    if (isChoicesLoading && !existingEditActionFromServer) {
+      return;
+    }
+
+    if (!existingEditAction) {
+      setWizardError("기존 설정을 불러오지 못했습니다.");
+      return;
+    }
+
+    setWizardError(null);
+    setStagingNodeId(activeNode.id);
+    setAnchorNodeId(parentNode?.id ?? activeNode.id);
+    setRootParentNodeId(parentNode?.id ?? null);
+    setBaseStagingSnapshot(createSnapshot(activeNode));
+    setInitialDataTypeKey(activeNodeDataTypeKey);
+    setCurrentDataTypeKey(activeNodeDataTypeKey);
+    setSelectedAction(existingEditAction);
+    setSelectedFollowUp(existingEditAction.followUp ?? null);
+    setSelectedBranchConfig(existingEditAction.branchConfig ?? null);
+    setWizardStep("follow-up");
+  }, [
+    activeChoiceActionId,
+    activeNode,
+    activeNodeDataTypeKey,
+    createSnapshot,
+    existingEditAction,
+    existingEditActionFromServer,
+    isChoicesLoading,
+    isExistingChoiceEditMode,
+    parentNode?.id,
+    wizardStep,
+  ]);
+
+  useEffect(() => {
+    if (!activePanelNodeId) {
+      reset();
+      return;
+    }
+
+    if (!stagingNodeId && !actionNodeId) {
+      return;
+    }
+
+    if (
+      activePanelNodeId !== stagingNodeId &&
+      activePanelNodeId !== actionNodeId
+    ) {
+      reset();
+    }
+  }, [activePanelNodeId, actionNodeId, reset, stagingNodeId]);
 
   const finishWizard = useCallback(() => {
     reset();
@@ -814,7 +997,8 @@ export const useChoiceWizardController = () => {
           targetNodeId: targetNode.id,
         });
         setAnchorNodeId(targetNode.id);
-        openPanel(targetNode.id);
+        setActivePanelMode("view");
+        openPanel(targetNode.id, { mode: "view" });
         finishWizard();
       } catch {
         logChoiceWizardEvent({
@@ -840,6 +1024,7 @@ export const useChoiceWizardController = () => {
       resolveNodeRole,
       rootParentNodeId,
       selectedAction,
+      setActivePanelMode,
       stagingNode,
       updatePersistedNode,
       wizardStep,
@@ -848,12 +1033,17 @@ export const useChoiceWizardController = () => {
 
   return {
     isWizardMode,
+    isExistingChoiceEditMode,
     wizardStep,
     initialChoiceResponse,
     activeActionChoiceResponse,
     selectedProcessingOption,
     selectedFollowUp,
     selectedBranchConfig,
+    initialFollowUpSelections:
+      isExistingChoiceEditMode && activeNode
+        ? (activeNode.data.config.choiceSelections ?? null)
+        : null,
     wizardError,
     isWorkflowBusy,
     isChoiceStepLoading,

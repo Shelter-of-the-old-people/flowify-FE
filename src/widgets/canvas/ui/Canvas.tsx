@@ -426,7 +426,7 @@ export const Canvas = () => {
       } else {
         setActiveNextStep(null);
         setActivePlaceholder(null);
-        openPanel(node.id);
+        openPanel(node.id, { mode: "view" });
       }
     },
     [canEditNodes, closePanel, openPanel, setActivePlaceholder, setCenter],

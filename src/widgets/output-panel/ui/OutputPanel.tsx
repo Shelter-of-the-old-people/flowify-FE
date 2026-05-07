@@ -9,8 +9,11 @@ import {
   type ChoiceFollowUp,
   type ChoiceOption,
   type ChoiceResponse,
+  toBackendDataType,
+  useSinkCatalogQuery,
+  useSinkSchemaQuery,
 } from "@/entities/workflow";
-import { PanelRenderer } from "@/features/configure-node";
+import { PanelRenderer, SourceNodePanel } from "@/features/configure-node";
 import {
   isMiddleWizardCompleted,
   useWorkflowStore,
@@ -25,6 +28,12 @@ import {
   useNodeDataPanelModel,
 } from "@/widgets/node-data-panel";
 
+import {
+  FallbackNodeSummaryBlock,
+  ProcessingMethodSummaryBlock,
+  SinkSetupSummaryBlock,
+  SourceSetupSummaryBlock,
+} from "./NodeSetupSummaryBlocks";
 import {
   ActionStep,
   FollowUpStep,
@@ -54,6 +63,8 @@ type OutputPanelWizardController = {
   selectedProcessingOption: WizardChoiceOption | null;
   selectedFollowUp: ChoiceFollowUp | null;
   selectedBranchConfig: ChoiceBranchConfig | null;
+  initialFollowUpSelections: Record<string, string | string[]> | null;
+  isExistingChoiceEditMode: boolean;
   wizardError: string | null;
   isWorkflowBusy: boolean;
   isChoiceStepLoading: boolean;
@@ -112,6 +123,10 @@ export const OutputPanel = ({ wizardController }: Props) => {
     (state) => state.activePlaceholder,
   );
   const workflowId = useWorkflowStore((state) => state.workflowId);
+  const nodeStatuses = useWorkflowStore((state) => state.nodeStatuses);
+  const activePanelMode = useWorkflowStore((state) => state.activePanelMode);
+  const startNodeId = useWorkflowStore((state) => state.startNodeId);
+  const endNodeId = useWorkflowStore((state) => state.endNodeId);
   const canEditNodes = useWorkflowStore(
     (state) => state.editorCapabilities.canEditNodes,
   );
@@ -120,24 +135,79 @@ export const OutputPanel = ({ wizardController }: Props) => {
   );
   const isDirty = useWorkflowStore((state) => state.isDirty);
   const closePanel = useWorkflowStore((state) => state.closePanel);
+  const setActivePanelMode = useWorkflowStore(
+    (state) => state.setActivePanelMode,
+  );
   const layout = useDualPanelLayout();
-  const isOpen = Boolean(activePanelNodeId) && activePlaceholder === null;
-
   const activeNode = useMemo(
     () => nodes.find((node) => node.id === activePanelNodeId) ?? null,
     [activePanelNodeId, nodes],
   );
+  const isStartNode = Boolean(activeNode && activeNode.id === startNodeId);
+  const isEndNode = Boolean(activeNode && activeNode.id === endNodeId);
+  const isOpen = Boolean(activePanelNodeId) && activePlaceholder === null;
 
-  const isDetailMode = isMiddleWizardCompleted(activeNode);
+  const activeNodeStatus = activePanelNodeId
+    ? (nodeStatuses[activePanelNodeId] ?? null)
+    : null;
+  const hasConfigIssue = Boolean(
+    activeNodeStatus &&
+    (!activeNodeStatus.configured ||
+      !activeNodeStatus.executable ||
+      (activeNodeStatus.missingFields?.length ?? 0) > 0),
+  );
+  const isEditMode = activePanelMode === "edit" && canEditNodes;
+  const isMiddleNode = Boolean(activeNode && !isStartNode && !isEndNode);
+  const activeNodeConfig = activeNode?.data.config as unknown as Record<
+    string,
+    unknown
+  > | null;
+  const choiceNodeType =
+    typeof activeNodeConfig?.choiceNodeType === "string"
+      ? activeNodeConfig.choiceNodeType
+      : null;
+  const hasChoiceAction =
+    typeof activeNodeConfig?.choiceActionId === "string" &&
+    activeNodeConfig.choiceActionId.trim().length > 0;
+  const isProcessingMethodOnlyNode =
+    isMiddleNode && Boolean(choiceNodeType) && !hasChoiceAction;
+  const isStartEditMode = isEditMode && isStartNode;
+  const isStartViewMode = !isEditMode && isStartNode;
+  const isEndEditMode = isEditMode && isEndNode;
+  const isEndViewMode = !isEditMode && isEndNode;
+  const isMiddleEditMode =
+    isEditMode && isMiddleNode && !isProcessingMethodOnlyNode;
+  const isDetailMode =
+    !isEditMode && isMiddleNode && isMiddleWizardCompleted(activeNode);
+  const shouldLoadOutputData =
+    isStartNode || isDetailMode || isProcessingMethodOnlyNode;
   const nodeDataPanel = useNodeDataPanelModel({
     panelKind: "output",
     workflowId: workflowId || undefined,
-    nodeId: isDetailMode ? activePanelNodeId : null,
+    nodeId: shouldLoadOutputData ? activePanelNodeId : null,
     canViewExecutionData,
     isWorkflowDirty: isDirty,
   });
   const activeMeta = activeNode ? NODE_REGISTRY[activeNode.data.type] : null;
   const outputDataLabel = nodeDataPanel.staticOutputLabel ?? "출력 데이터";
+  const sourceOutputLabel =
+    nodeDataPanel.schemaPreview?.output?.label ??
+    nodeDataPanel.staticOutputLabel ??
+    null;
+  const serviceKey =
+    typeof activeNodeConfig?.service === "string"
+      ? activeNodeConfig.service
+      : null;
+  const sinkInputType = activeNode?.data.inputTypes[0]
+    ? toBackendDataType(activeNode.data.inputTypes[0])
+    : null;
+  const { data: sinkCatalog } = useSinkCatalogQuery();
+  const selectedSinkService =
+    sinkCatalog?.services.find((service) => service.key === serviceKey) ?? null;
+  const { data: sinkSchema } = useSinkSchemaQuery(serviceKey, sinkInputType);
+  const sinkInputLabel =
+    nodeDataPanel.schemaPreview?.input?.label ??
+    (sinkInputType ? outputDataLabel : null);
   const hasPreviewData = !isEmptyPanelData(nodeDataPanel.dataToDisplay);
   const shouldShowSchemaPreview =
     nodeDataPanel.state !== "data-ready" &&
@@ -271,10 +341,15 @@ export const OutputPanel = ({ wizardController }: Props) => {
               <FollowUpStep
                 followUp={wizardController.selectedFollowUp}
                 branchConfig={wizardController.selectedBranchConfig}
+                initialSelections={wizardController.initialFollowUpSelections}
                 onComplete={(selections) =>
                   void wizardController.completeFollowUp(selections)
                 }
-                onBack={() => void wizardController.backToAction()}
+                onBack={
+                  wizardController.isExistingChoiceEditMode
+                    ? undefined
+                    : () => void wizardController.backToAction()
+                }
               />
             ) : null}
           </Box>
@@ -300,6 +375,182 @@ export const OutputPanel = ({ wizardController }: Props) => {
               {wizardController.wizardError}
             </Text>
           ) : null}
+        </>
+      ) : isStartEditMode && activeNode ? (
+        <>
+          <Box
+            display="flex"
+            alignItems="center"
+            justifyContent="space-between"
+            px={3}
+          >
+            <Text fontSize="xl" fontWeight="medium" letterSpacing="-0.4px">
+              가져올 곳 설정
+            </Text>
+            <Box cursor="pointer" onClick={handleClose}>
+              <Icon as={MdCancel} boxSize={6} color="gray.600" />
+            </Box>
+          </Box>
+
+          <Box flex={1} overflow="auto" p={3}>
+            <SourceNodePanel
+              data={activeNode.data}
+              nodeId={activeNode.id}
+              onCancel={() => setActivePanelMode("view")}
+              onComplete={() => setActivePanelMode("view")}
+            />
+          </Box>
+        </>
+      ) : isStartViewMode && activeNode && activeMeta ? (
+        <>
+          <Box
+            display="flex"
+            alignItems="center"
+            justifyContent="space-between"
+            px={3}
+          >
+            <Box display="flex" gap={2} alignItems="center">
+              <Icon
+                as={activeMeta.iconComponent}
+                boxSize={6}
+                color={activeMeta.color}
+              />
+              <Text fontSize="xl" fontWeight="medium" letterSpacing="-0.4px">
+                가져올 곳
+              </Text>
+            </Box>
+            <Box cursor="pointer" onClick={handleClose}>
+              <Icon as={MdCancel} boxSize={6} color="gray.600" />
+            </Box>
+          </Box>
+
+          <VStack align="stretch" flex={1} overflow="auto" p={3} gap={6}>
+            <SourceSetupSummaryBlock
+              canEdit={canEditNodes}
+              config={activeNode.data.config}
+              hasConfigIssue={hasConfigIssue}
+              outputLabel={sourceOutputLabel}
+              source={nodeDataPanel.schemaPreview?.source ?? null}
+              onEdit={() => setActivePanelMode("edit")}
+            />
+          </VStack>
+        </>
+      ) : isMiddleEditMode && activeNode ? (
+        <>
+          <Box
+            display="flex"
+            alignItems="center"
+            justifyContent="space-between"
+            px={3}
+          >
+            <Text fontSize="xl" fontWeight="medium" letterSpacing="-0.4px">
+              설정
+            </Text>
+            <Box cursor="pointer" onClick={handleClose}>
+              <Icon as={MdCancel} boxSize={6} color="gray.600" />
+            </Box>
+          </Box>
+
+          <Box flex={1} overflow="auto" p={3}>
+            <PanelRenderer
+              readOnly={!canEditNodes}
+              onCancel={() => setActivePanelMode("view")}
+              onComplete={() => setActivePanelMode("view")}
+            />
+          </Box>
+        </>
+      ) : isEndEditMode && activeNode ? (
+        <>
+          <Box
+            display="flex"
+            alignItems="center"
+            justifyContent="space-between"
+            px={3}
+          >
+            <Text fontSize="xl" fontWeight="medium" letterSpacing="-0.4px">
+              설정
+            </Text>
+            <Box cursor="pointer" onClick={handleClose}>
+              <Icon as={MdCancel} boxSize={6} color="gray.600" />
+            </Box>
+          </Box>
+
+          <Box flex={1} overflow="auto" p={3}>
+            <PanelRenderer
+              readOnly={!canEditNodes}
+              onCancel={() => setActivePanelMode("view")}
+              onComplete={() => setActivePanelMode("view")}
+            />
+          </Box>
+        </>
+      ) : isEndViewMode && activeNode && activeMeta ? (
+        <>
+          <Box
+            display="flex"
+            alignItems="center"
+            justifyContent="space-between"
+            px={3}
+          >
+            <Box display="flex" gap={2} alignItems="center">
+              <Icon
+                as={activeMeta.iconComponent}
+                boxSize={6}
+                color={activeMeta.color}
+              />
+              <Text fontSize="xl" fontWeight="medium" letterSpacing="-0.4px">
+                보낼 곳
+              </Text>
+            </Box>
+            <Box cursor="pointer" onClick={handleClose}>
+              <Icon as={MdCancel} boxSize={6} color="gray.600" />
+            </Box>
+          </Box>
+
+          <VStack align="stretch" flex={1} overflow="auto" p={3} gap={6}>
+            <SinkSetupSummaryBlock
+              canEdit={canEditNodes}
+              config={activeNode.data.config}
+              fields={
+                sinkSchema?.fields ??
+                selectedSinkService?.config_schema.fields ??
+                []
+              }
+              hasConfigIssue={hasConfigIssue}
+              inputLabel={sinkInputLabel}
+              serviceLabel={selectedSinkService?.label ?? activeMeta.label}
+              onEdit={() => setActivePanelMode("edit")}
+            />
+          </VStack>
+        </>
+      ) : isProcessingMethodOnlyNode && activeNode && activeMeta ? (
+        <>
+          <Box
+            display="flex"
+            alignItems="center"
+            justifyContent="space-between"
+            px={3}
+          >
+            <Box display="flex" gap={2} alignItems="center">
+              <Icon
+                as={activeMeta.iconComponent}
+                boxSize={6}
+                color={activeMeta.color}
+              />
+              <Text fontSize="xl" fontWeight="medium" letterSpacing="-0.4px">
+                처리 방식
+              </Text>
+            </Box>
+            <Box cursor="pointer" onClick={handleClose}>
+              <Icon as={MdCancel} boxSize={6} color="gray.600" />
+            </Box>
+          </Box>
+
+          <VStack align="stretch" flex={1} overflow="auto" p={3} gap={6}>
+            <ProcessingMethodSummaryBlock
+              choiceNodeType={choiceNodeType}
+              outputType={activeNode.data.outputTypes[0] ?? null}
+            />
+          </VStack>
         </>
       ) : isDetailMode && activeNode && activeMeta ? (
         <>
@@ -343,6 +594,33 @@ export const OutputPanel = ({ wizardController }: Props) => {
                 nodeDataPanel.isStaleAgainstCurrentEditor
               }
             />
+            {hasConfigIssue ? (
+              <Box
+                bg="orange.50"
+                border="1px solid"
+                borderColor="orange.100"
+                borderRadius="2xl"
+                px={4}
+                py={4}
+              >
+                <Text color="orange.600" fontSize="sm" fontWeight="semibold">
+                  설정 확인 필요
+                </Text>
+                <Text mt={1} color="text.secondary" fontSize="sm">
+                  실행 전에 이 노드의 설정을 다시 확인해 주세요.
+                </Text>
+              </Box>
+            ) : null}
+            {canEditNodes ? (
+              <Button
+                alignSelf="flex-start"
+                size="sm"
+                variant="outline"
+                onClick={() => setActivePanelMode("edit")}
+              >
+                설정 수정
+              </Button>
+            ) : null}
             {nodeDataPanel.isPreviewSupported ? (
               <Box display="flex" flexDirection="column" gap={2}>
                 <Button
@@ -390,6 +668,39 @@ export const OutputPanel = ({ wizardController }: Props) => {
             ) : null}
           </VStack>
         </>
+      ) : activeNode && activeMeta ? (
+        <>
+          <Box
+            display="flex"
+            alignItems="center"
+            justifyContent="space-between"
+            px={3}
+          >
+            <Box display="flex" gap={2} alignItems="center">
+              <Icon
+                as={activeMeta.iconComponent}
+                boxSize={6}
+                color={activeMeta.color}
+              />
+              <Text fontSize="xl" fontWeight="medium" letterSpacing="-0.4px">
+                설정
+              </Text>
+            </Box>
+            <Box cursor="pointer" onClick={handleClose}>
+              <Icon as={MdCancel} boxSize={6} color="gray.600" />
+            </Box>
+          </Box>
+
+          <VStack align="stretch" flex={1} overflow="auto" p={3} gap={6}>
+            <FallbackNodeSummaryBlock
+              canEdit={canEditNodes && !isProcessingMethodOnlyNode}
+              hasConfigIssue={hasConfigIssue}
+              label={activeNode.data.label ?? activeMeta.label}
+              outputLabel={outputDataLabel}
+              onEdit={() => setActivePanelMode("edit")}
+            />
+          </VStack>
+        </>
       ) : (
         <>
           <Box
@@ -406,8 +717,10 @@ export const OutputPanel = ({ wizardController }: Props) => {
             </Box>
           </Box>
 
-          <Box flex={1} overflow="auto">
-            <PanelRenderer readOnly={!canEditNodes} />
+          <Box flex={1} overflow="auto" p={3}>
+            <Text color="text.secondary" fontSize="sm">
+              노드를 선택하면 설정과 출력 정보를 확인할 수 있습니다.
+            </Text>
           </Box>
         </>
       )}
