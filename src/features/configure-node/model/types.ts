@@ -6,6 +6,8 @@ export interface NodePanelProps {
   nodeId: string;
   data: FlowNodeData;
   readOnly?: boolean;
+  onCancel?: () => void;
+  onComplete?: () => void;
 }
 
 export type NodePanelComponent = ComponentType<NodePanelProps>;

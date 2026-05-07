@@ -4,7 +4,7 @@ import { type SinkSchemaFieldResponse } from "@/entities/workflow";
 import {
   type SinkNodeConfigDraftParameters,
   type SinkSetupDraftValues,
-} from "./types";
+} from "./setup-types";
 
 export const REMOTE_SINK_PICKER_FIELD_TYPES = new Set([
   "folder_picker",

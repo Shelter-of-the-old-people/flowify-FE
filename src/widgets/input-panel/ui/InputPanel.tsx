@@ -14,6 +14,7 @@ import {
   readSelectionSummary,
   toChoiceMappingRules,
 } from "@/features/choice-panel";
+import { SourceNodePanel } from "@/features/configure-node";
 import {
   isMiddleWizardCompleted,
   useWorkflowStore,
@@ -39,9 +40,7 @@ export const InputPanel = () => {
   const activePlaceholder = useWorkflowStore(
     (state) => state.activePlaceholder,
   );
-  const activeNodeSetupSession = useWorkflowStore(
-    (state) => state.activeNodeSetupSession,
-  );
+  const activePanelMode = useWorkflowStore((state) => state.activePanelMode);
   const workflowId = useWorkflowStore((state) => state.workflowId);
   const nodeStatuses = useWorkflowStore((state) => state.nodeStatuses);
   const canViewExecutionData = useWorkflowStore(
@@ -52,12 +51,11 @@ export const InputPanel = () => {
   );
   const isDirty = useWorkflowStore((state) => state.isDirty);
   const closePanel = useWorkflowStore((state) => state.closePanel);
-  const openNodeSetup = useWorkflowStore((state) => state.openNodeSetup);
+  const setActivePanelMode = useWorkflowStore(
+    (state) => state.setActivePanelMode,
+  );
   const layout = useDualPanelLayout();
-  const isOpen =
-    Boolean(activePanelNodeId) &&
-    activePlaceholder === null &&
-    activeNodeSetupSession === null;
+  const isOpen = Boolean(activePanelNodeId) && activePlaceholder === null;
   const { data: mappingRulesResponse } = useMappingRulesQuery();
   const mappingRules = useMemo(
     () => toChoiceMappingRules(mappingRulesResponse),
@@ -81,6 +79,8 @@ export const InputPanel = () => {
     nodeDataPanel.schemaPreview?.nodeStatus ?? storeNodeStatus;
   const isConfiguredMiddleNode =
     isMiddleNode && isMiddleWizardCompleted(activeNode);
+  const isStartEditMode =
+    isStartNode && activePanelMode === "edit" && canEditNodes;
   const activeNodeMissingFields = (activeNodeStatus?.missingFields ?? []).map(
     getNodeStatusMissingFieldLabel,
   );
@@ -186,7 +186,14 @@ export const InputPanel = () => {
             </Box>
 
             <Box display="flex" flexDirection="column" gap={4}>
-              {isStartNode ? (
+              {isStartEditMode && activeNode ? (
+                <SourceNodePanel
+                  data={activeNode.data}
+                  nodeId={activeNode.id}
+                  onCancel={() => setActivePanelMode("view")}
+                  onComplete={() => setActivePanelMode("view")}
+                />
+              ) : isStartNode ? (
                 <>
                   <SourceSummaryBlock
                     config={activeNodeConfig}
@@ -197,13 +204,7 @@ export const InputPanel = () => {
                       alignSelf="flex-start"
                       size="sm"
                       variant="outline"
-                      onClick={() =>
-                        openNodeSetup({
-                          mode: "edit",
-                          nodeId: activeNode.id,
-                          role: "start",
-                        })
-                      }
+                      onClick={() => setActivePanelMode("edit")}
                     >
                       설정 수정
                     </Button>

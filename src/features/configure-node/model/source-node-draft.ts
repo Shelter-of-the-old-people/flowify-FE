@@ -1,6 +1,6 @@
 import { type FlowNodeData } from "@/entities/node";
 
-import { type SourceNodeConfigDraftParameters } from "./types";
+import { type SourceNodeConfigDraftParameters } from "./setup-types";
 
 export const createEmptySourceTargetSetupValue = () => ({
   option: null,

@@ -27,8 +27,8 @@ import {
   getSourceTargetSchemaPlaceholder,
   getSourceTargetSchemaType,
   isRemoteSourceTargetPicker,
-} from "../model";
-import { type SourceTargetSetupValue } from "../model";
+} from "../../model";
+import { type SourceTargetSetupValue } from "../../model";
 
 type Props = {
   disabled?: boolean;

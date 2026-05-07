@@ -6,6 +6,7 @@ import { Box, Text } from "@chakra-ui/react";
 import { useWorkflowStore } from "@/features/workflow-editor";
 
 import { NODE_PANEL_REGISTRY } from "../model";
+import { type NodePanelProps } from "../model";
 
 import { GenericNodePanel, SinkNodePanel } from "./panels";
 
@@ -42,7 +43,15 @@ class PanelErrorBoundary extends Component<
   }
 }
 
-export const PanelRenderer = ({ readOnly = false }: { readOnly?: boolean }) => {
+type PanelRendererProps = Pick<NodePanelProps, "onCancel" | "onComplete"> & {
+  readOnly?: boolean;
+};
+
+export const PanelRenderer = ({
+  onCancel,
+  onComplete,
+  readOnly = false,
+}: PanelRendererProps) => {
   const activeNode = useWorkflowStore(
     (s) => s.nodes.find((node) => node.id === s.activePanelNodeId) ?? null,
   );
@@ -60,6 +69,8 @@ export const PanelRenderer = ({ readOnly = false }: { readOnly?: boolean }) => {
       <PanelComponent
         nodeId={activeNode.id}
         data={activeNode.data}
+        onCancel={onCancel}
+        onComplete={onComplete}
         readOnly={readOnly}
       />
     </PanelErrorBoundary>
