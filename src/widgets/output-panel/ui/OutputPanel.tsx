@@ -9,8 +9,11 @@ import {
   type ChoiceFollowUp,
   type ChoiceOption,
   type ChoiceResponse,
+  toBackendDataType,
+  useSinkCatalogQuery,
+  useSinkSchemaQuery,
 } from "@/entities/workflow";
-import { PanelRenderer } from "@/features/configure-node";
+import { PanelRenderer, SourceNodePanel } from "@/features/configure-node";
 import {
   isMiddleWizardCompleted,
   useWorkflowStore,
@@ -25,6 +28,10 @@ import {
   useNodeDataPanelModel,
 } from "@/widgets/node-data-panel";
 
+import {
+  SinkSetupSummaryBlock,
+  SourceSetupSummaryBlock,
+} from "./NodeSetupSummaryBlocks";
 import {
   ActionStep,
   FollowUpStep,
@@ -136,8 +143,7 @@ export const OutputPanel = ({ wizardController }: Props) => {
   );
   const isStartNode = Boolean(activeNode && activeNode.id === startNodeId);
   const isEndNode = Boolean(activeNode && activeNode.id === endNodeId);
-  const isOpen =
-    Boolean(activePanelNodeId) && activePlaceholder === null && !isStartNode;
+  const isOpen = Boolean(activePanelNodeId) && activePlaceholder === null;
 
   const activeNodeStatus = activePanelNodeId
     ? (nodeStatuses[activePanelNodeId] ?? null)
@@ -149,22 +155,57 @@ export const OutputPanel = ({ wizardController }: Props) => {
       (activeNodeStatus.missingFields?.length ?? 0) > 0),
   );
   const isEditMode = activePanelMode === "edit" && canEditNodes;
+  const isMiddleNode = Boolean(activeNode && !isStartNode && !isEndNode);
+  const activeNodeConfig = activeNode?.data.config as unknown as Record<
+    string,
+    unknown
+  > | null;
+  const choiceNodeType =
+    typeof activeNodeConfig?.choiceNodeType === "string"
+      ? activeNodeConfig.choiceNodeType
+      : null;
+  const hasChoiceAction =
+    typeof activeNodeConfig?.choiceActionId === "string" &&
+    activeNodeConfig.choiceActionId.trim().length > 0;
+  const isProcessingMethodOnlyNode =
+    isMiddleNode && Boolean(choiceNodeType) && !hasChoiceAction;
+  const isStartEditMode = isEditMode && isStartNode;
+  const isStartViewMode = !isEditMode && isStartNode;
   const isEndEditMode = isEditMode && isEndNode;
   const isEndViewMode = !isEditMode && isEndNode;
+  const isMiddleEditMode =
+    isEditMode && isMiddleNode && !isProcessingMethodOnlyNode;
   const isDetailMode =
-    !isEditMode &&
-    !isStartNode &&
-    !isEndNode &&
-    isMiddleWizardCompleted(activeNode);
+    !isEditMode && isMiddleNode && isMiddleWizardCompleted(activeNode);
+  const shouldLoadOutputData =
+    isStartNode || isDetailMode || isProcessingMethodOnlyNode;
   const nodeDataPanel = useNodeDataPanelModel({
     panelKind: "output",
     workflowId: workflowId || undefined,
-    nodeId: isDetailMode ? activePanelNodeId : null,
+    nodeId: shouldLoadOutputData ? activePanelNodeId : null,
     canViewExecutionData,
     isWorkflowDirty: isDirty,
   });
   const activeMeta = activeNode ? NODE_REGISTRY[activeNode.data.type] : null;
   const outputDataLabel = nodeDataPanel.staticOutputLabel ?? "출력 데이터";
+  const sourceOutputLabel =
+    nodeDataPanel.schemaPreview?.output?.label ??
+    nodeDataPanel.staticOutputLabel ??
+    null;
+  const serviceKey =
+    typeof activeNodeConfig?.service === "string"
+      ? activeNodeConfig.service
+      : null;
+  const sinkInputType = activeNode?.data.inputTypes[0]
+    ? toBackendDataType(activeNode.data.inputTypes[0])
+    : null;
+  const { data: sinkCatalog } = useSinkCatalogQuery();
+  const selectedSinkService =
+    sinkCatalog?.services.find((service) => service.key === serviceKey) ?? null;
+  const { data: sinkSchema } = useSinkSchemaQuery(serviceKey, sinkInputType);
+  const sinkInputLabel =
+    nodeDataPanel.schemaPreview?.input?.label ??
+    (sinkInputType ? outputDataLabel : null);
   const hasPreviewData = !isEmptyPanelData(nodeDataPanel.dataToDisplay);
   const shouldShowSchemaPreview =
     nodeDataPanel.state !== "data-ready" &&
@@ -333,6 +374,89 @@ export const OutputPanel = ({ wizardController }: Props) => {
             </Text>
           ) : null}
         </>
+      ) : isStartEditMode && activeNode ? (
+        <>
+          <Box
+            display="flex"
+            alignItems="center"
+            justifyContent="space-between"
+            px={3}
+          >
+            <Text fontSize="xl" fontWeight="medium" letterSpacing="-0.4px">
+              가져올 곳 설정
+            </Text>
+            <Box cursor="pointer" onClick={handleClose}>
+              <Icon as={MdCancel} boxSize={6} color="gray.600" />
+            </Box>
+          </Box>
+
+          <Box flex={1} overflow="auto" p={3}>
+            <SourceNodePanel
+              data={activeNode.data}
+              nodeId={activeNode.id}
+              onCancel={() => setActivePanelMode("view")}
+              onComplete={() => setActivePanelMode("view")}
+            />
+          </Box>
+        </>
+      ) : isStartViewMode && activeNode && activeMeta ? (
+        <>
+          <Box
+            display="flex"
+            alignItems="center"
+            justifyContent="space-between"
+            px={3}
+          >
+            <Box display="flex" gap={2} alignItems="center">
+              <Icon
+                as={activeMeta.iconComponent}
+                boxSize={6}
+                color={activeMeta.color}
+              />
+              <Text fontSize="xl" fontWeight="medium" letterSpacing="-0.4px">
+                가져올 곳
+              </Text>
+            </Box>
+            <Box cursor="pointer" onClick={handleClose}>
+              <Icon as={MdCancel} boxSize={6} color="gray.600" />
+            </Box>
+          </Box>
+
+          <VStack align="stretch" flex={1} overflow="auto" p={3} gap={6}>
+            <SourceSetupSummaryBlock
+              canEdit={canEditNodes}
+              config={activeNode.data.config}
+              hasConfigIssue={hasConfigIssue}
+              outputLabel={sourceOutputLabel}
+              source={nodeDataPanel.schemaPreview?.source ?? null}
+              onEdit={() => setActivePanelMode("edit")}
+            />
+          </VStack>
+        </>
+      ) : isMiddleEditMode && activeNode ? (
+        <>
+          <Box
+            display="flex"
+            alignItems="center"
+            justifyContent="space-between"
+            px={3}
+          >
+            <Text fontSize="xl" fontWeight="medium" letterSpacing="-0.4px">
+              설정
+            </Text>
+            <Box cursor="pointer" onClick={handleClose}>
+              <Icon as={MdCancel} boxSize={6} color="gray.600" />
+            </Box>
+          </Box>
+
+          <Box flex={1} overflow="auto" p={3}>
+            <PanelRenderer
+              readOnly={!canEditNodes}
+              onCancel={() => setActivePanelMode("view")}
+              onComplete={() => setActivePanelMode("view")}
+            />
+          </Box>
+        </>
       ) : isEndEditMode && activeNode ? (
         <>
           <Box
@@ -381,43 +505,19 @@ export const OutputPanel = ({ wizardController }: Props) => {
           </Box>
 
           <VStack align="stretch" flex={1} overflow="auto" p={3} gap={6}>
-            <Box>
-              <Text fontSize="lg" fontWeight="bold" mb={2}>
-                {activeMeta.label}
-              </Text>
-              <Text fontSize="sm" color="text.secondary">
-                처리 결과를 보낼 대상과 세부 설정을 확인합니다.
-              </Text>
-            </Box>
-
-            {hasConfigIssue ? (
-              <Box
-                bg="orange.50"
-                border="1px solid"
-                borderColor="orange.100"
-                borderRadius="2xl"
-                px={4}
-                py={4}
-              >
-                <Text color="orange.600" fontSize="sm" fontWeight="semibold">
-                  설정 확인 필요
-                </Text>
-                <Text mt={1} color="text.secondary" fontSize="sm">
-                  실행 전에 이 도착 노드의 설정을 다시 확인해 주세요.
-                </Text>
-              </Box>
-            ) : null}
-
-            {canEditNodes ? (
-              <Button
-                alignSelf="flex-start"
-                size="sm"
-                variant="outline"
-                onClick={() => setActivePanelMode("edit")}
-              >
-                설정 수정
-              </Button>
-            ) : null}
+            <SinkSetupSummaryBlock
+              canEdit={canEditNodes}
+              config={activeNode.data.config}
+              fields={
+                sinkSchema?.fields ??
+                selectedSinkService?.config_schema.fields ??
+                []
+              }
+              hasConfigIssue={hasConfigIssue}
+              inputLabel={sinkInputLabel}
+              serviceLabel={selectedSinkService?.label ?? activeMeta.label}
+              onEdit={() => setActivePanelMode("edit")}
+            />
           </VStack>
         </>
       ) : isDetailMode && activeNode && activeMeta ? (
