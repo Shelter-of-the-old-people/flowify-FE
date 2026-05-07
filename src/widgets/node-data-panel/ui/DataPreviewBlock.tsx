@@ -71,14 +71,6 @@ const formatFileSize = (value: unknown) => {
   return `${(numericValue / (1024 * 1024)).toFixed(1)} MB`;
 };
 
-const formatPreviewData = (data: unknown) => {
-  try {
-    return JSON.stringify(data, null, 2);
-  } catch {
-    return String(data);
-  }
-};
-
 const getDisplayTypeLabel = (type: string) =>
   getDataTypeDisplayLabel(type) ?? "데이터";
 
@@ -204,7 +196,7 @@ const FileListPreview = ({ data }: { data: DataRecord }) => {
       ))}
       {omittedCount > 0 ? (
         <Text fontSize="xs" color="text.secondary">
-          외 {omittedCount}개 파일은 상세 데이터에서 확인할 수 있습니다.
+          외 {omittedCount}개 파일은 미리보기에서 생략되었습니다.
         </Text>
       ) : null}
     </Box>
@@ -315,7 +307,7 @@ const EmailListPreview = ({ data }: { data: DataRecord }) => {
       ))}
       {omittedCount > 0 ? (
         <Text fontSize="xs" color="text.secondary">
-          외 {omittedCount}개 메일은 상세 데이터에서 확인할 수 있습니다.
+          외 {omittedCount}개 메일은 미리보기에서 생략되었습니다.
         </Text>
       ) : null}
     </Box>
@@ -435,8 +427,8 @@ const SpreadsheetPreview = ({ data }: { data: DataRecord }) => {
       </Box>
       {rows.length > previewRows.length ? (
         <Text fontSize="xs" color="text.secondary">
-          외 {rows.length - previewRows.length}개 행은 상세 데이터에서 확인할 수
-          있습니다.
+          외 {rows.length - previewRows.length}개 행은 미리보기에서
+          생략되었습니다.
         </Text>
       ) : null}
     </Box>
@@ -574,7 +566,6 @@ export const DataPreviewBlock = ({
   title = "데이터 미리보기",
   data,
 }: Props) => {
-  const previewText = formatPreviewData(data);
   const payloadType = getPayloadType(data);
   const payloadLabel = payloadType ? getDisplayTypeLabel(payloadType) : null;
 
@@ -592,29 +583,6 @@ export const DataPreviewBlock = ({
       </Box>
 
       <CanonicalPreview data={data} />
-
-      <Box as="details" color="text.secondary" fontSize="xs">
-        <Box as="summary" cursor="pointer" px={1} py={1}>
-          상세 데이터 보기
-        </Box>
-        <Box
-          as="pre"
-          maxH="260px"
-          overflow="auto"
-          px={4}
-          py={3}
-          borderRadius="xl"
-          bg="gray.50"
-          border="1px solid"
-          borderColor="gray.100"
-          color="gray.700"
-          lineHeight="1.6"
-          whiteSpace="pre-wrap"
-          wordBreak="break-word"
-        >
-          {previewText}
-        </Box>
-      </Box>
     </Box>
   );
 };
