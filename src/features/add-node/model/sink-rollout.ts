@@ -1,6 +1,5 @@
 const SINK_SERVICE_ROLLOUT_ALLOWLIST = [
   "slack",
-  "gmail",
   "notion",
   "google_drive",
   "google_sheets",

@@ -7,14 +7,6 @@ export const SOURCE_SERVICE_ROLLOUT_ALLOWLIST = {
     "folder_new_file",
     "folder_all_files",
   ],
-  gmail: [
-    "single_email",
-    "new_email",
-    "sender_email",
-    "starred_email",
-    "label_emails",
-    "attachment_email",
-  ],
   google_sheets: ["sheet_all", "new_row", "row_updated"],
   slack: ["channel_messages"],
 } as const satisfies Record<string, readonly string[]>;
