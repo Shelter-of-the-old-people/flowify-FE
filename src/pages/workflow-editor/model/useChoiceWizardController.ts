@@ -1024,64 +1024,76 @@ export const useChoiceWizardController = () => {
       const branchKeys = shouldCreateBranchTargets
         ? toFileTypeBranchKeys(selections)
         : [];
-      const branchTargetDataTypeKey =
-        currentDataTypeKey ??
-        toSnapshotDataTypeKey(targetNode.data.outputTypes[0]);
-
-      try {
-        await updatePersistedNode({
+      const targetRole =
+        targetNode.id === stagingNode?.id
+          ? (baseStagingSnapshot?.role ?? resolveNodeRole(targetNode.id))
+          : resolveNodeRole(targetNode.id);
+      const buildFollowUpConfig = (isConfigured: boolean) =>
+        buildChoiceWizardNodeConfig({
+          type: targetNode.data.type,
+          baseConfig: targetNode.data.config,
+          isConfigured,
+          overrides: {
+            choiceActionId: selectedChoice.id,
+            choiceNodeType: targetNode.data.config.choiceNodeType,
+            ...selectionOverrides,
+          },
+          preserveExistingConfig: true,
+        });
+      const persistFollowUpConfig = (isConfigured: boolean) =>
+        updatePersistedNode({
           node: targetNode,
           type: targetNode.data.type,
-          config: buildChoiceWizardNodeConfig({
-            type: targetNode.data.type,
-            baseConfig: targetNode.data.config,
-            isConfigured: true,
-            overrides: {
-              choiceActionId: selectedChoice.id,
-              choiceNodeType: targetNode.data.config.choiceNodeType,
-              ...selectionOverrides,
-            },
-            preserveExistingConfig: true,
-          }),
-          role:
-            targetNode.id === stagingNode?.id
-              ? (baseStagingSnapshot?.role ?? resolveNodeRole(targetNode.id))
-              : resolveNodeRole(targetNode.id),
+          config: buildFollowUpConfig(isConfigured),
+          role: targetRole,
         });
 
+      try {
         if (shouldCreateBranchTargets) {
-          if (!branchTargetDataTypeKey) {
-            throw new Error("branch target data type is required");
-          }
-
           const branchTargetDrafts = createFileTypeBranchTargetDrafts({
             branchKeys,
             branchNode: targetNode,
             edges,
           });
 
-          for (const branchTargetDraft of branchTargetDrafts) {
-            const createdBranchTargetNodeId = await placeWorkflowNode({
-              type: "data-process",
-              sourceNodeId: targetNode.id,
-              position: branchTargetDraft.position,
-              inputDataTypeKey: branchTargetDataTypeKey,
-              outputDataTypeKey: branchTargetDataTypeKey,
-              config: buildChoiceWizardNodeConfig({
-                type: "data-process",
-                isConfigured: false,
-              }),
-              label: branchTargetDraft.label,
-              prevEdgeLabel: branchTargetDraft.prevEdgeLabel,
-              prevEdgeSourceHandle: branchTargetDraft.prevEdgeSourceHandle,
-              prevEdgeTargetHandle: branchTargetDraft.prevEdgeTargetHandle,
-              previousNodes: useWorkflowStore.getState().nodes,
-            });
+          await persistFollowUpConfig(false);
 
-            if (!createdBranchTargetNodeId) {
-              throw new Error("branch target node was not created");
+          if (branchTargetDrafts.length > 0) {
+            const branchTargetDataTypeKey =
+              currentDataTypeKey ??
+              toSnapshotDataTypeKey(targetNode.data.outputTypes[0]);
+
+            if (!branchTargetDataTypeKey) {
+              throw new Error("branch target data type is required");
+            }
+
+            for (const branchTargetDraft of branchTargetDrafts) {
+              const createdBranchTargetNodeId = await placeWorkflowNode({
+                type: "data-process",
+                sourceNodeId: targetNode.id,
+                position: branchTargetDraft.position,
+                inputDataTypeKey: branchTargetDataTypeKey,
+                outputDataTypeKey: branchTargetDataTypeKey,
+                config: buildChoiceWizardNodeConfig({
+                  type: "data-process",
+                  isConfigured: false,
+                }),
+                label: branchTargetDraft.label,
+                prevEdgeLabel: branchTargetDraft.prevEdgeLabel,
+                prevEdgeSourceHandle: branchTargetDraft.prevEdgeSourceHandle,
+                prevEdgeTargetHandle: branchTargetDraft.prevEdgeTargetHandle,
+                previousNodes: useWorkflowStore.getState().nodes,
+              });
+
+              if (!createdBranchTargetNodeId) {
+                throw new Error("branch target node was not created");
+              }
             }
           }
+
+          await persistFollowUpConfig(true);
+        } else {
+          await persistFollowUpConfig(true);
         }
 
         if (actionNode) {
