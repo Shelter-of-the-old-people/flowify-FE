@@ -1,10 +1,10 @@
 const SINK_SERVICE_ROLLOUT_ALLOWLIST = [
   "slack",
-  "gmail",
   "notion",
   "google_drive",
   "google_sheets",
   "google_calendar",
+  "gmail",
 ] as const;
 
 export const isSinkServiceInRollout = (serviceKey: string) =>

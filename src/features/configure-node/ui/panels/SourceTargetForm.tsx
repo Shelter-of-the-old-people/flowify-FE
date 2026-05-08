@@ -72,6 +72,14 @@ const renderOptionMetadata = (option: RemoteOptionPickerItem) => {
   ) : null;
 };
 
+const getPickerRootLabel = (serviceKey: string, schemaType: string) => {
+  if (serviceKey === "gmail" && schemaType === "label_picker") {
+    return "Gmail 라벨";
+  }
+
+  return "내 드라이브";
+};
+
 export const SourceTargetForm = ({
   disabled = false,
   mode,
@@ -235,7 +243,7 @@ export const SourceTargetForm = ({
       items={items}
       path={isFolderPicker ? pickerPath : undefined}
       renderItemMetadata={renderOptionMetadata}
-      rootLabel="내 드라이브"
+      rootLabel={getPickerRootLabel(serviceKey, schemaType)}
       searchPlaceholder={`${getSourceTargetSchemaLabel(mode.target_schema)} 검색`}
       searchValue={searchQuery}
       selectedId={value.value}

@@ -18,30 +18,32 @@ export const TemplateRequiredServices = ({ services }: Props) => {
 
   return (
     <HStack align="stretch" gap={3} wrap="wrap">
-      {services.map((service) => (
-        <Box
-          key={service}
-          px={3}
-          py={2.5}
-          borderRadius="18px"
-          bg="bg.surface"
-          border="1px solid"
-          borderColor="border.default"
-          boxShadow="0 6px 18px rgba(15, 23, 42, 0.04)"
-        >
-          <HStack gap={2.5}>
-            <ServiceBadge type={getServiceBadgeKeyFromService(service)} />
-            <VStack align="stretch" gap={0}>
-              <Text fontSize="xs" fontWeight="medium" color="text.secondary">
-                필요한 서비스
-              </Text>
-              <Text fontSize="sm" fontWeight="semibold" color="text.primary">
-                {getTemplateServiceLabel(service)}
-              </Text>
-            </VStack>
-          </HStack>
-        </Box>
-      ))}
+      {services.map((service) => {
+        return (
+          <Box
+            key={service}
+            px={3}
+            py={2.5}
+            borderRadius="18px"
+            bg="bg.surface"
+            border="1px solid"
+            borderColor="border.default"
+            boxShadow="0 6px 18px rgba(15, 23, 42, 0.04)"
+          >
+            <HStack gap={2.5}>
+              <ServiceBadge type={getServiceBadgeKeyFromService(service)} />
+              <VStack align="stretch" gap={0}>
+                <Text fontSize="xs" fontWeight="medium" color="text.secondary">
+                  필요한 서비스
+                </Text>
+                <Text fontSize="sm" fontWeight="semibold" color="text.primary">
+                  {getTemplateServiceLabel(service)}
+                </Text>
+              </VStack>
+            </HStack>
+          </Box>
+        );
+      })}
     </HStack>
   );
 };
