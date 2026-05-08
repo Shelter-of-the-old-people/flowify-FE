@@ -48,12 +48,14 @@ const toChoiceSemanticNodeType = ({
 };
 
 export type ProcessingMethodSelectionIntent = {
+  branchConfig: ChoiceBranchConfig | null;
+  hasFollowUp: boolean;
   isConfigured: boolean;
   nextActionChoice: ResolvedChoiceResponse;
   nextChoiceNodeType: MappingNodeType;
   nextDataTypeKey: MappingDataTypeKey;
   nextNodeType: NodeType;
-  nextStep: "action" | "complete";
+  nextStep: "action" | "follow-up" | "complete";
 };
 
 export type ActionSelectionIntent = {
@@ -92,13 +94,22 @@ export const deriveProcessingMethodSelectionIntent = ({
     nextDataTypeKey,
     "action",
   );
-  const nextStep = nextActionChoice.options.length > 0 ? "action" : "complete";
+  const branchConfig =
+    selectionResult.branchConfig ?? option.branchConfig ?? null;
+  const hasFollowUp = Boolean(branchConfig);
+  const nextStep = hasFollowUp
+    ? "follow-up"
+    : nextActionChoice.options.length > 0
+      ? "action"
+      : "complete";
   const nextChoiceNodeType = toChoiceSemanticNodeType({
     option,
     selectionResult,
   });
 
   return {
+    branchConfig,
+    hasFollowUp,
     isConfigured: nextStep === "complete",
     nextActionChoice,
     nextChoiceNodeType,

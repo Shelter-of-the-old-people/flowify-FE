@@ -14,9 +14,12 @@ import {
 import {
   type ResolvedChoiceOption,
   buildFallbackChoiceResponse,
+  isFileTypeBranchAction,
   resolveActionChoiceResponse,
   resolveInitialChoiceResponse,
   toChoiceMappingRules,
+  toFileTypeBranchConfigPatch,
+  toFileTypeBranchInitialSelections,
   toMappingKey,
   toResolvedChoiceResponse,
 } from "@/features/choice-panel";
@@ -79,6 +82,16 @@ const findResolvedActionById = (
     : dataTypeKeys;
 
   for (const dataTypeKey of orderedDataTypeKeys) {
+    const processingMethod = buildFallbackChoiceResponse(
+      mappingRules,
+      dataTypeKey,
+      "initial",
+    ).options.find((option) => option.id === actionId);
+
+    if (processingMethod) {
+      return processingMethod;
+    }
+
     const action = buildFallbackChoiceResponse(
       mappingRules,
       dataTypeKey,
@@ -648,6 +661,12 @@ export const useChoiceWizardController = () => {
             type: selectionIntent.nextNodeType,
             isConfigured: selectionIntent.isConfigured,
             overrides: {
+              ...(selectionIntent.hasFollowUp
+                ? {
+                    choiceActionId: option.id,
+                    choiceSelections: null,
+                  }
+                : {}),
               choiceNodeType: selectionIntent.nextChoiceNodeType,
             },
           }),
@@ -661,13 +680,17 @@ export const useChoiceWizardController = () => {
 
         applyWizardStatePatch(
           createProcessingMethodTransitionPatch({
+            branchConfig: selectionIntent.branchConfig,
             option,
             nextDataTypeKey: selectionIntent.nextDataTypeKey,
             nextStep: selectionIntent.nextStep,
           }),
         );
 
-        if (selectionIntent.nextStep === "action") {
+        if (
+          selectionIntent.nextStep === "action" ||
+          selectionIntent.nextStep === "follow-up"
+        ) {
           return;
         }
 
@@ -954,11 +977,23 @@ export const useChoiceWizardController = () => {
   const completeFollowUp = useCallback(
     async (selections: Record<string, string | string[]>) => {
       const targetNode = actionNode ?? stagingNode;
-      if (!targetNode || !selectedAction) {
+      const selectedChoice = selectedAction ?? selectedProcessingOption;
+      if (!targetNode || !selectedChoice) {
         return;
       }
 
       setWizardError(null);
+
+      const selectionOverrides = isFileTypeBranchAction(selectedChoice.id)
+        ? toFileTypeBranchConfigPatch(selections)
+        : {
+            choiceSelections: selections,
+          };
+
+      if (!selectionOverrides) {
+        setWizardError("분기할 파일 종류를 선택해주세요.");
+        return;
+      }
 
       try {
         await updatePersistedNode({
@@ -969,9 +1004,9 @@ export const useChoiceWizardController = () => {
             baseConfig: targetNode.data.config,
             isConfigured: true,
             overrides: {
-              choiceActionId: selectedAction.id,
+              choiceActionId: selectedChoice.id,
               choiceNodeType: targetNode.data.config.choiceNodeType,
-              choiceSelections: selections,
+              ...selectionOverrides,
             },
             preserveExistingConfig: true,
           }),
@@ -992,7 +1027,7 @@ export const useChoiceWizardController = () => {
           },
           event: "follow-up-complete",
           nextStep: "complete",
-          optionId: selectedAction.id,
+          optionId: selectedChoice.id,
           step: wizardStep,
           targetNodeId: targetNode.id,
         });
@@ -1007,7 +1042,7 @@ export const useChoiceWizardController = () => {
             message: "follow-up-persist-failed",
           },
           event: "wizard-error",
-          optionId: selectedAction.id,
+          optionId: selectedChoice.id,
           step: wizardStep,
           targetNodeId: targetNode.id,
         });
@@ -1024,6 +1059,7 @@ export const useChoiceWizardController = () => {
       resolveNodeRole,
       rootParentNodeId,
       selectedAction,
+      selectedProcessingOption,
       setActivePanelMode,
       stagingNode,
       updatePersistedNode,
@@ -1042,7 +1078,11 @@ export const useChoiceWizardController = () => {
     selectedBranchConfig,
     initialFollowUpSelections:
       isExistingChoiceEditMode && activeNode
-        ? (activeNode.data.config.choiceSelections ?? null)
+        ? isFileTypeBranchAction(activeNode.data.config.choiceActionId)
+          ? toFileTypeBranchInitialSelections(
+              activeNode.data.config.choiceSelections,
+            )
+          : (activeNode.data.config.choiceSelections ?? null)
         : null,
     wizardError,
     isWorkflowBusy,

@@ -52,6 +52,8 @@ interface BaseNodeConfig {
   choiceNodeType?: ChoiceNodeType | null;
   /** 중간 노드 위자드 후속 설정 값 */
   choiceSelections?: Record<string, string | string[]> | null;
+  /** file-type branch selected runtime keys */
+  branchTypes?: string[] | null;
   /** source target display label */
   target_label?: string | null;
   /** source target display metadata */
