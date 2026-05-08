@@ -168,11 +168,14 @@ export const OutputPanel = ({ wizardController }: Props) => {
     typeof activeNodeConfig?.choiceNodeType === "string"
       ? activeNodeConfig.choiceNodeType
       : null;
+  const choiceActionId =
+    typeof activeNodeConfig?.choiceActionId === "string"
+      ? activeNodeConfig.choiceActionId
+      : null;
   const hasChoiceAction =
-    typeof activeNodeConfig?.choiceActionId === "string" &&
-    activeNodeConfig.choiceActionId.trim().length > 0;
+    choiceActionId !== null && choiceActionId.trim().length > 0;
   const isFileTypeBranchNode =
-    isMiddleNode && isFileTypeBranchAction(activeNodeConfig?.choiceActionId);
+    isMiddleNode && isFileTypeBranchAction(choiceActionId);
   const isProcessingMethodOnlyNode =
     isMiddleNode && Boolean(choiceNodeType) && !hasChoiceAction;
   const isStartEditMode = isEditMode && isStartNode;

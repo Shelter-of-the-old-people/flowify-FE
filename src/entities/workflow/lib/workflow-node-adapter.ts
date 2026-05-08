@@ -87,6 +87,8 @@ const ROUTING_EDGE_DISPLAY_LABELS = {
   false: "false",
 } as const satisfies Record<string, string>;
 
+type RoutingEdgeKey = keyof typeof ROUTING_EDGE_DISPLAY_LABELS;
+
 const ROUTING_EDGE_KEYS = new Set(Object.keys(ROUTING_EDGE_DISPLAY_LABELS));
 
 type NodeDraftOptions = {
@@ -124,9 +126,11 @@ const getServiceKeyFromConfig = (
 const getStringValue = (value: unknown) =>
   typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
 
-const toRoutingEdgeKey = (value: unknown) => {
+const toRoutingEdgeKey = (value: unknown): RoutingEdgeKey | null => {
   const stringValue = getStringValue(value);
-  return stringValue && ROUTING_EDGE_KEYS.has(stringValue) ? stringValue : null;
+  return stringValue && ROUTING_EDGE_KEYS.has(stringValue)
+    ? (stringValue as RoutingEdgeKey)
+    : null;
 };
 
 const getFlowEdgeData = (edge: Edge) =>
@@ -142,7 +146,7 @@ const resolveRoutingEdgeKey = (edge: Edge) => {
   );
 };
 
-const toDisplayEdgeLabel = (routingKey: string | null) =>
+const toDisplayEdgeLabel = (routingKey: RoutingEdgeKey | null) =>
   routingKey ? ROUTING_EDGE_DISPLAY_LABELS[routingKey] : undefined;
 
 const getPersistedBackendType = ({
