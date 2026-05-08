@@ -51,6 +51,7 @@ export interface ProcessingMethodOption {
   node_type: MappingNodeType | null;
   output_data_type: MappingDataTypeKey;
   priority: number;
+  branch_config?: BranchConfig;
 }
 
 /** 처리 방식 질문 */

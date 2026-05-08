@@ -122,6 +122,9 @@ const toProcessingMethodOption = (
     ? option.output_data_type
     : (fallback?.output_data_type ?? defaultOutputDataType),
   priority: option.priority ?? fallback?.priority ?? 99,
+  branch_config:
+    (toFollowUp(option.branch_config) as BranchConfig | undefined) ??
+    fallback?.branch_config,
 });
 
 const toProcessingMethod = (
