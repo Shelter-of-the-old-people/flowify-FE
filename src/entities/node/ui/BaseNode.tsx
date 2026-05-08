@@ -26,6 +26,15 @@ const HIDDEN_HANDLE_STYLE = {
   pointerEvents: "none" as const,
 };
 
+const ROUTING_SOURCE_HANDLE_IDS = [
+  "pdf",
+  "image",
+  "spreadsheet",
+  "document",
+  "presentation",
+  "other",
+];
+
 const getSummaryContent = (
   helperText: string | null,
   children?: ReactNode,
@@ -146,10 +155,25 @@ export const BaseNode = ({ id, data, children }: BaseNodeProps) => {
         style={HIDDEN_HANDLE_STYLE}
       />
       <Handle
+        id="input"
+        type="target"
+        position={Position.Left}
+        style={HIDDEN_HANDLE_STYLE}
+      />
+      <Handle
         type="source"
         position={Position.Right}
         style={HIDDEN_HANDLE_STYLE}
       />
+      {ROUTING_SOURCE_HANDLE_IDS.map((handleId) => (
+        <Handle
+          key={handleId}
+          id={handleId}
+          type="source"
+          position={Position.Right}
+          style={HIDDEN_HANDLE_STYLE}
+        />
+      ))}
     </Box>
   );
 };

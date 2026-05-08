@@ -93,8 +93,12 @@ type NodeDraftOptions = {
   authWarning?: boolean;
   config?: Partial<NodeConfig>;
   inputTypes?: DataType[];
+  label?: string;
   outputTypes?: DataType[];
   position: { x: number; y: number };
+  prevEdgeLabel?: string;
+  prevEdgeSourceHandle?: string;
+  prevEdgeTargetHandle?: string;
   prevNodeId?: string;
   role?: NodeDefinitionResponse["role"];
   type: NodeType;
@@ -205,6 +209,10 @@ export const toNodeAddRequest = ({
   inputTypes,
   outputTypes,
   role,
+  label,
+  prevEdgeLabel,
+  prevEdgeSourceHandle,
+  prevEdgeTargetHandle,
   prevNodeId,
   authWarning = false,
 }: NodeDraftOptions): NodeAddRequest => {
@@ -221,6 +229,7 @@ export const toNodeAddRequest = ({
       ...meta.defaultConfig,
       ...config,
     } as Record<string, unknown>,
+    label,
     dataType: mergedInputTypes[0]
       ? toBackendDataType(mergedInputTypes[0])
       : null,
@@ -229,6 +238,9 @@ export const toNodeAddRequest = ({
       : null,
     role,
     prevNodeId,
+    prevEdgeLabel,
+    prevEdgeSourceHandle,
+    prevEdgeTargetHandle,
     authWarning,
   };
 };

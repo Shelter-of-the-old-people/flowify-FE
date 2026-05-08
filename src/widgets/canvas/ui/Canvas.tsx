@@ -642,19 +642,21 @@ export const Canvas = () => {
     if (!activePanelNodeId) return null;
 
     const relatedIds = new Set<string>([activePanelNodeId]);
-    const incomingEdge = edges.find(
+    const incomingEdges = edges.filter(
       (edge) => edge.target === activePanelNodeId,
     );
-    const outgoingEdge = edges.find(
+    const outgoingEdges = edges.filter(
       (edge) => edge.source === activePanelNodeId,
     );
 
-    if (incomingEdge) {
+    for (const incomingEdge of incomingEdges) {
       relatedIds.add(incomingEdge.source);
     }
 
-    if (outgoingEdge) {
-      relatedIds.add(outgoingEdge.target);
+    if (outgoingEdges.length > 0) {
+      outgoingEdges.forEach((outgoingEdge) =>
+        relatedIds.add(outgoingEdge.target),
+      );
     } else {
       relatedIds.add(getNextStepPlaceholderId(activePanelNodeId));
     }
@@ -688,20 +690,22 @@ export const Canvas = () => {
       if (!activeNode) return [];
 
       const chainNodes: Node[] = [activeNode];
-      const incomingEdge = edges.find((edge) => edge.target === nodeId);
-      const outgoingEdge = edges.find((edge) => edge.source === nodeId);
+      const incomingEdges = edges.filter((edge) => edge.target === nodeId);
+      const outgoingEdges = edges.filter((edge) => edge.source === nodeId);
       const activeNodeCenterY = getNodeCenterY(
         activeNode,
         getNodeFallbackHeight(activeNode),
       );
 
-      if (incomingEdge) {
-        const previousNode = nodesWithDragControl.find(
-          (node) => node.id === incomingEdge.source,
-        );
+      if (incomingEdges.length > 0) {
+        for (const incomingEdge of incomingEdges) {
+          const previousNode = nodesWithDragControl.find(
+            (node) => node.id === incomingEdge.source,
+          );
 
-        if (previousNode) {
-          chainNodes.unshift(previousNode);
+          if (previousNode) {
+            chainNodes.unshift(previousNode);
+          }
         }
       } else {
         chainNodes.unshift(
@@ -713,13 +717,15 @@ export const Canvas = () => {
         );
       }
 
-      if (outgoingEdge) {
-        const nextNode = nodesWithDragControl.find(
-          (node) => node.id === outgoingEdge.target,
-        );
+      if (outgoingEdges.length > 0) {
+        for (const outgoingEdge of outgoingEdges) {
+          const nextNode = nodesWithDragControl.find(
+            (node) => node.id === outgoingEdge.target,
+          );
 
-        if (nextNode) {
-          chainNodes.push(nextNode);
+          if (nextNode) {
+            chainNodes.push(nextNode);
+          }
         }
       } else {
         const nextPlaceholder =

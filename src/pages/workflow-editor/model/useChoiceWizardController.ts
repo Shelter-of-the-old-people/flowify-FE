@@ -20,6 +20,7 @@ import {
   toChoiceMappingRules,
   toFileTypeBranchConfigPatch,
   toFileTypeBranchInitialSelections,
+  toFileTypeBranchKeys,
   toMappingKey,
   toResolvedChoiceResponse,
 } from "@/features/choice-panel";
@@ -58,6 +59,7 @@ import {
   buildChoiceWizardNodeConfig,
   createChoiceWizardWorkflowSync,
 } from "./choiceWizardWorkflowGraph";
+import { createFileTypeBranchTargetDrafts } from "./fileTypeBranchGraph";
 
 type WizardChoiceOption = ResolvedChoiceOption;
 
@@ -995,6 +997,16 @@ export const useChoiceWizardController = () => {
         return;
       }
 
+      const shouldCreateBranchTargets = isFileTypeBranchAction(
+        selectedChoice.id,
+      );
+      const branchKeys = shouldCreateBranchTargets
+        ? toFileTypeBranchKeys(selections)
+        : [];
+      const branchTargetDataTypeKey =
+        currentDataTypeKey ??
+        toSnapshotDataTypeKey(targetNode.data.outputTypes[0]);
+
       try {
         await updatePersistedNode({
           node: targetNode,
@@ -1015,6 +1027,41 @@ export const useChoiceWizardController = () => {
               ? (baseStagingSnapshot?.role ?? resolveNodeRole(targetNode.id))
               : resolveNodeRole(targetNode.id),
         });
+
+        if (shouldCreateBranchTargets) {
+          if (!branchTargetDataTypeKey) {
+            throw new Error("branch target data type is required");
+          }
+
+          const branchTargetDrafts = createFileTypeBranchTargetDrafts({
+            branchKeys,
+            branchNode: targetNode,
+            edges,
+          });
+
+          for (const branchTargetDraft of branchTargetDrafts) {
+            const createdBranchTargetNodeId = await placeWorkflowNode({
+              type: "data-process",
+              sourceNodeId: targetNode.id,
+              position: branchTargetDraft.position,
+              inputDataTypeKey: branchTargetDataTypeKey,
+              outputDataTypeKey: branchTargetDataTypeKey,
+              config: buildChoiceWizardNodeConfig({
+                type: "data-process",
+                isConfigured: false,
+              }),
+              label: branchTargetDraft.label,
+              prevEdgeLabel: branchTargetDraft.prevEdgeLabel,
+              prevEdgeSourceHandle: branchTargetDraft.prevEdgeSourceHandle,
+              prevEdgeTargetHandle: branchTargetDraft.prevEdgeTargetHandle,
+              previousNodes: useWorkflowStore.getState().nodes,
+            });
+
+            if (!createdBranchTargetNodeId) {
+              throw new Error("branch target node was not created");
+            }
+          }
+        }
 
         if (actionNode) {
           await markStagingNodeConfigured();
@@ -1053,9 +1100,12 @@ export const useChoiceWizardController = () => {
       actionNode,
       anchorNodeId,
       baseStagingSnapshot?.role,
+      currentDataTypeKey,
+      edges,
       finishWizard,
       markStagingNodeConfigured,
       openPanel,
+      placeWorkflowNode,
       resolveNodeRole,
       rootParentNodeId,
       selectedAction,

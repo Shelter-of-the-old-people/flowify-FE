@@ -25,6 +25,9 @@ export const isFileTypeBranchAction = (
 ): value is typeof FILE_TYPE_BRANCH_ACTION_ID =>
   value === FILE_TYPE_BRANCH_ACTION_ID;
 
+export const getFileTypeBranchLabel = (key: FileTypeBranchKey) =>
+  FILE_TYPE_BRANCH_LABELS[key];
+
 const addBranchKey = (keys: FileTypeBranchKey[], value: unknown) => {
   if (typeof value !== "string") {
     return;
