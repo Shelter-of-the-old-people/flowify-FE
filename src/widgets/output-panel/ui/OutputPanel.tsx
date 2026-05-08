@@ -13,6 +13,7 @@ import {
   useSinkCatalogQuery,
   useSinkSchemaQuery,
 } from "@/entities/workflow";
+import { isFileTypeBranchAction } from "@/features/choice-panel";
 import { PanelRenderer, SourceNodePanel } from "@/features/configure-node";
 import {
   isMiddleWizardCompleted,
@@ -29,6 +30,7 @@ import {
 } from "@/widgets/node-data-panel";
 
 import {
+  BranchSetupSummaryBlock,
   FallbackNodeSummaryBlock,
   ProcessingMethodSummaryBlock,
   SinkSetupSummaryBlock,
@@ -169,6 +171,8 @@ export const OutputPanel = ({ wizardController }: Props) => {
   const hasChoiceAction =
     typeof activeNodeConfig?.choiceActionId === "string" &&
     activeNodeConfig.choiceActionId.trim().length > 0;
+  const isFileTypeBranchNode =
+    isMiddleNode && isFileTypeBranchAction(activeNodeConfig?.choiceActionId);
   const isProcessingMethodOnlyNode =
     isMiddleNode && Boolean(choiceNodeType) && !hasChoiceAction;
   const isStartEditMode = isEditMode && isStartNode;
@@ -177,8 +181,13 @@ export const OutputPanel = ({ wizardController }: Props) => {
   const isEndViewMode = !isEditMode && isEndNode;
   const isMiddleEditMode =
     isEditMode && isMiddleNode && !isProcessingMethodOnlyNode;
+  const isBranchViewMode =
+    !isEditMode && isFileTypeBranchNode && isMiddleWizardCompleted(activeNode);
   const isDetailMode =
-    !isEditMode && isMiddleNode && isMiddleWizardCompleted(activeNode);
+    !isEditMode &&
+    isMiddleNode &&
+    !isBranchViewMode &&
+    isMiddleWizardCompleted(activeNode);
   const shouldLoadOutputData =
     isStartNode || isDetailMode || isProcessingMethodOnlyNode;
   const nodeDataPanel = useNodeDataPanelModel({
@@ -549,6 +558,38 @@ export const OutputPanel = ({ wizardController }: Props) => {
             <ProcessingMethodSummaryBlock
               choiceNodeType={choiceNodeType}
               outputType={activeNode.data.outputTypes[0] ?? null}
+            />
+          </VStack>
+        </>
+      ) : isBranchViewMode && activeNode && activeMeta ? (
+        <>
+          <Box
+            display="flex"
+            alignItems="center"
+            justifyContent="space-between"
+            px={3}
+          >
+            <Box display="flex" gap={2} alignItems="center">
+              <Icon
+                as={activeMeta.iconComponent}
+                boxSize={6}
+                color={activeMeta.color}
+              />
+              <Text fontSize="xl" fontWeight="medium" letterSpacing="-0.4px">
+                遺꾧린
+              </Text>
+            </Box>
+            <Box cursor="pointer" onClick={handleClose}>
+              <Icon as={MdCancel} boxSize={6} color="gray.600" />
+            </Box>
+          </Box>
+
+          <VStack align="stretch" flex={1} overflow="auto" p={3} gap={6}>
+            <BranchSetupSummaryBlock
+              canEdit={canEditNodes}
+              config={activeNode.data.config}
+              hasConfigIssue={hasConfigIssue}
+              onEdit={() => setActivePanelMode("edit")}
             />
           </VStack>
         </>

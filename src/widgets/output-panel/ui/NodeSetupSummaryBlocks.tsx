@@ -6,6 +6,10 @@ import {
   type SourceConfigSummaryResponse,
   getDataTypeDisplayLabel,
 } from "@/entities/workflow";
+import {
+  getFileTypeBranchLabel,
+  toFileTypeBranchKeys,
+} from "@/features/choice-panel";
 import { getSinkAuxiliaryLabelKey } from "@/features/configure-node";
 import { SourceSummaryBlock } from "@/widgets/node-data-panel";
 
@@ -24,6 +28,13 @@ const getStringValue = (value: unknown) =>
 
 const getConfigRecord = (config: FlowNodeData["config"]) =>
   config as unknown as Record<string, unknown>;
+
+const getChoiceSelectionsRecord = (config: Record<string, unknown>) =>
+  config.choiceSelections &&
+  typeof config.choiceSelections === "object" &&
+  !Array.isArray(config.choiceSelections)
+    ? (config.choiceSelections as Record<string, string | string[]>)
+    : null;
 
 const getFieldDisplayValue = (
   field: SinkSchemaFieldResponse,
@@ -219,6 +230,59 @@ export const ProcessingMethodSummaryBlock = ({
           { label: "예상 출력", value: outputLabel },
         ]}
       />
+    </Box>
+  );
+};
+
+export const BranchSetupSummaryBlock = ({
+  canEdit,
+  config,
+  hasConfigIssue,
+  onEdit,
+}: ActionProps & {
+  config: FlowNodeData["config"];
+  hasConfigIssue: boolean;
+}) => {
+  const configRecord = getConfigRecord(config);
+  const choiceSelections = getChoiceSelectionsRecord(configRecord);
+  const branchTypes = Array.isArray(configRecord.branchTypes)
+    ? configRecord.branchTypes.filter(
+        (value): value is string =>
+          typeof value === "string" && value.trim().length > 0,
+      )
+    : null;
+  const branchKeys = toFileTypeBranchKeys(
+    choiceSelections ?? (branchTypes ? { branch_config: branchTypes } : null),
+  );
+  const branchLabel =
+    branchKeys.length > 0
+      ? branchKeys.map(getFileTypeBranchLabel).join(", ")
+      : "\uBBF8\uC124\uC815";
+
+  return (
+    <Box display="flex" flexDirection="column" gap={4}>
+      <Box>
+        <Text fontSize="lg" fontWeight="bold" mb={2}>
+          {"\uD30C\uC77C \uC885\uB958 \uBD84\uAE30"}
+        </Text>
+        <Text color="text.secondary" fontSize="sm">
+          {
+            "\uC120\uD0DD\uD55C \uD30C\uC77C \uC885\uB958\uBCC4 \uB2E4\uC74C \uCC98\uB9AC \uACBD\uB85C\uB97C \uD655\uC778\uD569\uB2C8\uB2E4."
+          }
+        </Text>
+      </Box>
+
+      <SummaryRows
+        rows={[
+          {
+            label: "\uBD84\uAE30 \uAE30\uC900",
+            value: "\uD30C\uC77C \uC885\uB958",
+          },
+          { label: "\uC120\uD0DD\uD55C \uBD84\uAE30", value: branchLabel },
+        ]}
+      />
+      {hasConfigIssue ? <ConfigIssueNotice /> : null}
+      <SetupActionButton canEdit={canEdit} onEdit={onEdit} />
     </Box>
   );
 };
