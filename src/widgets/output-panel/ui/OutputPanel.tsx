@@ -78,6 +78,7 @@ type OutputPanelWizardController = {
   selectAction: (action: WizardChoiceOption) => Promise<void>;
   backToProcessingMethod: () => Promise<void>;
   backToAction: () => void;
+  backFromFollowUp: () => Promise<void>;
   completeFollowUp: (
     selections: Record<string, string | string[]>,
   ) => Promise<void>;
@@ -360,7 +361,7 @@ export const OutputPanel = ({ wizardController }: Props) => {
                 onBack={
                   wizardController.isExistingChoiceEditMode
                     ? undefined
-                    : () => void wizardController.backToAction()
+                    : () => void wizardController.backFromFollowUp()
                 }
               />
             ) : null}

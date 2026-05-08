@@ -976,6 +976,27 @@ export const useChoiceWizardController = () => {
     applyWizardStatePatch(createBackToActionPatch());
   }, [actionNodeId, applyWizardStatePatch, openPanel, stagingNodeId]);
 
+  const backFromFollowUp = useCallback(async () => {
+    if (isExistingChoiceEditMode) {
+      return;
+    }
+
+    if (selectedAction) {
+      backToAction();
+      return;
+    }
+
+    if (selectedProcessingOption) {
+      await backToProcessingMethod();
+    }
+  }, [
+    backToAction,
+    backToProcessingMethod,
+    isExistingChoiceEditMode,
+    selectedAction,
+    selectedProcessingOption,
+  ]);
+
   const completeFollowUp = useCallback(
     async (selections: Record<string, string | string[]>) => {
       const targetNode = actionNode ?? stagingNode;
@@ -1145,6 +1166,7 @@ export const useChoiceWizardController = () => {
     selectAction,
     backToProcessingMethod,
     backToAction,
+    backFromFollowUp,
     completeFollowUp,
     reset,
   };
