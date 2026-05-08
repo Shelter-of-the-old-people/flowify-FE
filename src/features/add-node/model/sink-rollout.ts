@@ -4,6 +4,7 @@ const SINK_SERVICE_ROLLOUT_ALLOWLIST = [
   "google_drive",
   "google_sheets",
   "google_calendar",
+  "gmail",
 ] as const;
 
 export const isSinkServiceInRollout = (serviceKey: string) =>

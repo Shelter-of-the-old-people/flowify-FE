@@ -27,6 +27,23 @@ const getNumber = (value: unknown) =>
 const getRecordItems = (value: unknown) =>
   Array.isArray(value) ? value.filter(isRecord) : [];
 
+const getFirstRecordItems = (
+  data: DataRecord,
+  keys: readonly string[],
+): DataRecord[] => {
+  for (const key of keys) {
+    const items = getRecordItems(data[key]);
+    if (items.length > 0) {
+      return items;
+    }
+  }
+
+  return [];
+};
+
+const getNestedRecord = (data: DataRecord, key: string) =>
+  isRecord(data[key]) ? data[key] : null;
+
 const getPayloadType = (data: unknown) =>
   isRecord(data) ? getString(data.type).toUpperCase() : "";
 
@@ -173,7 +190,7 @@ const FileItemCard = ({ item, index }: { item: DataRecord; index: number }) => {
 };
 
 const FileListPreview = ({ data }: { data: DataRecord }) => {
-  const items = getRecordItems(data.items);
+  const items = getFirstRecordItems(data, ["files", "items"]);
   const previewItems = items.slice(0, MAX_LIST_PREVIEW_COUNT);
   const omittedCount = items.length - previewItems.length;
 
@@ -256,7 +273,11 @@ const EmailItemCard = ({
   index: number;
 }) => {
   const subject = getString(item.subject) || `메일 ${index + 1}`;
-  const body = getString(item.body);
+  const body =
+    getString(item.body) ||
+    getString(item.bodyPreview) ||
+    getString(item.body_preview) ||
+    getString(item.snippet);
 
   return (
     <Box
@@ -271,7 +292,7 @@ const EmailItemCard = ({
         {subject}
       </Text>
       <Box mt={1} display="flex" flexDirection="column" gap={1}>
-        <FieldText label="보낸 사람" value={item.from} />
+        <FieldText label="보낸 사람" value={item.from ?? item.sender} />
         <FieldText label="날짜" value={formatDateTime(item.date)} />
         {body ? (
           <Text fontSize="xs" color="text.secondary" whiteSpace="pre-wrap">
@@ -284,7 +305,7 @@ const EmailItemCard = ({
 };
 
 const EmailListPreview = ({ data }: { data: DataRecord }) => {
-  const items = getRecordItems(data.items);
+  const items = getFirstRecordItems(data, ["emails", "items"]);
   const previewItems = items.slice(0, MAX_LIST_PREVIEW_COUNT);
   const omittedCount = items.length - previewItems.length;
 
@@ -315,14 +336,19 @@ const EmailListPreview = ({ data }: { data: DataRecord }) => {
 };
 
 const SingleEmailPreview = ({ data }: { data: DataRecord }) => {
-  const attachments = getRecordItems(data.attachments);
-  const body = getString(data.body);
+  const email = getNestedRecord(data, "email") ?? data;
+  const attachments = getRecordItems(email.attachments);
+  const body =
+    getString(email.body) ||
+    getString(email.bodyPreview) ||
+    getString(email.body_preview) ||
+    getString(email.snippet);
 
   return (
     <Box display="flex" flexDirection="column" gap={3}>
-      <SummaryCard title={getString(data.subject) || "메일"}>
-        <FieldText label="보낸 사람" value={data.from} />
-        <FieldText label="날짜" value={formatDateTime(data.date)} />
+      <SummaryCard title={getString(email.subject) || "메일"}>
+        <FieldText label="보낸 사람" value={email.from ?? email.sender} />
+        <FieldText label="날짜" value={formatDateTime(email.date)} />
         <FieldText
           label="첨부"
           value={attachments.length ? `${attachments.length}개` : ""}
@@ -500,6 +526,31 @@ const OutputPreview = ({ data }: { data: DataRecord }) => (
   </SummaryCard>
 );
 
+const SendResultPreview = ({ data }: { data: DataRecord }) => {
+  const result = getNestedRecord(data, "detail") ?? data;
+  const status = getString(result.status) || getString(data.status);
+  const messageId =
+    getString(result.messageId) ||
+    getString(result.message_id) ||
+    getString(data.messageId) ||
+    getString(data.message_id);
+
+  return (
+    <SummaryCard
+      title="메일 전송 결과"
+      description={
+        status === "sent"
+          ? "Gmail 메일 전송이 완료되었습니다."
+          : "Gmail 전송 결과입니다."
+      }
+    >
+      <FieldText label="상태" value={status} />
+      <FieldText label="메시지 ID" value={messageId} />
+      <FieldText label="서비스" value={result.service ?? data.service} />
+    </SummaryCard>
+  );
+};
+
 const GenericPreview = ({ data }: { data: unknown }) => {
   if (typeof data === "string") {
     return <SummaryCard title="텍스트" description={truncateText(data)} />;
@@ -553,9 +604,14 @@ const CanonicalPreview = ({ data }: { data: unknown }) => {
       return <SpreadsheetPreview data={data} />;
     case "SCHEDULE_DATA":
       return <SchedulePreview data={data} />;
+    case "SEND_RESULT":
+      return <SendResultPreview data={data} />;
     case "API_RESPONSE":
       return <ApiResponsePreview data={data} />;
     case "OUTPUT_PREVIEW":
+      if (getPayloadType(data.detail) === "SEND_RESULT") {
+        return <SendResultPreview data={data} />;
+      }
       return <OutputPreview data={data} />;
     default:
       return <GenericPreview data={data} />;

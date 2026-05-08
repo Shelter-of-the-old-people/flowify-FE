@@ -3,8 +3,6 @@ import { Badge, Box, Button, Heading, Text, VStack } from "@chakra-ui/react";
 import {
   type TemplateDetail,
   getTemplateCategoryLabel,
-  getTemplateUnsupportedServiceMessage,
-  getUnsupportedTemplateServices,
 } from "@/entities/template";
 import { TemplateServiceIcon } from "@/pages/templates/ui";
 
@@ -34,12 +32,6 @@ export const TemplateInfoPanel = ({
   const metaItems = getTemplateMetaItems(template);
   const categoryLabel = getTemplateCategoryLabel(template.category);
   const runtimeSummary = getTemplateRuntimeSummary(template);
-  const unsupportedServices = getUnsupportedTemplateServices(
-    template.requiredServices,
-  );
-  const unsupportedServiceMessage =
-    getTemplateUnsupportedServiceMessage(unsupportedServices);
-  const canInstantiate = !isPending && unsupportedServices.length === 0;
 
   return (
     <Box
@@ -122,28 +114,11 @@ export const TemplateInfoPanel = ({
           <Text fontSize="sm" fontWeight="semibold" color="text.primary">
             필요한 서비스
           </Text>
-          <TemplateRequiredServices
-            services={template.requiredServices}
-            unsupportedServices={unsupportedServices}
-          />
-          {unsupportedServiceMessage ? (
-            <Box
-              px={3}
-              py={2.5}
-              borderRadius="18px"
-              bg="orange.50"
-              border="1px solid"
-              borderColor="orange.100"
-            >
-              <Text fontSize="xs" color="orange.700">
-                {unsupportedServiceMessage}
-              </Text>
-            </Box>
-          ) : null}
+          <TemplateRequiredServices services={template.requiredServices} />
         </VStack>
 
         <VStack align="stretch" mt="auto" gap={3}>
-          <Button onClick={onInstantiate} disabled={!canInstantiate} size="md">
+          <Button onClick={onInstantiate} disabled={isPending} size="md">
             {isPending ? "가져오는 중..." : "가져오기"}
           </Button>
           <Button variant="outline" onClick={onBack} size="md">

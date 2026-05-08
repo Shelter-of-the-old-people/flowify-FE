@@ -41,6 +41,7 @@ const REMOTE_TARGET_SCHEMA_TYPES = new Set([
   "term_picker",
   "file_picker",
   "folder_picker",
+  "label_picker",
 ]);
 
 export const getTargetSchemaType = (targetSchema: Record<string, unknown>) =>

@@ -3,6 +3,7 @@ import {
   MdCalendarMonth,
   MdFolder,
   MdInsertDriveFile,
+  MdLabel,
   MdSchool,
 } from "react-icons/md";
 
@@ -46,6 +47,7 @@ const TARGET_OPTION_ICON_MAP = {
   course: MdSchool,
   file: MdInsertDriveFile,
   folder: MdFolder,
+  label: MdLabel,
   term: MdCalendarMonth,
 };
 
@@ -68,6 +70,14 @@ const createPickerState = (scope: string): PickerState => ({
   scope,
   searchQuery: "",
 });
+
+const getPickerRootLabel = (serviceKey: string, schemaType: string) => {
+  if (serviceKey === "gmail" && schemaType === "label_picker") {
+    return "Gmail 라벨";
+  }
+
+  return "내 드라이브";
+};
 
 export const SourceTargetPicker = ({
   mode,
@@ -228,7 +238,7 @@ export const SourceTargetPicker = ({
       items={items}
       path={isFolderPicker ? pickerPath : undefined}
       renderItemMetadata={renderOptionMetadata}
-      rootLabel="내 드라이브"
+      rootLabel={getPickerRootLabel(serviceKey, schemaType)}
       searchPlaceholder={`${getTargetSchemaLabel(mode.target_schema)} 검색`}
       searchValue={searchQuery}
       selectedId={value.value}
