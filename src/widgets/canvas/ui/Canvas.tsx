@@ -11,6 +11,7 @@ import {
 } from "@xyflow/react";
 import {
   type DefaultEdgeOptions,
+  type Edge,
   type EdgeTypes,
   type Node,
   type NodeChange,
@@ -52,6 +53,7 @@ import {
   createFileTypeBranchTargetDraft,
   getFileTypeBranchHeadInfo,
   getFileTypeBranchKeysFromNode,
+  getFileTypeBranchPlaceholderSpecs,
   getFileTypeBranchRemovalOrder,
 } from "@/features/choice-panel";
 import {
@@ -73,6 +75,7 @@ const NEXT_STEP_CHOICE_NODE_HEIGHT = 148;
 
 type ActiveNextStep = {
   centerY: number;
+  id: string;
   position: { x: number; y: number };
   routing?: PlaceholderRoutingMeta | null;
   sourceNodeId: string;
@@ -548,6 +551,7 @@ export const Canvas = () => {
         setActivePlaceholder(null);
         setActiveNextStep({
           centerY,
+          id: node.id,
           position: panelNodePosition,
           routing,
           sourceNodeId,
@@ -625,7 +629,7 @@ export const Canvas = () => {
 
     closePanel();
     setActivePlaceholder({
-      id: `placeholder-sink-${activeNextStep.sourceNodeId}`,
+      id: `placeholder-sink-${activeNextStep.id}`,
       kind: "sink",
       position: activeNextStep.position,
       routing: activeNextStep.routing,
@@ -640,6 +644,40 @@ export const Canvas = () => {
       duration: 300,
     });
   }, [activeNextStep, closePanel, setActivePlaceholder, setCenter]);
+
+  const branchPlaceholderSpecs = useMemo(
+    () =>
+      nodes.flatMap((node) =>
+        getFileTypeBranchPlaceholderSpecs({
+          branchNode: node,
+          edges,
+        }),
+      ),
+    [edges, nodes],
+  );
+
+  const virtualBranchEdges = useMemo<Edge[]>(
+    () =>
+      branchPlaceholderSpecs.map((spec) => ({
+        id: `virtual-branch-edge-${spec.sourceNodeId}-${spec.branchKey}`,
+        source: spec.sourceNodeId,
+        sourceHandle: spec.prevEdgeSourceHandle,
+        target: spec.id,
+        type: "flow-arrow",
+        animated: false,
+        data: {
+          branchKey: spec.branchKey,
+          label: spec.branchLabel,
+          variant: "flow-arrow",
+        },
+      })),
+    [branchPlaceholderSpecs],
+  );
+
+  const edgesWithVirtualBranches = useMemo(
+    () => [...edges, ...virtualBranchEdges],
+    [edges, virtualBranchEdges],
+  );
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -672,6 +710,9 @@ export const Canvas = () => {
 
   const nodesWithPlaceholders = useMemo(() => {
     const result: Node[] = [...nodes];
+    const branchPlaceholderSourceNodeIds = new Set(
+      branchPlaceholderSpecs.map((spec) => spec.sourceNodeId),
+    );
 
     if (!startNodeId) {
       result.push({
@@ -698,7 +739,13 @@ export const Canvas = () => {
           continue;
         }
 
-        if (activeNextStep?.sourceNodeId === leafId) {
+        const placeholderId = getNextStepPlaceholderId(leafId);
+
+        if (branchPlaceholderSourceNodeIds.has(leafId)) {
+          continue;
+        }
+
+        if (activeNextStep?.id === placeholderId) {
           continue;
         }
 
@@ -709,7 +756,7 @@ export const Canvas = () => {
           leafNode.position.x + getNodeWidth(leafNode) + NODE_GAP_X;
 
         result.push({
-          id: getNextStepPlaceholderId(leafId),
+          id: placeholderId,
           type: "placeholder",
           position: {
             x: placeholderX,
@@ -726,9 +773,35 @@ export const Canvas = () => {
         });
       }
 
-      if (activeNextStep && leafIds.includes(activeNextStep.sourceNodeId)) {
+      for (const spec of branchPlaceholderSpecs) {
+        if (activeNextStep?.id === spec.id) {
+          continue;
+        }
+
         result.push({
-          id: `next-step-choice-${activeNextStep.sourceNodeId}`,
+          id: spec.id,
+          type: "placeholder",
+          position: spec.position,
+          data: {
+            label: "다음 단계",
+            routing: {
+              branchKey: spec.branchKey,
+              prevEdgeLabel: spec.prevEdgeLabel,
+              prevEdgeSourceHandle: spec.prevEdgeSourceHandle,
+              prevEdgeTargetHandle: spec.prevEdgeTargetHandle,
+            },
+            sourceNodeId: spec.sourceNodeId,
+          },
+          initialWidth: PLACEHOLDER_NODE_WIDTH,
+          initialHeight: PLACEHOLDER_NODE_HEIGHT,
+          selectable: false,
+          draggable: false,
+        });
+      }
+
+      if (activeNextStep) {
+        result.push({
+          id: `next-step-choice-${activeNextStep.id}`,
           type: "next-step-choice",
           position: {
             x: activeNextStep.position.x,
@@ -753,6 +826,7 @@ export const Canvas = () => {
     return result;
   }, [
     activeNextStep,
+    branchPlaceholderSpecs,
     edges,
     endNodeIds,
     handleSelectMiddleNode,
@@ -777,27 +851,35 @@ export const Canvas = () => {
     if (!activePanelNodeId) return null;
 
     const relatedIds = new Set<string>([activePanelNodeId]);
-    const incomingEdges = edges.filter(
+    const incomingEdges = edgesWithVirtualBranches.filter(
       (edge) => edge.target === activePanelNodeId,
     );
-    const outgoingEdges = edges.filter(
+    const outgoingEdges = edgesWithVirtualBranches.filter(
       (edge) => edge.source === activePanelNodeId,
+    );
+    const placeholderNodes = nodesWithDragControl.filter(
+      (node) =>
+        node.type === "placeholder" &&
+        node.data?.sourceNodeId === activePanelNodeId,
     );
 
     for (const incomingEdge of incomingEdges) {
       relatedIds.add(incomingEdge.source);
     }
 
-    if (outgoingEdges.length > 0) {
-      outgoingEdges.forEach((outgoingEdge) =>
-        relatedIds.add(outgoingEdge.target),
-      );
-    } else {
+    outgoingEdges.forEach((outgoingEdge) =>
+      relatedIds.add(outgoingEdge.target),
+    );
+    placeholderNodes.forEach((placeholderNode) =>
+      relatedIds.add(placeholderNode.id),
+    );
+
+    if (outgoingEdges.length === 0 && placeholderNodes.length === 0) {
       relatedIds.add(getNextStepPlaceholderId(activePanelNodeId));
     }
 
     return relatedIds;
-  }, [activePanelNodeId, edges]);
+  }, [activePanelNodeId, edgesWithVirtualBranches, nodesWithDragControl]);
 
   const visibleNodes = useMemo(
     () =>
@@ -809,13 +891,13 @@ export const Canvas = () => {
   );
 
   const visibleEdges = useMemo(() => {
-    if (!visibleNodeIds) return edges;
+    if (!visibleNodeIds) return edgesWithVirtualBranches;
 
-    return edges.filter(
+    return edgesWithVirtualBranches.filter(
       (edge) =>
         visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target),
     );
-  }, [edges, visibleNodeIds]);
+  }, [edgesWithVirtualBranches, visibleNodeIds]);
 
   const getChainNodes = useCallback(
     (nodeId: string) => {
@@ -825,8 +907,16 @@ export const Canvas = () => {
       if (!activeNode) return [];
 
       const chainNodes: Node[] = [activeNode];
-      const incomingEdges = edges.filter((edge) => edge.target === nodeId);
-      const outgoingEdges = edges.filter((edge) => edge.source === nodeId);
+      const incomingEdges = edgesWithVirtualBranches.filter(
+        (edge) => edge.target === nodeId,
+      );
+      const outgoingEdges = edgesWithVirtualBranches.filter(
+        (edge) => edge.source === nodeId,
+      );
+      const placeholderNodes = nodesWithDragControl.filter(
+        (node) =>
+          node.type === "placeholder" && node.data?.sourceNodeId === nodeId,
+      );
       const activeNodeCenterY = getNodeCenterY(
         activeNode,
         getNodeFallbackHeight(activeNode),
@@ -852,17 +942,33 @@ export const Canvas = () => {
         );
       }
 
-      if (outgoingEdges.length > 0) {
-        for (const outgoingEdge of outgoingEdges) {
-          const nextNode = nodesWithDragControl.find(
-            (node) => node.id === outgoingEdge.target,
-          );
+      const nextNodeIds = new Set<string>();
 
-          if (nextNode) {
-            chainNodes.push(nextNode);
-          }
+      for (const outgoingEdge of outgoingEdges) {
+        if (nextNodeIds.has(outgoingEdge.target)) {
+          continue;
         }
-      } else {
+
+        const nextNode = nodesWithDragControl.find(
+          (node) => node.id === outgoingEdge.target,
+        );
+
+        if (nextNode) {
+          chainNodes.push(nextNode);
+          nextNodeIds.add(outgoingEdge.target);
+        }
+      }
+
+      for (const placeholderNode of placeholderNodes) {
+        if (nextNodeIds.has(placeholderNode.id)) {
+          continue;
+        }
+
+        chainNodes.push(placeholderNode);
+        nextNodeIds.add(placeholderNode.id);
+      }
+
+      if (nextNodeIds.size === 0) {
         const nextPlaceholder =
           nodesWithDragControl.find(
             (node) => node.id === getNextStepPlaceholderId(nodeId),
@@ -885,7 +991,7 @@ export const Canvas = () => {
 
       return chainNodes;
     },
-    [edges, nodesWithDragControl],
+    [edgesWithVirtualBranches, nodesWithDragControl],
   );
 
   useEffect(() => {

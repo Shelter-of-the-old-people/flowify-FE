@@ -42,6 +42,17 @@ export type FileTypeBranchPathState = {
   targetLabel: string | null;
 };
 
+export type FileTypeBranchPlaceholderSpec = {
+  branchKey: FileTypeBranchKey;
+  branchLabel: string;
+  id: string;
+  position: { x: number; y: number };
+  prevEdgeLabel: FileTypeBranchKey;
+  prevEdgeSourceHandle: FileTypeBranchKey;
+  prevEdgeTargetHandle: typeof FILE_TYPE_BRANCH_TARGET_HANDLE;
+  sourceNodeId: string;
+};
+
 const toBranchKey = (value: unknown): FileTypeBranchKey | null => {
   if (typeof value !== "string") {
     return null;
@@ -224,6 +235,47 @@ export const getFileTypeBranchPathStates = ({
       targetNodeId: targetNode?.id ?? null,
       targetLabel: targetNode?.data.label?.trim() || null,
     };
+  });
+};
+
+export const getFileTypeBranchPlaceholderSpecs = ({
+  branchNode,
+  edges,
+}: {
+  branchNode: Node<FlowNodeData>;
+  edges: Edge[];
+}): FileTypeBranchPlaceholderSpec[] => {
+  const branchKeys = getFileTypeBranchKeysFromNode(branchNode);
+  const existingBranchKeys = new Set(
+    edges
+      .filter((edge) => edge.source === branchNode.id)
+      .map((edge) => getFileTypeBranchKeyFromEdge(edge))
+      .filter((branchKey): branchKey is FileTypeBranchKey =>
+        Boolean(branchKey),
+      ),
+  );
+
+  return branchKeys.flatMap((branchKey, index) => {
+    if (existingBranchKeys.has(branchKey)) {
+      return [];
+    }
+
+    return [
+      {
+        branchKey,
+        branchLabel: getFileTypeBranchLabel(branchKey),
+        id: `placeholder-branch-next-${branchNode.id}-${branchKey}`,
+        position: toBranchTargetPosition({
+          branchNode,
+          index,
+          total: branchKeys.length,
+        }),
+        prevEdgeLabel: branchKey,
+        prevEdgeSourceHandle: branchKey,
+        prevEdgeTargetHandle: FILE_TYPE_BRANCH_TARGET_HANDLE,
+        sourceNodeId: branchNode.id,
+      },
+    ];
   });
 };
 
