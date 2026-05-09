@@ -9,9 +9,6 @@ export type NodeLifecycleStatus = {
 export type NodeEditorContextValue = {
   canEditNodes: boolean;
   endNodeIds: string[];
-  getBranchHeadInfo: (
-    nodeId: string,
-  ) => { branchKey: string; branchLabel: string; parentNodeId: string } | null;
   getNodeStatus: (nodeId: string) => NodeLifecycleStatus | null;
   onOpenPanel: (nodeId: string) => void;
   onRemoveNode: (nodeId: string) => void;
@@ -22,7 +19,6 @@ export const DEFAULT_NODE_EDITOR_CONTEXT: NodeEditorContextValue = {
   canEditNodes: true,
   startNodeId: null,
   endNodeIds: [],
-  getBranchHeadInfo: () => null,
   getNodeStatus: () => null,
   onOpenPanel: () => {},
   onRemoveNode: () => {},

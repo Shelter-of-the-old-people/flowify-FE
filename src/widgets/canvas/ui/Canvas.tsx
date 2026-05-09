@@ -49,13 +49,7 @@ import {
   useAddWorkflowNodeMutation,
   useDeleteWorkflowNodeMutation,
 } from "@/entities/workflow";
-import {
-  createFileTypeBranchTargetDraft,
-  getFileTypeBranchHeadInfo,
-  getFileTypeBranchKeysFromNode,
-  getFileTypeBranchPlaceholderSpecs,
-  getFileTypeBranchRemovalOrder,
-} from "@/features/choice-panel";
+import { getFileTypeBranchPlaceholderSpecs } from "@/features/choice-panel";
 import {
   type PlaceholderRoutingMeta,
   hydrateStore,
@@ -274,65 +268,6 @@ export const Canvas = () => {
       }
 
       try {
-        const branchHeadInfo = getFileTypeBranchHeadInfo({
-          nodeId,
-          nodes,
-          edges,
-        });
-
-        if (branchHeadInfo) {
-          const branchHeadNode =
-            nodes.find((currentNode) => currentNode.id === nodeId) ?? null;
-          const branchParentNode =
-            nodes.find(
-              (currentNode) => currentNode.id === branchHeadInfo.parentNodeId,
-            ) ?? null;
-
-          if (branchHeadNode && branchParentNode) {
-            const branchKeys = getFileTypeBranchKeysFromNode(branchParentNode);
-            const branchTargetDraft = createFileTypeBranchTargetDraft({
-              branchKey: branchHeadInfo.branchKey,
-              branchKeys,
-              branchNode: branchParentNode,
-            });
-
-            if (branchTargetDraft) {
-              const removalOrder = getFileTypeBranchRemovalOrder({
-                rootNodeId: nodeId,
-                edges,
-              });
-
-              for (const removableNodeId of removalOrder) {
-                const nextWorkflow = await deleteWorkflowNode({
-                  workflowId,
-                  nodeId: removableNodeId,
-                });
-                syncWorkflowFromResponse(nextWorkflow);
-              }
-
-              const nextWorkflow = await addWorkflowNode({
-                workflowId,
-                body: toNodeAddRequest({
-                  type: "data-process",
-                  position: branchTargetDraft.position,
-                  label: branchTargetDraft.label,
-                  prevNodeId: branchParentNode.id,
-                  prevEdgeLabel: branchTargetDraft.prevEdgeLabel,
-                  prevEdgeSourceHandle: branchTargetDraft.prevEdgeSourceHandle,
-                  prevEdgeTargetHandle: branchTargetDraft.prevEdgeTargetHandle,
-                  config: { isConfigured: false },
-                  inputTypes: [...branchHeadNode.data.inputTypes],
-                  outputTypes: [...branchHeadNode.data.outputTypes],
-                  role: "middle",
-                }),
-              });
-
-              syncWorkflowFromResponse(nextWorkflow);
-              return;
-            }
-          }
-        }
-
         const nextWorkflow = await deleteWorkflowNode({
           workflowId,
           nodeId,
@@ -346,46 +281,22 @@ export const Canvas = () => {
         });
       }
     },
-    [
-      addWorkflowNode,
-      deleteWorkflowNode,
-      edges,
-      nodes,
-      syncWorkflowFromResponse,
-      workflowId,
-    ],
+    [deleteWorkflowNode, syncWorkflowFromResponse, workflowId],
   );
   const nodeEditorContextValue = useMemo(
     () => ({
       canEditNodes,
       startNodeId,
       endNodeIds,
-      getBranchHeadInfo: (nodeId: string) => {
-        const branchHeadInfo = getFileTypeBranchHeadInfo({
-          nodeId,
-          nodes,
-          edges,
-        });
-
-        return branchHeadInfo
-          ? {
-              branchKey: branchHeadInfo.branchKey,
-              branchLabel: branchHeadInfo.branchLabel,
-              parentNodeId: branchHeadInfo.parentNodeId,
-            }
-          : null;
-      },
       getNodeStatus: (nodeId: string) => nodeStatuses[nodeId] ?? null,
       onOpenPanel: openPanel,
       onRemoveNode: handleRemoveNode,
     }),
     [
       canEditNodes,
-      edges,
       endNodeIds,
       handleRemoveNode,
       nodeStatuses,
-      nodes,
       openPanel,
       startNodeId,
     ],
