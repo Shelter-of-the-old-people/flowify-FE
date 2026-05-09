@@ -4,6 +4,7 @@ import { MdCancel } from "react-icons/md";
 import { Box, Button, Icon, Spinner, Text, VStack } from "@chakra-ui/react";
 
 import { NODE_REGISTRY } from "@/entities/node";
+import { isEndWorkflowNode } from "@/entities/node";
 import {
   type ChoiceBranchConfig,
   type ChoiceFollowUp,
@@ -13,7 +14,10 @@ import {
   useSinkCatalogQuery,
   useSinkSchemaQuery,
 } from "@/entities/workflow";
-import { isFileTypeBranchAction } from "@/features/choice-panel";
+import {
+  getFileTypeBranchPathStates,
+  isFileTypeBranchAction,
+} from "@/features/choice-panel";
 import { PanelRenderer, SourceNodePanel } from "@/features/configure-node";
 import {
   isMiddleWizardCompleted,
@@ -119,6 +123,7 @@ const ChoiceStepStatus = ({
 
 export const OutputPanel = ({ wizardController }: Props) => {
   const nodes = useWorkflowStore((state) => state.nodes);
+  const edges = useWorkflowStore((state) => state.edges);
   const activePanelNodeId = useWorkflowStore(
     (state) => state.activePanelNodeId,
   );
@@ -129,7 +134,7 @@ export const OutputPanel = ({ wizardController }: Props) => {
   const nodeStatuses = useWorkflowStore((state) => state.nodeStatuses);
   const activePanelMode = useWorkflowStore((state) => state.activePanelMode);
   const startNodeId = useWorkflowStore((state) => state.startNodeId);
-  const endNodeId = useWorkflowStore((state) => state.endNodeId);
+  const endNodeIds = useWorkflowStore((state) => state.endNodeIds);
   const canEditNodes = useWorkflowStore(
     (state) => state.editorCapabilities.canEditNodes,
   );
@@ -147,7 +152,7 @@ export const OutputPanel = ({ wizardController }: Props) => {
     [activePanelNodeId, nodes],
   );
   const isStartNode = Boolean(activeNode && activeNode.id === startNodeId);
-  const isEndNode = Boolean(activeNode && activeNode.id === endNodeId);
+  const isEndNode = isEndWorkflowNode(activeNode, startNodeId, endNodeIds);
   const isOpen = Boolean(activePanelNodeId) && activePlaceholder === null;
 
   const activeNodeStatus = activePanelNodeId
@@ -177,6 +182,17 @@ export const OutputPanel = ({ wizardController }: Props) => {
     choiceActionId !== null && choiceActionId.trim().length > 0;
   const isFileTypeBranchNode =
     isMiddleNode && isFileTypeBranchAction(choiceActionId);
+  const branchPathStates = useMemo(
+    () =>
+      activeNode && isFileTypeBranchNode
+        ? getFileTypeBranchPathStates({
+            branchNode: activeNode,
+            nodes,
+            edges,
+          })
+        : [],
+    [activeNode, edges, isFileTypeBranchNode, nodes],
+  );
   const isProcessingMethodOnlyNode =
     isMiddleNode && Boolean(choiceNodeType) && !hasChoiceAction;
   const isStartEditMode = isEditMode && isStartNode;
@@ -590,6 +606,7 @@ export const OutputPanel = ({ wizardController }: Props) => {
 
           <VStack align="stretch" flex={1} overflow="auto" p={3} gap={6}>
             <BranchSetupSummaryBlock
+              branchStates={branchPathStates}
               canEdit={canEditNodes}
               config={activeNode.data.config}
               hasConfigIssue={hasConfigIssue}

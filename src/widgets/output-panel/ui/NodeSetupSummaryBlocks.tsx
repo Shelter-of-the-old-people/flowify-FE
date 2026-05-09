@@ -7,6 +7,7 @@ import {
   getDataTypeDisplayLabel,
 } from "@/entities/workflow";
 import {
+  type FileTypeBranchPathState,
   getFileTypeBranchLabel,
   toFileTypeBranchKeys,
 } from "@/features/choice-panel";
@@ -235,11 +236,13 @@ export const ProcessingMethodSummaryBlock = ({
 };
 
 export const BranchSetupSummaryBlock = ({
+  branchStates,
   canEdit,
   config,
   hasConfigIssue,
   onEdit,
 }: ActionProps & {
+  branchStates: FileTypeBranchPathState[];
   config: FlowNodeData["config"];
   hasConfigIssue: boolean;
 }) => {
@@ -258,6 +261,14 @@ export const BranchSetupSummaryBlock = ({
     branchKeys.length > 0
       ? branchKeys.map(getFileTypeBranchLabel).join(", ")
       : "\uBBF8\uC124\uC815";
+  const branchRows: SummaryRow[] = branchStates.map((branchState) => ({
+    label: branchState.branchLabel,
+    value: !branchState.hasPath
+      ? "경로 비어 있음"
+      : branchState.isConfigured
+        ? (branchState.targetLabel ?? "설정 완료")
+        : "설정 필요",
+  }));
 
   return (
     <Box display="flex" flexDirection="column" gap={4}>
@@ -279,6 +290,7 @@ export const BranchSetupSummaryBlock = ({
             value: "\uD30C\uC77C \uC885\uB958",
           },
           { label: "\uC120\uD0DD\uD55C \uBD84\uAE30", value: branchLabel },
+          ...branchRows,
         ]}
       />
       {hasConfigIssue ? <ConfigIssueNotice /> : null}
