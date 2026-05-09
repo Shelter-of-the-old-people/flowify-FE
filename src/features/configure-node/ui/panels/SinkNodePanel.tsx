@@ -9,6 +9,7 @@ import {
   Input,
   Spinner,
   Text,
+  Textarea,
 } from "@chakra-ui/react";
 
 import { type FlowNodeData } from "@/entities/node";
@@ -50,8 +51,10 @@ const FIELD_LABELS: Record<string, string> = {
   number: "숫자",
   page_picker: "페이지",
   select: "선택",
+  secret_text: "비밀 값",
   sheet_picker: "시트",
   text: "텍스트",
+  textarea: "긴 텍스트",
 };
 
 const GOOGLE_DRIVE_SERVICE_KEY = "google_drive";
@@ -87,6 +90,10 @@ const getFieldInputType = (fieldType: string) => {
 
   if (fieldType === "number") {
     return "number";
+  }
+
+  if (fieldType === "secret_text") {
+    return "password";
   }
 
   return "text";
@@ -860,6 +867,18 @@ const SinkSchemaEditor = ({
                   onSelectOption={(option) =>
                     handleRemotePickerFieldSelect(field, option)
                   }
+                />
+              ) : field.type === "textarea" ? (
+                <Textarea
+                  disabled={readOnly}
+                  minH="120px"
+                  placeholder={`${FIELD_LABELS[field.type] ?? field.type} 입력`}
+                  resize="vertical"
+                  value={stringValue}
+                  onChange={(event) =>
+                    handleFieldChange(field.key, event.target.value)
+                  }
+                  onKeyDown={(event) => event.stopPropagation()}
                 />
               ) : (
                 <Input

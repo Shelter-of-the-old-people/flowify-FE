@@ -26,6 +26,7 @@ const NODE_STATUS_FIELD_LABELS: Record<string, string> = {
   title: "제목",
   title_template: "제목 템플릿",
   to: "수신자",
+  webhook_url: "Webhook URL",
   write_mode: "저장 방식",
 };
 
