@@ -626,7 +626,7 @@ export const ServiceSelectionPanel = () => {
     (state) => state.activePlaceholder,
   );
   const edges = useWorkflowStore((state) => state.edges);
-  const endNodeId = useWorkflowStore((state) => state.endNodeId);
+  const endNodeIds = useWorkflowStore((state) => state.endNodeIds);
   const nodes = useWorkflowStore((state) => state.nodes);
   const startNodeId = useWorkflowStore((state) => state.startNodeId);
   const workflowId = useWorkflowStore((state) => state.workflowId);
@@ -655,6 +655,7 @@ export const ServiceSelectionPanel = () => {
   const { flowToScreenPosition } = useReactFlow();
   const viewport = useViewport();
   const activePlaceholderKind = activePlaceholder?.kind ?? null;
+  const activePlaceholderRouting = activePlaceholder?.routing ?? null;
   const activeSinkSourceNodeId = activePlaceholder?.sourceNodeId ?? null;
 
   const [endStep, setEndStep] = useState<EndWizardStep>("service");
@@ -727,7 +728,7 @@ export const ServiceSelectionPanel = () => {
 
     const nodeIds = nodes
       .map((node) => node.id)
-      .filter((id) => id !== endNodeId);
+      .filter((id) => !endNodeIds.includes(id));
     const leafIds = getLeafNodeIds(nodeIds, edges);
     const leafNodes = leafIds
       .map((leafId) => nodes.find((node) => node.id === leafId) ?? null)
@@ -749,7 +750,7 @@ export const ServiceSelectionPanel = () => {
     activePlaceholderKind,
     activeSinkSourceNodeId,
     edges,
-    endNodeId,
+    endNodeIds,
     nodes,
     startNodeId,
   ]);
@@ -1003,6 +1004,11 @@ export const ServiceSelectionPanel = () => {
           position: activePlaceholder.position,
           role: "end",
           prevNodeId: endSourceNode.id,
+          prevEdgeLabel: activePlaceholderRouting?.prevEdgeLabel ?? undefined,
+          prevEdgeSourceHandle:
+            activePlaceholderRouting?.prevEdgeSourceHandle ?? undefined,
+          prevEdgeTargetHandle:
+            activePlaceholderRouting?.prevEdgeTargetHandle ?? undefined,
           config: {
             service: selectedSinkService.key,
           } as Partial<FlowNodeData["config"]>,

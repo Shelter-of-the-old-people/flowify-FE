@@ -8,6 +8,7 @@ import {
   type StorageNodeConfig,
   type WebScrapingNodeConfig,
 } from "./types";
+import { resolveWorkflowNodeRole } from "./workflowNodeRole";
 
 export type NodeRole = "source" | "process" | "destination";
 
@@ -21,7 +22,8 @@ export type NodeSurfaceState =
 export interface NodePresentationContext {
   nodeId: string;
   startNodeId: string | null;
-  endNodeId: string | null;
+  endNodeIds: string[];
+  workflowRole?: FlowNodeData["workflowRole"];
 }
 
 export interface NodePresentation {
@@ -61,12 +63,20 @@ const WEB_SCRAPING_SERVICE_TITLE: Record<
 };
 
 export const getNodeRole = ({
+  endNodeIds,
   nodeId,
   startNodeId,
-  endNodeId,
+  workflowRole,
 }: NodePresentationContext): NodeRole => {
-  if (nodeId === startNodeId) return "source";
-  if (nodeId === endNodeId) return "destination";
+  const role = resolveWorkflowNodeRole({
+    nodeId,
+    startNodeId,
+    endNodeIds,
+    workflowRole,
+  });
+
+  if (role === "start") return "source";
+  if (role === "end") return "destination";
   return "process";
 };
 

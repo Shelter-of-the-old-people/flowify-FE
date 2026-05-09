@@ -1,5 +1,6 @@
 import { type Node } from "@xyflow/react";
 
+import { isMiddleWorkflowNode as isWorkflowEditorMiddleNode } from "@/entities/node";
 import { type FlowNodeData } from "@/entities/node";
 
 type WorkflowNode = Node<FlowNodeData> | null | undefined;
@@ -18,8 +19,8 @@ export const hasSelectedSinkService = (node: WorkflowNode) =>
 export const isMiddleWorkflowNode = (
   node: WorkflowNode,
   startNodeId: string | null,
-  endNodeId: string | null,
-) => Boolean(node && node.id !== startNodeId && node.id !== endNodeId);
+  endNodeIds: string[],
+) => isWorkflowEditorMiddleNode(node, startNodeId, endNodeIds);
 
 export const isMiddleWizardCompleted = (node: WorkflowNode) =>
   node?.data.config.isConfigured === true;
@@ -27,7 +28,7 @@ export const isMiddleWizardCompleted = (node: WorkflowNode) =>
 export const isMiddleWizardPending = (
   node: WorkflowNode,
   startNodeId: string | null,
-  endNodeId: string | null,
+  endNodeIds: string[],
 ) =>
-  isMiddleWorkflowNode(node, startNodeId, endNodeId) &&
+  isMiddleWorkflowNode(node, startNodeId, endNodeIds) &&
   !isMiddleWizardCompleted(node);

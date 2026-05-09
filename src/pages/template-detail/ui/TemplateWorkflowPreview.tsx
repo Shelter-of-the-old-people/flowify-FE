@@ -67,12 +67,12 @@ export const TemplateWorkflowPreview = ({ graph }: Props) => {
     () => ({
       canEditNodes: false,
       startNodeId: graph?.startNodeId ?? null,
-      endNodeId: graph?.endNodeId ?? null,
+      endNodeIds: graph?.endNodeIds ?? [],
       getNodeStatus: () => null,
       onOpenPanel: () => {},
       onRemoveNode: () => {},
     }),
-    [graph?.endNodeId, graph?.startNodeId],
+    [graph?.endNodeIds, graph?.startNodeId],
   );
 
   if (!graph || graph.nodes.length === 0) {

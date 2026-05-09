@@ -11,6 +11,7 @@ import {
 } from "@xyflow/react";
 import {
   type DefaultEdgeOptions,
+  type Edge,
   type EdgeTypes,
   type Node,
   type NodeChange,
@@ -41,13 +42,19 @@ import {
 } from "@/entities/node";
 import { type NodeType } from "@/entities/node";
 import { isDataTypeCompatible } from "@/entities/node";
+import { isEndWorkflowNodeId } from "@/entities/node";
 import {
   findAddedNodeId,
   toNodeAddRequest,
   useAddWorkflowNodeMutation,
   useDeleteWorkflowNodeMutation,
 } from "@/entities/workflow";
-import { hydrateStore, useWorkflowStore } from "@/features/workflow-editor";
+import { getFileTypeBranchPlaceholderSpecs } from "@/features/choice-panel";
+import {
+  type PlaceholderRoutingMeta,
+  hydrateStore,
+  useWorkflowStore,
+} from "@/features/workflow-editor";
 import { getLeafNodeIds } from "@/shared";
 import { toaster } from "@/shared/utils/toaster/toaster";
 
@@ -62,7 +69,9 @@ const NEXT_STEP_CHOICE_NODE_HEIGHT = 148;
 
 type ActiveNextStep = {
   centerY: number;
+  id: string;
   position: { x: number; y: number };
+  routing?: PlaceholderRoutingMeta | null;
   sourceNodeId: string;
 };
 
@@ -142,6 +151,33 @@ const createVirtualPlaceholderNode = (
   hidden: true,
 });
 
+const toPlaceholderRoutingMeta = (
+  value: unknown,
+): PlaceholderRoutingMeta | null => {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const candidate = value as Record<string, unknown>;
+
+  return {
+    branchKey:
+      typeof candidate.branchKey === "string" ? candidate.branchKey : null,
+    prevEdgeLabel:
+      typeof candidate.prevEdgeLabel === "string"
+        ? candidate.prevEdgeLabel
+        : null,
+    prevEdgeSourceHandle:
+      typeof candidate.prevEdgeSourceHandle === "string"
+        ? candidate.prevEdgeSourceHandle
+        : null,
+    prevEdgeTargetHandle:
+      typeof candidate.prevEdgeTargetHandle === "string"
+        ? candidate.prevEdgeTargetHandle
+        : null,
+  };
+};
+
 type CanvasNodeType = NodeType | "placeholder" | "next-step-choice";
 
 const nodeTypes = {
@@ -184,7 +220,7 @@ export const Canvas = () => {
   const onEdgesChange = useWorkflowStore((state) => state.onEdgesChange);
   const onConnect = useWorkflowStore((state) => state.onConnect);
   const startNodeId = useWorkflowStore((state) => state.startNodeId);
-  const endNodeId = useWorkflowStore((state) => state.endNodeId);
+  const endNodeIds = useWorkflowStore((state) => state.endNodeIds);
   const canEditNodes = useWorkflowStore(
     (state) => state.editorCapabilities.canEditNodes,
   );
@@ -251,14 +287,14 @@ export const Canvas = () => {
     () => ({
       canEditNodes,
       startNodeId,
-      endNodeId,
+      endNodeIds,
       getNodeStatus: (nodeId: string) => nodeStatuses[nodeId] ?? null,
       onOpenPanel: openPanel,
       onRemoveNode: handleRemoveNode,
     }),
     [
       canEditNodes,
-      endNodeId,
+      endNodeIds,
       handleRemoveNode,
       nodeStatuses,
       openPanel,
@@ -288,9 +324,11 @@ export const Canvas = () => {
   const handleCreateMiddleNode = useCallback(
     async ({
       position,
+      routing,
       sourceNodeId,
     }: {
       position: { x: number; y: number };
+      routing?: PlaceholderRoutingMeta | null;
       sourceNodeId: string;
     }) => {
       if (isAddNodePending || isDeleteNodePending) {
@@ -320,6 +358,9 @@ export const Canvas = () => {
             position,
             role: "middle",
             prevNodeId: sourceNodeId,
+            prevEdgeLabel: routing?.prevEdgeLabel ?? undefined,
+            prevEdgeSourceHandle: routing?.prevEdgeSourceHandle ?? undefined,
+            prevEdgeTargetHandle: routing?.prevEdgeTargetHandle ?? undefined,
             inputTypes: sourceNode
               ? [...sourceNode.data.outputTypes]
               : undefined,
@@ -412,6 +453,7 @@ export const Canvas = () => {
         }
 
         const rawSourceNodeId = node.data?.sourceNodeId;
+        const routing = toPlaceholderRoutingMeta(node.data?.routing);
         const sourceNodeId =
           typeof rawSourceNodeId === "string"
             ? rawSourceNodeId
@@ -420,7 +462,9 @@ export const Canvas = () => {
         setActivePlaceholder(null);
         setActiveNextStep({
           centerY,
+          id: node.id,
           position: panelNodePosition,
+          routing,
           sourceNodeId,
         });
       } else {
@@ -484,6 +528,7 @@ export const Canvas = () => {
 
     void handleCreateMiddleNode({
       position: activeNextStep.position,
+      routing: activeNextStep.routing,
       sourceNodeId: activeNextStep.sourceNodeId,
     });
   }, [activeNextStep, handleCreateMiddleNode]);
@@ -495,9 +540,10 @@ export const Canvas = () => {
 
     closePanel();
     setActivePlaceholder({
-      id: `placeholder-sink-${activeNextStep.sourceNodeId}`,
+      id: `placeholder-sink-${activeNextStep.id}`,
       kind: "sink",
       position: activeNextStep.position,
+      routing: activeNextStep.routing,
       sourceNodeId: activeNextStep.sourceNodeId,
     });
     setActiveNextStep(null);
@@ -509,6 +555,40 @@ export const Canvas = () => {
       duration: 300,
     });
   }, [activeNextStep, closePanel, setActivePlaceholder, setCenter]);
+
+  const branchPlaceholderSpecs = useMemo(
+    () =>
+      nodes.flatMap((node) =>
+        getFileTypeBranchPlaceholderSpecs({
+          branchNode: node,
+          edges,
+        }),
+      ),
+    [edges, nodes],
+  );
+
+  const virtualBranchEdges = useMemo<Edge[]>(
+    () =>
+      branchPlaceholderSpecs.map((spec) => ({
+        id: `virtual-branch-edge-${spec.sourceNodeId}-${spec.branchKey}`,
+        source: spec.sourceNodeId,
+        sourceHandle: spec.prevEdgeSourceHandle,
+        target: spec.id,
+        type: "flow-arrow",
+        animated: false,
+        data: {
+          branchKey: spec.branchKey,
+          label: spec.branchLabel,
+          variant: "flow-arrow",
+        },
+      })),
+    [branchPlaceholderSpecs],
+  );
+
+  const edgesWithVirtualBranches = useMemo(
+    () => [...edges, ...virtualBranchEdges],
+    [edges, virtualBranchEdges],
+  );
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -541,6 +621,9 @@ export const Canvas = () => {
 
   const nodesWithPlaceholders = useMemo(() => {
     const result: Node[] = [...nodes];
+    const branchPlaceholderSourceNodeIds = new Set(
+      branchPlaceholderSpecs.map((spec) => spec.sourceNodeId),
+    );
 
     if (!startNodeId) {
       result.push({
@@ -558,12 +641,22 @@ export const Canvas = () => {
       });
     }
 
-    if (startNodeId && !endNodeId) {
+    if (startNodeId) {
       const nodeIds = nodes.map((node) => node.id);
       const leafIds = getLeafNodeIds(nodeIds, edges);
 
       for (const leafId of leafIds) {
-        if (activeNextStep?.sourceNodeId === leafId) {
+        if (isEndWorkflowNodeId(leafId, endNodeIds)) {
+          continue;
+        }
+
+        const placeholderId = getNextStepPlaceholderId(leafId);
+
+        if (branchPlaceholderSourceNodeIds.has(leafId)) {
+          continue;
+        }
+
+        if (activeNextStep?.id === placeholderId) {
           continue;
         }
 
@@ -574,7 +667,7 @@ export const Canvas = () => {
           leafNode.position.x + getNodeWidth(leafNode) + NODE_GAP_X;
 
         result.push({
-          id: getNextStepPlaceholderId(leafId),
+          id: placeholderId,
           type: "placeholder",
           position: {
             x: placeholderX,
@@ -591,9 +684,35 @@ export const Canvas = () => {
         });
       }
 
-      if (activeNextStep && leafIds.includes(activeNextStep.sourceNodeId)) {
+      for (const spec of branchPlaceholderSpecs) {
+        if (activeNextStep?.id === spec.id) {
+          continue;
+        }
+
         result.push({
-          id: `next-step-choice-${activeNextStep.sourceNodeId}`,
+          id: spec.id,
+          type: "placeholder",
+          position: spec.position,
+          data: {
+            label: "다음 단계",
+            routing: {
+              branchKey: spec.branchKey,
+              prevEdgeLabel: spec.prevEdgeLabel,
+              prevEdgeSourceHandle: spec.prevEdgeSourceHandle,
+              prevEdgeTargetHandle: spec.prevEdgeTargetHandle,
+            },
+            sourceNodeId: spec.sourceNodeId,
+          },
+          initialWidth: PLACEHOLDER_NODE_WIDTH,
+          initialHeight: PLACEHOLDER_NODE_HEIGHT,
+          selectable: false,
+          draggable: false,
+        });
+      }
+
+      if (activeNextStep) {
+        result.push({
+          id: `next-step-choice-${activeNextStep.id}`,
           type: "next-step-choice",
           position: {
             x: activeNextStep.position.x,
@@ -618,8 +737,9 @@ export const Canvas = () => {
     return result;
   }, [
     activeNextStep,
+    branchPlaceholderSpecs,
     edges,
-    endNodeId,
+    endNodeIds,
     handleSelectMiddleNode,
     handleSelectSinkNode,
     isAddNodePending,
@@ -642,25 +762,35 @@ export const Canvas = () => {
     if (!activePanelNodeId) return null;
 
     const relatedIds = new Set<string>([activePanelNodeId]);
-    const incomingEdge = edges.find(
+    const incomingEdges = edgesWithVirtualBranches.filter(
       (edge) => edge.target === activePanelNodeId,
     );
-    const outgoingEdge = edges.find(
+    const outgoingEdges = edgesWithVirtualBranches.filter(
       (edge) => edge.source === activePanelNodeId,
     );
+    const placeholderNodes = nodesWithDragControl.filter(
+      (node) =>
+        node.type === "placeholder" &&
+        node.data?.sourceNodeId === activePanelNodeId,
+    );
 
-    if (incomingEdge) {
+    for (const incomingEdge of incomingEdges) {
       relatedIds.add(incomingEdge.source);
     }
 
-    if (outgoingEdge) {
-      relatedIds.add(outgoingEdge.target);
-    } else {
+    outgoingEdges.forEach((outgoingEdge) =>
+      relatedIds.add(outgoingEdge.target),
+    );
+    placeholderNodes.forEach((placeholderNode) =>
+      relatedIds.add(placeholderNode.id),
+    );
+
+    if (outgoingEdges.length === 0 && placeholderNodes.length === 0) {
       relatedIds.add(getNextStepPlaceholderId(activePanelNodeId));
     }
 
     return relatedIds;
-  }, [activePanelNodeId, edges]);
+  }, [activePanelNodeId, edgesWithVirtualBranches, nodesWithDragControl]);
 
   const visibleNodes = useMemo(
     () =>
@@ -672,13 +802,13 @@ export const Canvas = () => {
   );
 
   const visibleEdges = useMemo(() => {
-    if (!visibleNodeIds) return edges;
+    if (!visibleNodeIds) return edgesWithVirtualBranches;
 
-    return edges.filter(
+    return edgesWithVirtualBranches.filter(
       (edge) =>
         visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target),
     );
-  }, [edges, visibleNodeIds]);
+  }, [edgesWithVirtualBranches, visibleNodeIds]);
 
   const getChainNodes = useCallback(
     (nodeId: string) => {
@@ -688,20 +818,30 @@ export const Canvas = () => {
       if (!activeNode) return [];
 
       const chainNodes: Node[] = [activeNode];
-      const incomingEdge = edges.find((edge) => edge.target === nodeId);
-      const outgoingEdge = edges.find((edge) => edge.source === nodeId);
+      const incomingEdges = edgesWithVirtualBranches.filter(
+        (edge) => edge.target === nodeId,
+      );
+      const outgoingEdges = edgesWithVirtualBranches.filter(
+        (edge) => edge.source === nodeId,
+      );
+      const placeholderNodes = nodesWithDragControl.filter(
+        (node) =>
+          node.type === "placeholder" && node.data?.sourceNodeId === nodeId,
+      );
       const activeNodeCenterY = getNodeCenterY(
         activeNode,
         getNodeFallbackHeight(activeNode),
       );
 
-      if (incomingEdge) {
-        const previousNode = nodesWithDragControl.find(
-          (node) => node.id === incomingEdge.source,
-        );
+      if (incomingEdges.length > 0) {
+        for (const incomingEdge of incomingEdges) {
+          const previousNode = nodesWithDragControl.find(
+            (node) => node.id === incomingEdge.source,
+          );
 
-        if (previousNode) {
-          chainNodes.unshift(previousNode);
+          if (previousNode) {
+            chainNodes.unshift(previousNode);
+          }
         }
       } else {
         chainNodes.unshift(
@@ -713,15 +853,33 @@ export const Canvas = () => {
         );
       }
 
-      if (outgoingEdge) {
+      const nextNodeIds = new Set<string>();
+
+      for (const outgoingEdge of outgoingEdges) {
+        if (nextNodeIds.has(outgoingEdge.target)) {
+          continue;
+        }
+
         const nextNode = nodesWithDragControl.find(
           (node) => node.id === outgoingEdge.target,
         );
 
         if (nextNode) {
           chainNodes.push(nextNode);
+          nextNodeIds.add(outgoingEdge.target);
         }
-      } else {
+      }
+
+      for (const placeholderNode of placeholderNodes) {
+        if (nextNodeIds.has(placeholderNode.id)) {
+          continue;
+        }
+
+        chainNodes.push(placeholderNode);
+        nextNodeIds.add(placeholderNode.id);
+      }
+
+      if (nextNodeIds.size === 0) {
         const nextPlaceholder =
           nodesWithDragControl.find(
             (node) => node.id === getNextStepPlaceholderId(nodeId),
@@ -744,7 +902,7 @@ export const Canvas = () => {
 
       return chainNodes;
     },
-    [edges, nodesWithDragControl],
+    [edgesWithVirtualBranches, nodesWithDragControl],
   );
 
   useEffect(() => {

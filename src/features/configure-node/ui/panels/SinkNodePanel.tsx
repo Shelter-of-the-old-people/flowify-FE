@@ -936,7 +936,7 @@ export const SinkNodePanel = ({
   readOnly = false,
 }: NodePanelProps) => {
   const edges = useWorkflowStore((state) => state.edges);
-  const endNodeId = useWorkflowStore((state) => state.endNodeId);
+  const endNodeIds = useWorkflowStore((state) => state.endNodeIds);
   const nodeStatuses = useWorkflowStore((state) => state.nodeStatuses);
   const nodes = useWorkflowStore((state) => state.nodes);
   const replaceNodeConfig = useWorkflowStore(
@@ -970,11 +970,11 @@ export const SinkNodePanel = ({
 
     return {
       nodes: previewNodes.map((node) =>
-        toNodeDefinition(node, startNodeId, endNodeId),
+        toNodeDefinition(node, startNodeId, endNodeIds),
       ),
       edges: previewEdges.map(toEdgeDefinition),
     };
-  }, [edges, endNodeId, nodeId, nodes, startNodeId]);
+  }, [edges, endNodeIds, nodeId, nodes, startNodeId]);
 
   useEffect(() => {
     if (!workflowId || previewRequest.nodes.length === 0) {

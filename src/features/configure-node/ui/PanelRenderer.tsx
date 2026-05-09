@@ -3,6 +3,7 @@ import { type ErrorInfo, type ReactNode } from "react";
 
 import { Box, Text } from "@chakra-ui/react";
 
+import { isEndWorkflowNode } from "@/entities/node";
 import { useWorkflowStore } from "@/features/workflow-editor";
 
 import { NODE_PANEL_REGISTRY } from "../model";
@@ -55,14 +56,14 @@ export const PanelRenderer = ({
   const activeNode = useWorkflowStore(
     (s) => s.nodes.find((node) => node.id === s.activePanelNodeId) ?? null,
   );
-  const endNodeId = useWorkflowStore((s) => s.endNodeId);
+  const startNodeId = useWorkflowStore((s) => s.startNodeId);
+  const endNodeIds = useWorkflowStore((s) => s.endNodeIds);
 
   if (!activeNode) return null;
 
-  const PanelComponent =
-    activeNode.id === endNodeId
-      ? SinkNodePanel
-      : (NODE_PANEL_REGISTRY[activeNode.data.type] ?? GenericNodePanel);
+  const PanelComponent = isEndWorkflowNode(activeNode, startNodeId, endNodeIds)
+    ? SinkNodePanel
+    : (NODE_PANEL_REGISTRY[activeNode.data.type] ?? GenericNodePanel);
 
   return (
     <PanelErrorBoundary>

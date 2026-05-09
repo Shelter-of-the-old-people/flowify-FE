@@ -176,8 +176,12 @@ export const createChoiceWizardNodePersistence = ({
   const placeWorkflowNode = async ({
     config,
     inputDataTypeKey,
+    label,
     outputDataTypeKey,
     position,
+    prevEdgeLabel,
+    prevEdgeSourceHandle,
+    prevEdgeTargetHandle,
     previousNodes,
     sourceNodeId,
     type,
@@ -189,6 +193,10 @@ export const createChoiceWizardNodePersistence = ({
     inputDataTypeKey?: MappingDataTypeKey | null;
     outputDataTypeKey: MappingDataTypeKey | null;
     config?: Partial<FlowNodeData["config"]>;
+    label?: string;
+    prevEdgeLabel?: string;
+    prevEdgeSourceHandle?: string;
+    prevEdgeTargetHandle?: string;
   }) => {
     if (!workflowId) {
       throw new Error("workflowId is required");
@@ -199,7 +207,11 @@ export const createChoiceWizardNodePersistence = ({
       body: toNodeAddRequest({
         type,
         position,
+        label,
         prevNodeId: sourceNodeId,
+        prevEdgeLabel,
+        prevEdgeSourceHandle,
+        prevEdgeTargetHandle,
         config,
         inputTypes: inputDataTypeKey
           ? [toDataType(inputDataTypeKey)]

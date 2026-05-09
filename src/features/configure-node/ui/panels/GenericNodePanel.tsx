@@ -9,11 +9,12 @@ import { NodePanelShell } from "./NodePanelShell";
 
 export const GenericNodePanel = ({ nodeId, data }: NodePanelProps) => {
   const startNodeId = useWorkflowStore((s) => s.startNodeId);
-  const endNodeId = useWorkflowStore((s) => s.endNodeId);
+  const endNodeIds = useWorkflowStore((s) => s.endNodeIds);
   const presentation = getNodePresentation(data, {
     nodeId,
     startNodeId,
-    endNodeId,
+    endNodeIds,
+    workflowRole: data.workflowRole,
   });
 
   return (

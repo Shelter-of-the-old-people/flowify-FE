@@ -6,11 +6,11 @@
 } from "@/entities/workflow";
 
 import {
-  type BranchConfig,
   type FollowUp,
   type MappingAction,
   type MappingDataTypeKey,
   type MappingRules,
+  type ProcessingMethodOption,
 } from "./types";
 
 export type ResolvedChoiceOption = ChoiceOption & {
@@ -35,6 +35,18 @@ type ChoiceResolutionResult = {
 
 type FallbackChoiceMode = "initial" | "action";
 
+type ChoiceQuestionConfig = {
+  question: string;
+  options?: Array<{
+    id: string;
+    label: string;
+    type?: string | null;
+  }> | null;
+  options_source?: string | null;
+  multi_select?: boolean | null;
+  description?: string | null;
+};
+
 const toChoiceFollowUp = (followUp: FollowUp | null | undefined) =>
   followUp
     ? {
@@ -50,7 +62,9 @@ const toChoiceFollowUp = (followUp: FollowUp | null | undefined) =>
       }
     : null;
 
-const toChoiceBranchConfig = (branchConfig: BranchConfig | null | undefined) =>
+const toChoiceBranchConfig = (
+  branchConfig: ChoiceQuestionConfig | null | undefined,
+) =>
   branchConfig
     ? {
         question: branchConfig.question,
@@ -66,7 +80,7 @@ const toChoiceBranchConfig = (branchConfig: BranchConfig | null | undefined) =>
     : null;
 
 const toResolvedChoiceOption = (
-  option: ChoiceOption | MappingAction,
+  option: ChoiceOption | MappingAction | ProcessingMethodOption,
 ): ResolvedChoiceOption => ({
   id: option.id,
   label: option.label,

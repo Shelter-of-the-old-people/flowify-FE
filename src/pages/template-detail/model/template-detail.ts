@@ -17,6 +17,7 @@ type TemplateMetaItem = {
 
 export type TemplatePreviewGraph = {
   edges: Edge[];
+  endNodeIds: string[];
   endNodeId: string | null;
   nodes: Node<FlowNodeData>[];
   startNodeId: string | null;
@@ -85,13 +86,15 @@ export const buildTemplatePreviewGraph = (
   const edges = template.edges.map(toFlowEdge);
   const startNodeId =
     template.nodes.find((node) => node.role === "start")?.id ?? null;
-  const endNodeId =
-    template.nodes.find((node) => node.role === "end")?.id ?? null;
+  const endNodeIds = template.nodes
+    .filter((node) => node.role === "end")
+    .map((node) => node.id);
 
   return {
     nodes,
     edges,
     startNodeId,
-    endNodeId,
+    endNodeIds,
+    endNodeId: endNodeIds[0] ?? null,
   };
 };

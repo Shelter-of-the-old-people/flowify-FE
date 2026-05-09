@@ -1,11 +1,13 @@
 import { type Edge, type Node } from "@xyflow/react";
 
+import { type FlowEdgeData } from "@/entities/connection";
 import { NODE_REGISTRY } from "@/entities/node";
 import {
   type DataType,
   type FlowNodeData,
   type NodeConfig,
   type NodeType,
+  type WorkflowNodeRole,
 } from "@/entities/node";
 
 import {
@@ -75,12 +77,31 @@ const NODE_TYPES_WITH_SERVICE_CONFIG = new Set<NodeType>([
   "web-scraping",
 ]);
 
+const ROUTING_EDGE_DISPLAY_LABELS = {
+  pdf: "PDF",
+  image: "이미지",
+  spreadsheet: "스프레드시트",
+  document: "문서",
+  presentation: "프레젠테이션",
+  other: "기타",
+  true: "true",
+  false: "false",
+} as const satisfies Record<string, string>;
+
+type RoutingEdgeKey = keyof typeof ROUTING_EDGE_DISPLAY_LABELS;
+
+const ROUTING_EDGE_KEYS = new Set(Object.keys(ROUTING_EDGE_DISPLAY_LABELS));
+
 type NodeDraftOptions = {
   authWarning?: boolean;
   config?: Partial<NodeConfig>;
   inputTypes?: DataType[];
+  label?: string;
   outputTypes?: DataType[];
   position: { x: number; y: number };
+  prevEdgeLabel?: string;
+  prevEdgeSourceHandle?: string;
+  prevEdgeTargetHandle?: string;
   prevNodeId?: string;
   role?: NodeDefinitionResponse["role"];
   type: NodeType;
@@ -102,6 +123,32 @@ const getServiceKeyFromConfig = (
   const service = config && "service" in config ? config.service : null;
   return typeof service === "string" ? service : null;
 };
+
+const getStringValue = (value: unknown) =>
+  typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
+
+const toRoutingEdgeKey = (value: unknown): RoutingEdgeKey | null => {
+  const stringValue = getStringValue(value);
+  return stringValue && ROUTING_EDGE_KEYS.has(stringValue)
+    ? (stringValue as RoutingEdgeKey)
+    : null;
+};
+
+const getFlowEdgeData = (edge: Edge) =>
+  (edge.data ?? null) as Partial<FlowEdgeData> | null;
+
+const resolveRoutingEdgeKey = (edge: Edge) => {
+  const data = getFlowEdgeData(edge);
+
+  return (
+    toRoutingEdgeKey(data?.branchKey) ??
+    toRoutingEdgeKey(edge.sourceHandle) ??
+    toRoutingEdgeKey(data?.label)
+  );
+};
+
+const toDisplayEdgeLabel = (routingKey: RoutingEdgeKey | null) =>
+  routingKey ? ROUTING_EDGE_DISPLAY_LABELS[routingKey] : undefined;
 
 const getPersistedBackendType = ({
   config,
@@ -167,6 +214,10 @@ export const toNodeAddRequest = ({
   inputTypes,
   outputTypes,
   role,
+  label,
+  prevEdgeLabel,
+  prevEdgeSourceHandle,
+  prevEdgeTargetHandle,
   prevNodeId,
   authWarning = false,
 }: NodeDraftOptions): NodeAddRequest => {
@@ -183,6 +234,7 @@ export const toNodeAddRequest = ({
       ...meta.defaultConfig,
       ...config,
     } as Record<string, unknown>,
+    label,
     dataType: mergedInputTypes[0]
       ? toBackendDataType(mergedInputTypes[0])
       : null,
@@ -191,37 +243,61 @@ export const toNodeAddRequest = ({
       : null,
     role,
     prevNodeId,
+    prevEdgeLabel,
+    prevEdgeSourceHandle,
+    prevEdgeTargetHandle,
     authWarning,
   };
 };
 
-export const toEdgeDefinition = (edge: Edge): EdgeDefinitionResponse => ({
-  source: edge.source,
-  target: edge.target,
-});
+export const toEdgeDefinition = (edge: Edge): EdgeDefinitionResponse => {
+  const routingKey = resolveRoutingEdgeKey(edge);
 
-export const toFlowEdge = (edge: EdgeDefinitionResponse): Edge => ({
-  id: edge.id ?? crypto.randomUUID(),
-  source: edge.source,
-  target: edge.target,
-  sourceHandle: edge.sourceHandle ?? null,
-  targetHandle: edge.targetHandle ?? null,
-  data: {
-    variant: "flow-arrow",
-  },
-});
+  return {
+    source: edge.source,
+    target: edge.target,
+    label: routingKey,
+    sourceHandle: edge.sourceHandle ?? null,
+    targetHandle: edge.targetHandle ?? null,
+  };
+};
+
+export const toFlowEdge = (edge: EdgeDefinitionResponse): Edge => {
+  const routingKey =
+    toRoutingEdgeKey(edge.label) ?? toRoutingEdgeKey(edge.sourceHandle);
+  const displayLabel =
+    toDisplayEdgeLabel(routingKey) ?? getStringValue(edge.label) ?? undefined;
+
+  return {
+    id: edge.id ?? crypto.randomUUID(),
+    source: edge.source,
+    target: edge.target,
+    sourceHandle: edge.sourceHandle ?? null,
+    targetHandle: edge.targetHandle ?? null,
+    data: {
+      branchKey: routingKey ?? undefined,
+      label: displayLabel,
+      variant: "flow-arrow",
+    },
+  };
+};
 
 export const toNodeDefinition = (
   node: Node<FlowNodeData>,
   startNodeId: string | null,
-  endNodeId: string | null,
+  endNodeIds: string[],
 ): NodeDefinitionResponse => {
-  const role =
-    node.id === startNodeId
-      ? "start"
-      : node.id === endNodeId
-        ? "end"
-        : "middle";
+  const workflowRole = node.data.workflowRole;
+  const role: WorkflowNodeRole =
+    workflowRole === "start" ||
+    workflowRole === "middle" ||
+    workflowRole === "end"
+      ? workflowRole
+      : node.id === startNodeId
+        ? "start"
+        : endNodeIds.includes(node.id)
+          ? "end"
+          : "middle";
   const backendType = getPersistedBackendType({
     config: node.data.config as Partial<NodeConfig>,
     role,
@@ -275,6 +351,7 @@ export const toFlowNode = (
       type: nodeType,
       label: node.label ?? meta.label,
       config,
+      workflowRole: node.role,
       inputTypes: node.dataType
         ? [toFrontendDataType(node.dataType)]
         : [...meta.defaultInputTypes],

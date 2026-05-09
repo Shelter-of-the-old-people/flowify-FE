@@ -63,6 +63,7 @@ export const EditorRemoteBar = () => {
   const edges = useWorkflowStore((state) => state.edges);
   const nodeStatuses = useWorkflowStore((state) => state.nodeStatuses);
   const startNodeId = useWorkflowStore((state) => state.startNodeId);
+  const endNodeIds = useWorkflowStore((state) => state.endNodeIds);
   const endNodeId = useWorkflowStore((state) => state.endNodeId);
   const isDirty = useWorkflowStore((state) => state.isDirty);
   const canEditNodes = useWorkflowStore(
@@ -212,6 +213,7 @@ export const EditorRemoteBar = () => {
         nodes,
         edges,
         startNodeId,
+        endNodeIds,
         endNodeId,
       },
     });

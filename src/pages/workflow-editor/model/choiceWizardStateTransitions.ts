@@ -20,17 +20,20 @@ export type ChoiceWizardStatePatch = {
 };
 
 export const createProcessingMethodTransitionPatch = ({
+  branchConfig,
   nextDataTypeKey,
   nextStep,
   option,
 }: {
   option: ResolvedChoiceOption;
+  branchConfig: ChoiceBranchConfig | null;
   nextDataTypeKey: MappingDataTypeKey;
-  nextStep: "action" | "complete";
+  nextStep: "action" | "follow-up" | "complete";
 }): ChoiceWizardStatePatch => ({
   currentDataTypeKey: nextDataTypeKey,
+  selectedBranchConfig: branchConfig,
   selectedProcessingOption: option,
-  wizardStep: nextStep === "action" ? "action" : null,
+  wizardStep: nextStep === "complete" ? null : nextStep,
 });
 
 export const createActionTransitionPatch = ({

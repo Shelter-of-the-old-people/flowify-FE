@@ -127,6 +127,7 @@ export interface MappingRuleOptionResponse {
   node_type?: string | null;
   output_data_type?: string | null;
   priority?: number | null;
+  branch_config?: MappingRuleFollowUpResponse | null;
 }
 
 export interface MappingRuleApplicableWhenResponse {
@@ -280,6 +281,7 @@ export interface EdgeDefinitionResponse {
   id?: string;
   source: string;
   target: string;
+  label?: string | null;
   sourceHandle?: string | null;
   targetHandle?: string | null;
 }
@@ -305,6 +307,7 @@ export interface WorkflowNodeStatusResponse {
 export interface NodeAddRequest {
   category: string;
   type: string;
+  label?: string;
   position: { x: number; y: number };
   config?: Record<string, unknown>;
   dataType?: string | null;
@@ -312,6 +315,9 @@ export interface NodeAddRequest {
   role?: NodeDefinitionRole;
   authWarning?: boolean;
   prevNodeId?: string;
+  prevEdgeLabel?: string;
+  prevEdgeSourceHandle?: string;
+  prevEdgeTargetHandle?: string;
 }
 
 export interface NodeUpdateRequest {
@@ -369,6 +375,7 @@ export interface ChoiceOption {
   node_type?: string | null;
   output_data_type?: string | null;
   priority?: number | null;
+  branch_config?: ChoiceBranchConfig | null;
 }
 
 export interface ChoiceFollowUp {
