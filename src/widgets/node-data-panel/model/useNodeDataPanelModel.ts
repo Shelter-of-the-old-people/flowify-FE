@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo } from "react";
 
 import {
   getDataTypeDisplayLabel,
+  isEndWorkflowNodeId,
   useLatestExecutionNodeDataQuery,
   useWorkflowNodePreviewMutation,
   useWorkflowNodeSchemaPreviewQuery,
@@ -38,7 +39,7 @@ export const useNodeDataPanelModel = ({
   const nodes = useWorkflowStore((state) => state.nodes);
   const edges = useWorkflowStore((state) => state.edges);
   const startNodeId = useWorkflowStore((state) => state.startNodeId);
-  const endNodeId = useWorkflowStore((state) => state.endNodeId);
+  const endNodeIds = useWorkflowStore((state) => state.endNodeIds);
 
   const activeNode = useMemo(
     () => nodes.find((node) => node.id === nodeId) ?? null,
@@ -58,7 +59,7 @@ export const useNodeDataPanelModel = ({
   }, [edges, nodeId, nodes]);
 
   const isStartNode = Boolean(nodeId && nodeId === startNodeId);
-  const isEndNode = Boolean(nodeId && nodeId === endNodeId);
+  const isEndNode = isEndWorkflowNodeId(nodeId, endNodeIds);
   const isPreviewSupported = isStartNode;
   const executionDataQuery = useLatestExecutionNodeDataQuery(
     workflowId,

@@ -7,6 +7,7 @@ import {
   type FlowNodeData,
   type NodeConfig,
   type NodeType,
+  type WorkflowNodeRole,
 } from "@/entities/node";
 
 import {
@@ -284,14 +285,19 @@ export const toFlowEdge = (edge: EdgeDefinitionResponse): Edge => {
 export const toNodeDefinition = (
   node: Node<FlowNodeData>,
   startNodeId: string | null,
-  endNodeId: string | null,
+  endNodeIds: string[],
 ): NodeDefinitionResponse => {
-  const role =
-    node.id === startNodeId
-      ? "start"
-      : node.id === endNodeId
-        ? "end"
-        : "middle";
+  const workflowRole = node.data.workflowRole;
+  const role: WorkflowNodeRole =
+    workflowRole === "start" ||
+    workflowRole === "middle" ||
+    workflowRole === "end"
+      ? workflowRole
+      : node.id === startNodeId
+        ? "start"
+        : endNodeIds.includes(node.id)
+          ? "end"
+          : "middle";
   const backendType = getPersistedBackendType({
     config: node.data.config as Partial<NodeConfig>,
     role,
@@ -345,6 +351,7 @@ export const toFlowNode = (
       type: nodeType,
       label: node.label ?? meta.label,
       config,
+      workflowRole: node.role,
       inputTypes: node.dataType
         ? [toFrontendDataType(node.dataType)]
         : [...meta.defaultInputTypes],

@@ -45,6 +45,7 @@ interface WorkflowEditorState {
   activePanelNodeId: string | null;
   activePanelMode: ActivePanelMode;
   startNodeId: string | null;
+  endNodeIds: string[];
   endNodeId: string | null;
   activePlaceholder: PlaceholderInfo | null;
   workflowId: string;
@@ -80,6 +81,7 @@ interface WorkflowEditorActions {
   setWorkflowName: (name: string) => void;
   setEditorCapabilities: (capabilities: WorkflowEditorCapabilities) => void;
   setStartNodeId: (id: string | null) => void;
+  setEndNodeIds: (ids: string[]) => void;
   setEndNodeId: (id: string | null) => void;
   setActivePlaceholder: (placeholder: PlaceholderInfo | null) => void;
   applyLayoutPositions: (
@@ -97,6 +99,7 @@ const initialState: WorkflowEditorState = {
   activePanelNodeId: null,
   activePanelMode: "view",
   startNodeId: null,
+  endNodeIds: [],
   endNodeId: null,
   activePlaceholder: null,
   workflowId: "",
@@ -257,8 +260,18 @@ export const useWorkflowStore = create<
         }
       }),
 
+    setEndNodeIds: (ids) =>
+      set((state) => {
+        state.endNodeIds = [...ids];
+        state.endNodeId = ids[0] ?? null;
+        if (!state._isSyncing) {
+          state.isDirty = true;
+        }
+      }),
+
     setEndNodeId: (id) =>
       set((state) => {
+        state.endNodeIds = id ? [id] : [];
         state.endNodeId = id;
         if (!state._isSyncing) {
           state.isDirty = true;
@@ -319,6 +332,7 @@ export const useWorkflowStore = create<
         state.edges = payload.edges;
         state.nodeStatuses = payload.nodeStatuses;
         state.startNodeId = payload.startNodeId;
+        state.endNodeIds = payload.endNodeIds;
         state.endNodeId = payload.endNodeId;
         state.activePanelNodeId = null;
         state.activePanelMode = "view";
@@ -351,6 +365,7 @@ export const useWorkflowStore = create<
         state.edges = payload.edges;
         state.nodeStatuses = payload.nodeStatuses;
         state.startNodeId = payload.startNodeId;
+        state.endNodeIds = payload.endNodeIds;
         state.endNodeId = payload.endNodeId;
         state.unsavedNodePositions = preservedUnsavedNodePositions;
         state.activePanelNodeId = preserveActivePanelNodeId

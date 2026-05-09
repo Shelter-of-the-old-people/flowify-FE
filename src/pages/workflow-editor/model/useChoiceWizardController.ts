@@ -14,6 +14,7 @@ import {
 import {
   type ResolvedChoiceOption,
   buildFallbackChoiceResponse,
+  createFileTypeBranchTargetDrafts,
   isFileTypeBranchAction,
   resolveActionChoiceResponse,
   resolveInitialChoiceResponse,
@@ -59,7 +60,6 @@ import {
   buildChoiceWizardNodeConfig,
   createChoiceWizardWorkflowSync,
 } from "./choiceWizardWorkflowGraph";
-import { createFileTypeBranchTargetDrafts } from "./fileTypeBranchGraph";
 
 type WizardChoiceOption = ResolvedChoiceOption;
 
@@ -143,7 +143,7 @@ export const useChoiceWizardController = () => {
   const activePanelMode = useWorkflowStore((state) => state.activePanelMode);
   const workflowId = useWorkflowStore((state) => state.workflowId);
   const startNodeId = useWorkflowStore((state) => state.startNodeId);
-  const endNodeId = useWorkflowStore((state) => state.endNodeId);
+  const endNodeIds = useWorkflowStore((state) => state.endNodeIds);
   const syncWorkflowGraph = useWorkflowStore(
     (state) => state.syncWorkflowGraph,
   );
@@ -266,12 +266,12 @@ export const useChoiceWizardController = () => {
       if (nodeId === startNodeId) {
         return "start";
       }
-      if (nodeId === endNodeId) {
+      if (endNodeIds.includes(nodeId)) {
         return "end";
       }
       return "middle";
     },
-    [endNodeId, startNodeId],
+    [endNodeIds, startNodeId],
   );
 
   const createSnapshot = useCallback(
@@ -296,11 +296,11 @@ export const useChoiceWizardController = () => {
   const isPendingWizardMode = isMiddleWizardPending(
     activeNode,
     startNodeId,
-    endNodeId,
+    endNodeIds,
   );
   const isExistingChoiceEditMode =
     activePanelMode === "edit" &&
-    isMiddleWorkflowNode(activeNode, startNodeId, endNodeId) &&
+    isMiddleWorkflowNode(activeNode, startNodeId, endNodeIds) &&
     Boolean(activeChoiceActionId);
   const isWizardMode = isPendingWizardMode || isExistingChoiceEditMode;
   const activeChoiceAnchorNodeId = isWizardMode

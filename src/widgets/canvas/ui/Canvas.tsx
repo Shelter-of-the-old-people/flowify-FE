@@ -41,12 +41,19 @@ import {
 } from "@/entities/node";
 import { type NodeType } from "@/entities/node";
 import { isDataTypeCompatible } from "@/entities/node";
+import { isEndWorkflowNodeId } from "@/entities/node";
 import {
   findAddedNodeId,
   toNodeAddRequest,
   useAddWorkflowNodeMutation,
   useDeleteWorkflowNodeMutation,
 } from "@/entities/workflow";
+import {
+  createFileTypeBranchTargetDraft,
+  getFileTypeBranchHeadInfo,
+  getFileTypeBranchKeysFromNode,
+  getFileTypeBranchRemovalOrder,
+} from "@/features/choice-panel";
 import { hydrateStore, useWorkflowStore } from "@/features/workflow-editor";
 import { getLeafNodeIds } from "@/shared";
 import { toaster } from "@/shared/utils/toaster/toaster";
@@ -184,7 +191,7 @@ export const Canvas = () => {
   const onEdgesChange = useWorkflowStore((state) => state.onEdgesChange);
   const onConnect = useWorkflowStore((state) => state.onConnect);
   const startNodeId = useWorkflowStore((state) => state.startNodeId);
-  const endNodeId = useWorkflowStore((state) => state.endNodeId);
+  const endNodeIds = useWorkflowStore((state) => state.endNodeIds);
   const canEditNodes = useWorkflowStore(
     (state) => state.editorCapabilities.canEditNodes,
   );
@@ -232,6 +239,65 @@ export const Canvas = () => {
       }
 
       try {
+        const branchHeadInfo = getFileTypeBranchHeadInfo({
+          nodeId,
+          nodes,
+          edges,
+        });
+
+        if (branchHeadInfo) {
+          const branchHeadNode =
+            nodes.find((currentNode) => currentNode.id === nodeId) ?? null;
+          const branchParentNode =
+            nodes.find(
+              (currentNode) => currentNode.id === branchHeadInfo.parentNodeId,
+            ) ?? null;
+
+          if (branchHeadNode && branchParentNode) {
+            const branchKeys = getFileTypeBranchKeysFromNode(branchParentNode);
+            const branchTargetDraft = createFileTypeBranchTargetDraft({
+              branchKey: branchHeadInfo.branchKey,
+              branchKeys,
+              branchNode: branchParentNode,
+            });
+
+            if (branchTargetDraft) {
+              const removalOrder = getFileTypeBranchRemovalOrder({
+                rootNodeId: nodeId,
+                edges,
+              });
+
+              for (const removableNodeId of removalOrder) {
+                const nextWorkflow = await deleteWorkflowNode({
+                  workflowId,
+                  nodeId: removableNodeId,
+                });
+                syncWorkflowFromResponse(nextWorkflow);
+              }
+
+              const nextWorkflow = await addWorkflowNode({
+                workflowId,
+                body: toNodeAddRequest({
+                  type: "data-process",
+                  position: branchTargetDraft.position,
+                  label: branchTargetDraft.label,
+                  prevNodeId: branchParentNode.id,
+                  prevEdgeLabel: branchTargetDraft.prevEdgeLabel,
+                  prevEdgeSourceHandle: branchTargetDraft.prevEdgeSourceHandle,
+                  prevEdgeTargetHandle: branchTargetDraft.prevEdgeTargetHandle,
+                  config: { isConfigured: false },
+                  inputTypes: [...branchHeadNode.data.inputTypes],
+                  outputTypes: [...branchHeadNode.data.outputTypes],
+                  role: "middle",
+                }),
+              });
+
+              syncWorkflowFromResponse(nextWorkflow);
+              return;
+            }
+          }
+        }
+
         const nextWorkflow = await deleteWorkflowNode({
           workflowId,
           nodeId,
@@ -245,22 +311,46 @@ export const Canvas = () => {
         });
       }
     },
-    [deleteWorkflowNode, syncWorkflowFromResponse, workflowId],
+    [
+      addWorkflowNode,
+      deleteWorkflowNode,
+      edges,
+      nodes,
+      syncWorkflowFromResponse,
+      workflowId,
+    ],
   );
   const nodeEditorContextValue = useMemo(
     () => ({
       canEditNodes,
       startNodeId,
-      endNodeId,
+      endNodeIds,
+      getBranchHeadInfo: (nodeId: string) => {
+        const branchHeadInfo = getFileTypeBranchHeadInfo({
+          nodeId,
+          nodes,
+          edges,
+        });
+
+        return branchHeadInfo
+          ? {
+              branchKey: branchHeadInfo.branchKey,
+              branchLabel: branchHeadInfo.branchLabel,
+              parentNodeId: branchHeadInfo.parentNodeId,
+            }
+          : null;
+      },
       getNodeStatus: (nodeId: string) => nodeStatuses[nodeId] ?? null,
       onOpenPanel: openPanel,
       onRemoveNode: handleRemoveNode,
     }),
     [
       canEditNodes,
-      endNodeId,
+      edges,
+      endNodeIds,
       handleRemoveNode,
       nodeStatuses,
+      nodes,
       openPanel,
       startNodeId,
     ],
@@ -558,11 +648,15 @@ export const Canvas = () => {
       });
     }
 
-    if (startNodeId && !endNodeId) {
+    if (startNodeId) {
       const nodeIds = nodes.map((node) => node.id);
       const leafIds = getLeafNodeIds(nodeIds, edges);
 
       for (const leafId of leafIds) {
+        if (isEndWorkflowNodeId(leafId, endNodeIds)) {
+          continue;
+        }
+
         if (activeNextStep?.sourceNodeId === leafId) {
           continue;
         }
@@ -619,7 +713,7 @@ export const Canvas = () => {
   }, [
     activeNextStep,
     edges,
-    endNodeId,
+    endNodeIds,
     handleSelectMiddleNode,
     handleSelectSinkNode,
     isAddNodePending,

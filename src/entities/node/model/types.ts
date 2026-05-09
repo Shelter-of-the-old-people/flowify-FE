@@ -34,6 +34,8 @@ export type ChoiceNodeType =
   | "AI_FILTER"
   | "PASSTHROUGH";
 
+export type WorkflowNodeRole = "start" | "middle" | "end";
+
 // ─── Config 기반 인터페이스 ──────────────────────────────────
 interface BaseNodeConfig {
   /** 설정 완료 여부 — 캔버스에서 경고 표시 기준 */
@@ -235,6 +237,7 @@ export interface FlowNodeData extends Record<string, unknown> {
   type: NodeType;
   label: string;
   config: NodeConfig;
+  workflowRole?: WorkflowNodeRole;
   /** 이 노드가 받아들이는 데이터 타입 목록 (빈 배열 = 시작 노드) */
   inputTypes: import("./dataType").DataType[];
   /** 이 노드가 내보내는 데이터 타입 목록 */

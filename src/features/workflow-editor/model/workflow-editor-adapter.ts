@@ -16,6 +16,7 @@ export interface WorkflowEditorSaveState {
   nodes: Node<FlowNodeData>[];
   edges: Edge[];
   startNodeId: string | null;
+  endNodeIds: string[];
   endNodeId: string | null;
 }
 
@@ -35,6 +36,7 @@ export interface WorkflowHydratedState {
   edges: Edge[];
   nodeStatuses: WorkflowNodeStatusMap;
   startNodeId: string | null;
+  endNodeIds: string[];
   endNodeId: string | null;
 }
 
@@ -56,7 +58,7 @@ export const toWorkflowUpdateRequest = (
 ): UpdateWorkflowRequest => ({
   name: store.workflowName,
   nodes: store.nodes.map((node) =>
-    toNodeDefinition(node, store.startNodeId, store.endNodeId),
+    toNodeDefinition(node, store.startNodeId, store.endNodeIds),
   ),
   edges: store.edges.map(toEdgeDefinition),
 });
@@ -65,7 +67,9 @@ export const hydrateStore = (
   workflow: WorkflowResponse,
 ): WorkflowHydratedState => {
   const startNode = workflow.nodes.find((node) => node.role === "start");
-  const endNode = workflow.nodes.find((node) => node.role === "end");
+  const endNodeIds = workflow.nodes
+    .filter((node) => node.role === "end")
+    .map((node) => node.id);
 
   return {
     workflowId: workflow.id,
@@ -74,6 +78,7 @@ export const hydrateStore = (
     edges: workflow.edges.map(toFlowEdge),
     nodeStatuses: toNodeStatusMap(workflow.nodeStatuses),
     startNodeId: startNode?.id ?? null,
-    endNodeId: endNode?.id ?? null,
+    endNodeIds,
+    endNodeId: endNodeIds[0] ?? null,
   };
 };

@@ -626,7 +626,7 @@ export const ServiceSelectionPanel = () => {
     (state) => state.activePlaceholder,
   );
   const edges = useWorkflowStore((state) => state.edges);
-  const endNodeId = useWorkflowStore((state) => state.endNodeId);
+  const endNodeIds = useWorkflowStore((state) => state.endNodeIds);
   const nodes = useWorkflowStore((state) => state.nodes);
   const startNodeId = useWorkflowStore((state) => state.startNodeId);
   const workflowId = useWorkflowStore((state) => state.workflowId);
@@ -727,7 +727,7 @@ export const ServiceSelectionPanel = () => {
 
     const nodeIds = nodes
       .map((node) => node.id)
-      .filter((id) => id !== endNodeId);
+      .filter((id) => !endNodeIds.includes(id));
     const leafIds = getLeafNodeIds(nodeIds, edges);
     const leafNodes = leafIds
       .map((leafId) => nodes.find((node) => node.id === leafId) ?? null)
@@ -749,7 +749,7 @@ export const ServiceSelectionPanel = () => {
     activePlaceholderKind,
     activeSinkSourceNodeId,
     edges,
-    endNodeId,
+    endNodeIds,
     nodes,
     startNodeId,
   ]);

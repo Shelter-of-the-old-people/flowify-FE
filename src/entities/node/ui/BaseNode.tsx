@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { type MouseEvent, type ReactNode } from "react";
-import { MdCancel } from "react-icons/md";
+import { MdAdd, MdCancel } from "react-icons/md";
 
 import { Box, Icon, IconButton, Text } from "@chakra-ui/react";
 import { Handle, Position } from "@xyflow/react";
@@ -49,7 +49,8 @@ const getSummaryContent = (
 export const BaseNode = ({ id, data, children }: BaseNodeProps) => {
   const {
     canEditNodes,
-    endNodeId,
+    endNodeIds,
+    getBranchHeadInfo,
     getNodeStatus,
     onOpenPanel,
     onRemoveNode,
@@ -57,11 +58,13 @@ export const BaseNode = ({ id, data, children }: BaseNodeProps) => {
   } = useNodeEditorContext();
   const [isHovered, setIsHovered] = useState(false);
   const nodeStatus = getNodeStatus(id);
+  const branchHeadInfo = getBranchHeadInfo(id);
 
   const presentation = getNodePresentation(data, {
     nodeId: id,
     startNodeId,
-    endNodeId,
+    endNodeIds,
+    workflowRole: data.workflowRole,
   });
   const nodeStatusSummary = nodeStatus
     ? getNodeStatusSummaryLabel(nodeStatus)
@@ -71,6 +74,9 @@ export const BaseNode = ({ id, data, children }: BaseNodeProps) => {
     children,
   );
   const showNodeIcon = nodeStatus?.configured ?? data.config.isConfigured;
+  const isBranchHeadPlaceholder = Boolean(
+    branchHeadInfo && data.config.isConfigured !== true,
+  );
 
   const handleOpenPanel = () => {
     onOpenPanel(id);
@@ -93,6 +99,9 @@ export const BaseNode = ({ id, data, children }: BaseNodeProps) => {
       py={3}
       borderRadius="xl"
       bg="transform"
+      borderWidth={isBranchHeadPlaceholder ? "1px" : "0px"}
+      borderStyle={isBranchHeadPlaceholder ? "dashed" : "solid"}
+      borderColor={isBranchHeadPlaceholder ? "gray.300" : "transparent"}
       transition="border-color 150ms ease, box-shadow 150ms ease"
       cursor="pointer"
       onClick={handleOpenPanel}
@@ -104,7 +113,9 @@ export const BaseNode = ({ id, data, children }: BaseNodeProps) => {
       </Text>
 
       <Box h={14} display="flex" alignItems="center" justifyContent="center">
-        {showNodeIcon ? (
+        {isBranchHeadPlaceholder ? (
+          <Icon as={MdAdd} boxSize={12} color="gray.300" />
+        ) : showNodeIcon ? (
           <Icon
             as={presentation.iconComponent}
             boxSize={14}

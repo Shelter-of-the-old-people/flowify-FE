@@ -25,13 +25,14 @@ export const CommunicationPanel = ({
   readOnly = false,
 }: NodePanelProps) => {
   const startNodeId = useWorkflowStore((s) => s.startNodeId);
-  const endNodeId = useWorkflowStore((s) => s.endNodeId);
+  const endNodeIds = useWorkflowStore((s) => s.endNodeIds);
   const updateNodeConfig = useWorkflowStore((s) => s.updateNodeConfig);
 
   const presentation = getNodePresentation(data, {
     nodeId,
     startNodeId,
-    endNodeId,
+    endNodeIds,
+    workflowRole: data.workflowRole,
   });
   const config = getTypedConfig("communication", data.config);
 
