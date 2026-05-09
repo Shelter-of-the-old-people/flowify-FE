@@ -547,6 +547,7 @@ export const OutputPanel = ({ wizardController }: Props) => {
               hasConfigIssue={hasConfigIssue}
               inputLabel={sinkInputLabel}
               serviceLabel={selectedSinkService?.label ?? activeMeta.label}
+              serviceKey={selectedSinkService?.key ?? serviceKey}
               onEdit={() => setActivePanelMode("edit")}
             />
           </VStack>

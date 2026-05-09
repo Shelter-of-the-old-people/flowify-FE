@@ -11,7 +11,11 @@ import {
   getFileTypeBranchLabel,
   toFileTypeBranchKeys,
 } from "@/features/choice-panel";
-import { getSinkAuxiliaryLabelKey } from "@/features/configure-node";
+import {
+  getSinkAuxiliaryLabelKey,
+  getSinkFieldSummaryLabel,
+  getSinkFieldSummaryValue,
+} from "@/features/configure-node";
 import { SourceSummaryBlock } from "@/widgets/node-data-panel";
 
 type SummaryRow = {
@@ -37,28 +41,24 @@ const getChoiceSelectionsRecord = (config: Record<string, unknown>) =>
     ? (config.choiceSelections as Record<string, string | string[]>)
     : null;
 
-const getFieldDisplayValue = (
+const getFieldDisplayRow = (
+  serviceKey: string | null,
   field: SinkSchemaFieldResponse,
   config: Record<string, unknown>,
 ) => {
   const labelValue = getStringValue(
     config[getSinkAuxiliaryLabelKey(field.key)],
   );
-  const rawValue = config[field.key];
+  const value = getSinkFieldSummaryValue({
+    field,
+    labelValue,
+    rawValue: config[field.key],
+    serviceKey,
+  });
 
-  if (labelValue) {
-    return labelValue;
-  }
-
-  if (typeof rawValue === "number") {
-    return String(rawValue);
-  }
-
-  if (typeof rawValue === "string" && rawValue.trim().length > 0) {
-    return rawValue.trim();
-  }
-
-  return field.required ? "미설정" : null;
+  return value
+    ? { label: getSinkFieldSummaryLabel(serviceKey, field), value }
+    : null;
 };
 
 const SummaryRows = ({ rows }: { rows: SummaryRow[] }) => {
@@ -159,19 +159,18 @@ export const SinkSetupSummaryBlock = ({
   inputLabel,
   onEdit,
   serviceLabel,
+  serviceKey,
 }: ActionProps & {
   config: FlowNodeData["config"];
   fields: SinkSchemaFieldResponse[];
   hasConfigIssue: boolean;
   inputLabel: string | null;
   serviceLabel: string | null;
+  serviceKey: string | null;
 }) => {
   const configRecord = getConfigRecord(config);
   const fieldRows = fields
-    .map((field) => {
-      const value = getFieldDisplayValue(field, configRecord);
-      return value ? { label: field.label, value } : null;
-    })
+    .map((field) => getFieldDisplayRow(serviceKey, field, configRecord))
     .filter((row): row is SummaryRow => row !== null);
   const rows: SummaryRow[] = [
     serviceLabel ? { label: "서비스", value: serviceLabel } : null,
