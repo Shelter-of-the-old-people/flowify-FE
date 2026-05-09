@@ -548,3 +548,98 @@ fix: 분기 설정 안정성 보강
 2. branch target 생성 중 실패 상황을 가정했을 때 branch node가 `isConfigured: false`로 남는지 확인한다.
 3. 실패 후 다시 branch 선택을 완료하면 기존 target이 중복되지 않고 빠진 target만 생성되는지 확인한다.
 4. 최종 저장 후 새로고침했을 때 edge `label/sourceHandle/targetHandle`이 보존되는지 확인한다.
+
+### 10.4 분기 경로 안정화 범위 재정의
+
+파일 종류 분기 기능은 기본 실행 계약까지는 구현되었지만, 실제 편집 UX는 아직 "분기별 독립 경로"를 완전히 표현하지 못한다. 현재 편집기 상태 모델은 단일 `endNodeId`를 전제로 하고 있고, branch target은 placeholder가 아니라 실제 `data-process` 노드로 생성된다. 이 때문에 다음 문제가 함께 나타난다.
+
+- 한 분기에서 도착 노드가 생기면 다른 분기의 `다음 단계` placeholder도 함께 사라질 수 있다.
+- branch target 노드를 삭제하면 빈 분기 슬롯으로 돌아가지 않고 실제 경로 자체가 사라진다.
+- branch node 요약은 선택된 branch 설정만 보여주고, 실제 branch path 존재 여부와는 동기화되지 않는다.
+
+이 문제는 최종적으로 다중 도착 노드 모델과 branch path 복구 규칙까지 포함한 구조 개편이 필요하지만, 이번 이슈에서는 위험도가 큰 전면 리팩터링 대신 1차 안정화 범위로 좁혀 처리한다.
+
+### 10.5 1차 안정화 설계
+
+#### 1) 다중 도착 노드 상태를 병행 도입한다
+
+기존 `endNodeId`를 즉시 제거하지 않고, `endNodeIds: string[]`를 병행 도입한다.
+
+- `hydrateStore()`는 role이 `end`인 모든 노드를 `endNodeIds`로 수집한다.
+- 기존 `endNodeId`는 하위 호환용 alias로 유지하고, 첫 번째 end node를 가리키게 한다.
+- Canvas, OutputPanel, node role 계산처럼 이번 이슈와 직접 관련된 화면부터 `endNodeIds`를 기준으로 판정한다.
+
+이 방식은 현재 `endNodeId` 참조가 editor store, panel, template preview, node presentation 전반에 퍼져 있는 상황에서 영향 범위를 줄여 준다.
+
+#### 2) placeholder 생성 기준을 전역 end 존재 여부에서 leaf별 terminal 여부로 바꾼다
+
+현재 Canvas는 `startNodeId && !endNodeId` 조건으로 `다음 단계` placeholder를 그린다. 이를 다음 규칙으로 바꾼다.
+
+- leaf node가 end role이 아니면 해당 leaf 뒤에 placeholder를 그린다.
+- leaf node가 end role이면 placeholder를 그리지 않는다.
+- 따라서 한 분기에서 도착 노드를 만들더라도 다른 분기의 leaf가 end가 아니면 계속 `다음 단계`가 보인다.
+
+이번 변경으로 "분기별 독립 경로" UX를 최소 범위에서 회복할 수 있다.
+
+#### 3) branch head는 새 config를 추가하지 않고 edge 문맥으로 식별한다
+
+이번 1차 범위에서는 `branchParentNodeId`, `branchKey`, `isBranchHead` 같은 config 필드를 새로 저장하지 않는다. 대신 incoming edge를 기준으로 branch head 여부를 계산하는 helper를 둔다.
+
+판별 기준:
+
+- 부모 노드가 file-type branch action node인지
+- 현재 노드로 들어오는 edge의 `label/sourceHandle/data.branchKey` 중 raw branch key가 있는지
+
+이렇게 하면 backend 저장 계약을 건드리지 않고도 분기 경로 복구와 UI 스타일 분기를 구현할 수 있다.
+
+#### 4) branch head 미설정 상태는 placeholder처럼 보이게 한다
+
+branch target은 내부적으로는 기존처럼 `data-process`를 재사용하되, 아래 조건을 만족하면 placeholder에 가까운 시각 상태로 렌더링한다.
+
+- branch head node이다
+- `isConfigured === false`
+- 아직 후속 처리 설정이 없다
+
+표시 방식:
+
+- dashed 또는 연한 outline
+- 제목은 `PDF 경로`, `이미지 경로`, `기타 경로`
+- 보조 문구는 `무엇을 하게 할까요?`
+
+즉 실제 노드 타입을 늘리지 않고, 현재 렌더링 계층에서만 "빈 분기 슬롯" UX를 만든다.
+
+#### 5) branch head 삭제는 일반 노드 삭제가 아니라 슬롯 초기화로 해석한다
+
+branch head를 X로 삭제할 때는 일반 middle node 삭제와 다르게 처리한다.
+
+- 해당 branch head 이하 descendant를 함께 정리한다.
+- 부모 branch node의 선택 설정은 유지한다.
+- 같은 branch key 위치에 새 미설정 branch head를 다시 만든다.
+
+사용자 입장에서는 `PDF 처리`를 지우면 `PDF 분기`가 사라지는 것이 아니라, 다시 비어 있는 `PDF 경로` 슬롯으로 돌아가야 한다.
+
+#### 6) branch 요약 UI는 config와 실제 graph 상태를 함께 본다
+
+`BranchSetupSummaryBlock`은 더 이상 `choiceSelections/branchTypes`만 읽지 않고, 실제 branch path 존재 여부와 configured 여부를 함께 표시한다.
+
+예시:
+
+```text
+파일 종류 분기
+- PDF: 설정 필요
+- 이미지: AI 요약
+- 기타: 경로 비어 있음
+```
+
+이렇게 해야 사용자가 branch 설정과 실제 그래프 상태가 어긋났는지 바로 이해할 수 있다.
+
+### 10.6 2차 구조 개편 범위
+
+아래 항목은 1차 안정화 이후 별도 이슈로 분리한다.
+
+- `endNodeId` 완전 제거
+- role 판정 유틸 전체를 `endNodeIds` 또는 `nodeRoles` 중심으로 통일
+- template preview, remote bar, node data panel까지 다중 도착 노드 모델로 정식 전환
+- branch path 자동 정리 UX를 보다 공격적으로 확장할지 결정
+
+즉 이번 이슈는 "사용자 버그를 안정적으로 복구하는 1차 설계"이고, 다중 도착 노드 모델의 완전한 정식화는 후속 단계로 남긴다.
