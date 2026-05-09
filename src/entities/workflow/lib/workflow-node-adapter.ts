@@ -58,6 +58,7 @@ const BACKEND_TYPE_TO_NODE_TYPE = Object.fromEntries(
 const SERVICE_KEY_TO_NODE_TYPE = {
   canvas_lms: "web-scraping",
   coupang: "web-scraping",
+  discord: "communication",
   github: "web-scraping",
   gmail: "communication",
   google_calendar: "calendar",

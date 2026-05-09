@@ -47,6 +47,7 @@ const COMMUNICATION_SERVICE_TITLE: Record<
   NonNullable<CommunicationNodeConfig["service"]>,
   string
 > = {
+  discord: "Discord",
   gmail: "Gmail",
   slack: "Slack",
 };

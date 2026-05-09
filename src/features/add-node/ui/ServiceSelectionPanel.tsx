@@ -17,6 +17,7 @@ import {
   MdSearch,
 } from "react-icons/md";
 import {
+  SiDiscord,
   SiGmail,
   SiGooglecalendar,
   SiGoogledrive,
@@ -79,6 +80,7 @@ const EMPTY_TARGET_SENTINEL = "";
 
 const CATALOG_SERVICE_ICON_MAP: Record<string, IconType> = {
   canvas_lms: MdSchool,
+  discord: SiDiscord,
   gmail: SiGmail,
   google_calendar: SiGooglecalendar,
   google_drive: SiGoogledrive,
