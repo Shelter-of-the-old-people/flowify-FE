@@ -21,7 +21,15 @@ export type PlaceholderInfo = {
   id: string;
   kind: "start" | "sink";
   position: { x: number; y: number };
+  routing?: PlaceholderRoutingMeta | null;
   sourceNodeId?: string | null;
+};
+
+export type PlaceholderRoutingMeta = {
+  branchKey?: string | null;
+  prevEdgeLabel?: string | null;
+  prevEdgeSourceHandle?: string | null;
+  prevEdgeTargetHandle?: string | null;
 };
 
 export type ActivePanelMode = "view" | "edit";

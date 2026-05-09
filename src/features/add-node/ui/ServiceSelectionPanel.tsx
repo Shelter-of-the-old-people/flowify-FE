@@ -655,6 +655,7 @@ export const ServiceSelectionPanel = () => {
   const { flowToScreenPosition } = useReactFlow();
   const viewport = useViewport();
   const activePlaceholderKind = activePlaceholder?.kind ?? null;
+  const activePlaceholderRouting = activePlaceholder?.routing ?? null;
   const activeSinkSourceNodeId = activePlaceholder?.sourceNodeId ?? null;
 
   const [endStep, setEndStep] = useState<EndWizardStep>("service");
@@ -1003,6 +1004,11 @@ export const ServiceSelectionPanel = () => {
           position: activePlaceholder.position,
           role: "end",
           prevNodeId: endSourceNode.id,
+          prevEdgeLabel: activePlaceholderRouting?.prevEdgeLabel ?? undefined,
+          prevEdgeSourceHandle:
+            activePlaceholderRouting?.prevEdgeSourceHandle ?? undefined,
+          prevEdgeTargetHandle:
+            activePlaceholderRouting?.prevEdgeTargetHandle ?? undefined,
           config: {
             service: selectedSinkService.key,
           } as Partial<FlowNodeData["config"]>,

@@ -54,7 +54,11 @@ import {
   getFileTypeBranchKeysFromNode,
   getFileTypeBranchRemovalOrder,
 } from "@/features/choice-panel";
-import { hydrateStore, useWorkflowStore } from "@/features/workflow-editor";
+import {
+  type PlaceholderRoutingMeta,
+  hydrateStore,
+  useWorkflowStore,
+} from "@/features/workflow-editor";
 import { getLeafNodeIds } from "@/shared";
 import { toaster } from "@/shared/utils/toaster/toaster";
 
@@ -70,6 +74,7 @@ const NEXT_STEP_CHOICE_NODE_HEIGHT = 148;
 type ActiveNextStep = {
   centerY: number;
   position: { x: number; y: number };
+  routing?: PlaceholderRoutingMeta | null;
   sourceNodeId: string;
 };
 
@@ -148,6 +153,33 @@ const createVirtualPlaceholderNode = (
   draggable: false,
   hidden: true,
 });
+
+const toPlaceholderRoutingMeta = (
+  value: unknown,
+): PlaceholderRoutingMeta | null => {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const candidate = value as Record<string, unknown>;
+
+  return {
+    branchKey:
+      typeof candidate.branchKey === "string" ? candidate.branchKey : null,
+    prevEdgeLabel:
+      typeof candidate.prevEdgeLabel === "string"
+        ? candidate.prevEdgeLabel
+        : null,
+    prevEdgeSourceHandle:
+      typeof candidate.prevEdgeSourceHandle === "string"
+        ? candidate.prevEdgeSourceHandle
+        : null,
+    prevEdgeTargetHandle:
+      typeof candidate.prevEdgeTargetHandle === "string"
+        ? candidate.prevEdgeTargetHandle
+        : null,
+  };
+};
 
 type CanvasNodeType = NodeType | "placeholder" | "next-step-choice";
 
@@ -378,9 +410,11 @@ export const Canvas = () => {
   const handleCreateMiddleNode = useCallback(
     async ({
       position,
+      routing,
       sourceNodeId,
     }: {
       position: { x: number; y: number };
+      routing?: PlaceholderRoutingMeta | null;
       sourceNodeId: string;
     }) => {
       if (isAddNodePending || isDeleteNodePending) {
@@ -410,6 +444,9 @@ export const Canvas = () => {
             position,
             role: "middle",
             prevNodeId: sourceNodeId,
+            prevEdgeLabel: routing?.prevEdgeLabel ?? undefined,
+            prevEdgeSourceHandle: routing?.prevEdgeSourceHandle ?? undefined,
+            prevEdgeTargetHandle: routing?.prevEdgeTargetHandle ?? undefined,
             inputTypes: sourceNode
               ? [...sourceNode.data.outputTypes]
               : undefined,
@@ -502,6 +539,7 @@ export const Canvas = () => {
         }
 
         const rawSourceNodeId = node.data?.sourceNodeId;
+        const routing = toPlaceholderRoutingMeta(node.data?.routing);
         const sourceNodeId =
           typeof rawSourceNodeId === "string"
             ? rawSourceNodeId
@@ -511,6 +549,7 @@ export const Canvas = () => {
         setActiveNextStep({
           centerY,
           position: panelNodePosition,
+          routing,
           sourceNodeId,
         });
       } else {
@@ -574,6 +613,7 @@ export const Canvas = () => {
 
     void handleCreateMiddleNode({
       position: activeNextStep.position,
+      routing: activeNextStep.routing,
       sourceNodeId: activeNextStep.sourceNodeId,
     });
   }, [activeNextStep, handleCreateMiddleNode]);
@@ -588,6 +628,7 @@ export const Canvas = () => {
       id: `placeholder-sink-${activeNextStep.sourceNodeId}`,
       kind: "sink",
       position: activeNextStep.position,
+      routing: activeNextStep.routing,
       sourceNodeId: activeNextStep.sourceNodeId,
     });
     setActiveNextStep(null);
