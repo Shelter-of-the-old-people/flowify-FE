@@ -31,6 +31,7 @@ import { DeleteConfirmDialog } from "./DeleteConfirmDialog";
 import { ExecutionStatusBadge } from "./ExecutionStatusBadge";
 import { MiddleSlotButtons } from "./MiddleSlotButtons";
 import { RunStopSplitButton } from "./RunStopSplitButton";
+import { TriggerSettingsButton } from "./TriggerSettingsButton";
 import { WorkflowNameField } from "./WorkflowNameField";
 
 const getExecutableBlockers = (
@@ -65,6 +66,8 @@ export const EditorRemoteBar = () => {
   const startNodeId = useWorkflowStore((state) => state.startNodeId);
   const endNodeIds = useWorkflowStore((state) => state.endNodeIds);
   const endNodeId = useWorkflowStore((state) => state.endNodeId);
+  const workflowTrigger = useWorkflowStore((state) => state.workflowTrigger);
+  const workflowActive = useWorkflowStore((state) => state.workflowActive);
   const isDirty = useWorkflowStore((state) => state.isDirty);
   const canEditNodes = useWorkflowStore(
     (state) => state.editorCapabilities.canEditNodes,
@@ -176,6 +179,12 @@ export const EditorRemoteBar = () => {
     effectiveRunPhase === "idle" &&
     !isRemoteExecutionInFlight &&
     !isDeletePending;
+  const canEditTrigger =
+    Boolean(workflowId) &&
+    canSaveWorkflow &&
+    effectiveRunPhase === "idle" &&
+    !isRemoteExecutionInFlight &&
+    !isDeletePending;
   const canRollback =
     Boolean(workflowId) &&
     canRunWorkflow &&
@@ -210,6 +219,8 @@ export const EditorRemoteBar = () => {
       workflowId,
       store: {
         workflowName,
+        workflowTrigger,
+        workflowActive,
         nodes,
         edges,
         startNodeId,
@@ -375,6 +386,7 @@ export const EditorRemoteBar = () => {
     >
       <Box position="relative" pointerEvents="auto">
         <ExecutionStatusBadge label={executionStatusLabel} />
+        <TriggerSettingsButton canEdit={canEditTrigger} />
 
         <Box
           display="flex"

@@ -1,7 +1,10 @@
 import { useCallback, useState } from "react";
 import { useNavigate } from "react-router";
 
-import { useCreateWorkflowMutation } from "@/entities/workflow";
+import {
+  createManualTrigger,
+  useCreateWorkflowMutation,
+} from "@/entities/workflow";
 import { ROUTE_PATHS, buildPath } from "@/shared";
 import { toaster } from "@/shared/utils/toaster/toaster";
 
@@ -23,7 +26,7 @@ export const useCreateWorkflowShortcut = () => {
         description: "",
         nodes: [],
         edges: [],
-        trigger: null,
+        trigger: createManualTrigger(),
       });
 
       navigate(buildPath.workflowEditor(workflow.id));
