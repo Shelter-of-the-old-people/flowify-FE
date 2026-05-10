@@ -120,14 +120,11 @@ export const ServiceBadge = ({ type }: Props) => {
             boxSize="30px"
             align="center"
             justify="center"
-            bg="bg.surface"
             borderRadius="lg"
-            border="1px solid"
-            borderColor="#38BDF8"
             boxShadow="0 6px 12px rgba(56, 189, 248, 0.18)"
             overflow="hidden"
           >
-            <SeBoardIcon size={22} />
+            <SeBoardIcon size={30} />
           </Flex>
         );
       case "notion":
