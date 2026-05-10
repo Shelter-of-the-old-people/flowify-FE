@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import {
+  MdArticle,
   MdCalendarMonth,
   MdFolder,
   MdInsertDriveFile,
@@ -44,6 +45,7 @@ type PickerState = {
 };
 
 const TARGET_OPTION_ICON_MAP = {
+  category: MdArticle,
   course: MdSchool,
   file: MdInsertDriveFile,
   folder: MdFolder,
@@ -74,6 +76,10 @@ const createPickerState = (scope: string): PickerState => ({
 const getPickerRootLabel = (serviceKey: string, schemaType: string) => {
   if (serviceKey === "gmail" && schemaType === "label_picker") {
     return "Gmail 라벨";
+  }
+
+  if (serviceKey === "web_news" && schemaType === "category_picker") {
+    return "SE Board 게시판";
   }
 
   return "내 드라이브";

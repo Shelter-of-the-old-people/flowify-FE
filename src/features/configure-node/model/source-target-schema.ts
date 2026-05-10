@@ -1,5 +1,6 @@
 export const SOURCE_TARGET_SCHEMA_LABELS: Record<string, string> = {
   calendar_picker: "캘린더",
+  category_picker: "게시판",
   channel_picker: "채널",
   course_picker: "과목",
   day_picker: "요일",
@@ -26,6 +27,7 @@ export const DAY_PICKER_OPTIONS = [
 
 const REMOTE_SOURCE_TARGET_SCHEMA_TYPES = new Set([
   "calendar_picker",
+  "category_picker",
   "channel_picker",
   "course_picker",
   "file_picker",

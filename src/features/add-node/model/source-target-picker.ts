@@ -12,6 +12,7 @@ export const createEmptySourceTargetPickerValue =
   });
 
 export const TARGET_SCHEMA_LABELS: Record<string, string> = {
+  category_picker: "게시판",
   channel_picker: "채널",
   course_picker: "과목",
   day_picker: "요일",
@@ -37,6 +38,7 @@ export const DAY_PICKER_OPTIONS = [
 ] as const;
 
 const REMOTE_TARGET_SCHEMA_TYPES = new Set([
+  "category_picker",
   "course_picker",
   "term_picker",
   "file_picker",
