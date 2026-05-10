@@ -11,11 +11,12 @@ import {
   MdSettings,
   MdTableChart,
 } from "react-icons/md";
-import { SiDiscord } from "react-icons/si";
 
 import { Box, Flex, Icon, Text } from "@chakra-ui/react";
 
 import { type ServiceBadgeKey } from "../utils";
+
+import { DiscordIcon } from "./icons";
 
 type Props = {
   type: ServiceBadgeKey;
@@ -24,7 +25,7 @@ type Props = {
 const FALLBACK_NODE_ICONS: Record<ServiceBadgeKey, IconType> = {
   calendar: MdCalendarMonth,
   "canvas-lms": MdSchool,
-  discord: SiDiscord,
+  discord: MdNotifications,
   gmail: MdEmail,
   "google-drive": MdFolder,
   "google-sheets": MdTableChart,
@@ -86,13 +87,13 @@ export const ServiceBadge = ({ type }: Props) => {
             boxSize="30px"
             align="center"
             justify="center"
-            bg="#5865F2"
+            bg="bg.surface"
             borderRadius="lg"
             border="1px solid"
-            borderColor="#4752C4"
+            borderColor="#5865F2"
             boxShadow="0 6px 12px rgba(88, 101, 242, 0.18)"
           >
-            <Icon as={SiDiscord} boxSize={4.5} color="white" />
+            <DiscordIcon size={22} />
           </Flex>
         );
       case "notion":
