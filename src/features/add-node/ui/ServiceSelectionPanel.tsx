@@ -61,8 +61,14 @@ import {
 import { isSinkServiceInRollout } from "../model/sink-rollout";
 import { isSourceModeInRollout } from "../model/source-rollout";
 import {
+  DAY_PICKER_OPTIONS,
   type SourceTargetPickerValue,
   createEmptySourceTargetPickerValue,
+  getTargetSchemaHelperText,
+  getTargetSchemaLabel,
+  getTargetSchemaPlaceholder,
+  getTargetSchemaType,
+  getTargetSchemaValidationMessage,
   isRemoteTargetPicker,
 } from "../model/source-target-picker";
 
@@ -87,31 +93,6 @@ const CATALOG_SERVICE_ICON_MAP: Record<string, IconType> = {
   notion: MdArticle,
   slack: SiSlack,
 };
-
-const TARGET_SCHEMA_LABELS: Record<string, string> = {
-  course_picker: "과목",
-  term_picker: "학기",
-  channel_picker: "채널",
-  day_picker: "요일",
-  email_picker: "이메일",
-  file_picker: "파일",
-  folder_picker: "폴더",
-  label_picker: "라벨",
-  page_picker: "페이지",
-  sheet_picker: "시트",
-  text_input: "대상",
-  time_picker: "시간",
-};
-
-const DAY_PICKER_OPTIONS = [
-  { label: "월요일", value: "monday" },
-  { label: "화요일", value: "tuesday" },
-  { label: "수요일", value: "wednesday" },
-  { label: "목요일", value: "thursday" },
-  { label: "금요일", value: "friday" },
-  { label: "토요일", value: "saturday" },
-  { label: "일요일", value: "sunday" },
-] as const;
 
 const WizardCard = ({
   children,
@@ -147,17 +128,6 @@ const renderCatalogServiceIcon = (serviceKey: string) => {
 
   return <Icon as={getCatalogServiceIcon(serviceKey)} boxSize={16} />;
 };
-
-const getTargetSchemaType = (targetSchema: Record<string, unknown>) =>
-  typeof targetSchema.type === "string" ? targetSchema.type : "text_input";
-
-const getTargetSchemaLabel = (targetSchema: Record<string, unknown>) =>
-  TARGET_SCHEMA_LABELS[getTargetSchemaType(targetSchema)] ?? "대상";
-
-const getTargetSchemaPlaceholder = (targetSchema: Record<string, unknown>) =>
-  typeof targetSchema.placeholder === "string"
-    ? targetSchema.placeholder
-    : `${getTargetSchemaLabel(targetSchema)} 입력`;
 
 const hasTargetSchema = (targetSchema: Record<string, unknown>) =>
   Object.keys(targetSchema).length > 0;
@@ -423,6 +393,11 @@ const SourceTargetForm = ({
 }) => {
   const schemaType = getTargetSchemaType(mode.target_schema);
   const isRemotePicker = isRemoteTargetPicker(mode.target_schema);
+  const helperText = getTargetSchemaHelperText(mode.target_schema);
+  const validationMessage = getTargetSchemaValidationMessage(
+    mode.target_schema,
+    value.value,
+  );
 
   return (
     <WizardCard minWidth="520px" maxWidth="640px">
@@ -443,9 +418,14 @@ const SourceTargetForm = ({
       <Text fontSize="xl" fontWeight="bold" mb={2}>
         대상 선택
       </Text>
-      <Text color="text.secondary" fontSize="sm" mb={6}>
+      <Text color="text.secondary" fontSize="sm" mb={helperText ? 2 : 6}>
         {getTargetSchemaLabel(mode.target_schema)} 정보를 입력해주세요.
       </Text>
+      {helperText ? (
+        <Text color="text.secondary" fontSize="sm" mb={6}>
+          {helperText}
+        </Text>
+      ) : null}
 
       {isRemotePicker ? (
         <SourceTargetPicker
@@ -477,6 +457,11 @@ const SourceTargetForm = ({
           }
         />
       )}
+      {validationMessage ? (
+        <Text color="orange.500" fontSize="xs" mt={2}>
+          {validationMessage}
+        </Text>
+      ) : null}
 
       <Box display="flex" justifyContent="flex-end" mt={6}>
         <Button disabled={!value.value.trim()} onClick={onSubmit}>

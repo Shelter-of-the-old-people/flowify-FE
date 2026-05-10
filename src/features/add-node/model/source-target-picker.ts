@@ -59,8 +59,42 @@ export const getTargetSchemaPlaceholder = (
     ? targetSchema.placeholder
     : `${getTargetSchemaLabel(targetSchema)} 입력`;
 
+export const getTargetSchemaHelperText = (
+  targetSchema: Record<string, unknown>,
+) =>
+  typeof targetSchema.helper_text === "string"
+    ? targetSchema.helper_text
+    : null;
+
+export const getTargetSchemaValidation = (
+  targetSchema: Record<string, unknown>,
+) =>
+  typeof targetSchema.validation === "string" ? targetSchema.validation : null;
+
+export const getTargetSchemaValidationMessage = (
+  targetSchema: Record<string, unknown>,
+  value: string,
+) => {
+  if (getTargetSchemaValidation(targetSchema) !== "url" || !value.trim()) {
+    return null;
+  }
+
+  return isValidHttpsUrl(value)
+    ? null
+    : "https://로 시작하는 사이트 주소를 입력해주세요.";
+};
+
 export const hasTargetSchema = (targetSchema: Record<string, unknown>) =>
   Object.keys(targetSchema).length > 0;
 
 export const isRemoteTargetPicker = (targetSchema: Record<string, unknown>) =>
   REMOTE_TARGET_SCHEMA_TYPES.has(getTargetSchemaType(targetSchema));
+
+const isValidHttpsUrl = (value: string) => {
+  try {
+    const parsedUrl = new URL(value.trim());
+    return parsedUrl.protocol === "https:" && Boolean(parsedUrl.hostname);
+  } catch {
+    return false;
+  }
+};

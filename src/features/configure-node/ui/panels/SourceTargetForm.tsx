@@ -24,9 +24,11 @@ import {
 
 import {
   DAY_PICKER_OPTIONS,
+  getSourceTargetSchemaHelperText,
   getSourceTargetSchemaLabel,
   getSourceTargetSchemaPlaceholder,
   getSourceTargetSchemaType,
+  getSourceTargetSchemaValidationMessage,
   isRemoteSourceTargetPicker,
 } from "../../model";
 import { type SourceTargetSetupValue } from "../../model";
@@ -96,6 +98,11 @@ export const SourceTargetForm = ({
   const schemaType = getSourceTargetSchemaType(mode.target_schema);
   const isRemotePicker = isRemoteSourceTargetPicker(mode.target_schema);
   const isFolderPicker = schemaType === "folder_picker";
+  const helperText = getSourceTargetSchemaHelperText(mode.target_schema);
+  const validationMessage = getSourceTargetSchemaValidationMessage(
+    mode.target_schema,
+    value.value,
+  );
   const pickerScope = `${serviceKey}:${mode.key}:${schemaType}`;
   const [pickerState, setPickerState] = useState<PickerState>(() =>
     createPickerState(pickerScope),
@@ -223,15 +230,27 @@ export const SourceTargetForm = ({
 
   if (!isRemotePicker) {
     return (
-      <Input
-        disabled={disabled}
-        placeholder={getSourceTargetSchemaPlaceholder(mode.target_schema)}
-        type={schemaType === "time_picker" ? "time" : "text"}
-        value={value.value}
-        onChange={(event) =>
-          onChange({ option: null, value: event.target.value })
-        }
-      />
+      <Box>
+        {helperText ? (
+          <Text color="text.secondary" fontSize="sm" mb={2}>
+            {helperText}
+          </Text>
+        ) : null}
+        <Input
+          disabled={disabled}
+          placeholder={getSourceTargetSchemaPlaceholder(mode.target_schema)}
+          type={schemaType === "time_picker" ? "time" : "text"}
+          value={value.value}
+          onChange={(event) =>
+            onChange({ option: null, value: event.target.value })
+          }
+        />
+        {validationMessage ? (
+          <Text color="orange.500" fontSize="xs" mt={2}>
+            {validationMessage}
+          </Text>
+        ) : null}
+      </Box>
     );
   }
 
