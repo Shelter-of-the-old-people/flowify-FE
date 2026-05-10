@@ -1,6 +1,7 @@
 export * from "./constants";
 export * from "./types";
 export * from "./useWorkflowListActions";
+export * from "./useWorkflowListAutoRunAction";
 export * from "./useWorkflowListData";
 export * from "./useWorkflowListInfiniteScroll";
 export * from "./workflow-list";

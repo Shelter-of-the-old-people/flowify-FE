@@ -8,6 +8,7 @@ import {
 
 import {
   Box,
+  Button,
   Flex,
   HStack,
   Icon,
@@ -20,6 +21,7 @@ import {
 import { type WorkflowResponse } from "@/entities/workflow";
 
 import {
+  type WorkflowAutoRunState,
   getBuildProgressLabel,
   getEndpointNodes,
   getRelativeUpdateLabel,
@@ -31,19 +33,58 @@ import { ServiceBadge } from "./ServiceBadge";
 
 type Props = {
   workflow: WorkflowResponse;
+  autoRunKind: WorkflowAutoRunState["kind"];
+  autoRunLabel: string;
+  isAutoRunToggleable: boolean;
+  isAutoRunPending: boolean;
   executionActionKind: "run" | "stop";
   executionActionLabel: string;
   isExecutionActionPending: boolean;
   onOpen: () => void;
+  onAutoRunToggle: () => void;
   onExecutionAction: () => void;
+};
+
+const AUTO_RUN_BUTTON_STYLES: Record<
+  WorkflowAutoRunState["kind"],
+  {
+    bg: string;
+    color: string;
+    border: string;
+    hoverBg: string;
+  }
+> = {
+  manual: {
+    bg: "#f8f8f8",
+    color: "#5b5b5b",
+    border: "1px solid #d8d8d8",
+    hoverBg: "#f3f3f3",
+  },
+  enabled: {
+    bg: "#272727",
+    color: "#f7f7f7",
+    border: "1px solid #272727",
+    hoverBg: "#333333",
+  },
+  disabled: {
+    bg: "#f5f5f5",
+    color: "#5b5b5b",
+    border: "1px solid #d8d8d8",
+    hoverBg: "#efefef",
+  },
 };
 
 export const WorkflowRow = ({
   workflow,
+  autoRunKind,
+  autoRunLabel,
+  isAutoRunToggleable,
+  isAutoRunPending,
   executionActionKind,
   executionActionLabel,
   isExecutionActionPending,
   onOpen,
+  onAutoRunToggle,
   onExecutionAction,
 }: Props) => {
   const { startNode, endNode } = getEndpointNodes(workflow);
@@ -52,6 +93,8 @@ export const WorkflowRow = ({
   const relativeUpdate = getRelativeUpdateLabel(workflow.updatedAt);
   const buildProgress = getBuildProgressLabel(workflow);
   const warningMessages = getWorkflowWarningMessages(workflow);
+  const autoRunButtonStyle = AUTO_RUN_BUTTON_STYLES[autoRunKind];
+  const shouldShowAutoRunButton = autoRunKind !== "manual";
 
   const handleRowKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "Enter" || event.key === " ") {
@@ -121,7 +164,39 @@ export const WorkflowRow = ({
           </Box>
         </HStack>
 
-        <HStack gap={0} flexShrink={0}>
+        <HStack gap={2} flexShrink={0}>
+          {shouldShowAutoRunButton ? (
+            <Button
+              type="button"
+              size="xs"
+              minW="auto"
+              px={3}
+              py={1.5}
+              borderRadius="999px"
+              fontSize="11px"
+              fontWeight="semibold"
+              bg={autoRunButtonStyle.bg}
+              color={autoRunButtonStyle.color}
+              border={autoRunButtonStyle.border}
+              opacity={isAutoRunToggleable || isAutoRunPending ? 1 : 0.72}
+              cursor={
+                isAutoRunToggleable && !isAutoRunPending ? "pointer" : "default"
+              }
+              _hover={{
+                bg:
+                  isAutoRunToggleable && !isAutoRunPending
+                    ? autoRunButtonStyle.hoverBg
+                    : autoRunButtonStyle.bg,
+              }}
+              _active={{
+                bg: autoRunButtonStyle.hoverBg,
+              }}
+              onClick={(event) => handleInnerAction(event, onAutoRunToggle)}
+            >
+              {isAutoRunPending ? <Spinner size="xs" /> : autoRunLabel}
+            </Button>
+          ) : null}
+
           <IconButton
             aria-label={executionActionLabel}
             variant="ghost"
@@ -138,7 +213,7 @@ export const WorkflowRow = ({
             )}
           </IconButton>
           <IconButton
-            aria-label="자동화 상세 보기"
+            aria-label="워크플로우 상세 보기"
             variant="ghost"
             size="sm"
             onClick={(event) => handleInnerAction(event, onOpen)}
