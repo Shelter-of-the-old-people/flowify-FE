@@ -24,6 +24,7 @@ import {
 type SupportedServiceKey =
   | "calendar"
   | "canvas-lms"
+  | "discord"
   | "gmail"
   | "google-drive"
   | "google-sheets"
@@ -39,6 +40,7 @@ type RecommendedDashboardService = {
 const DASHBOARD_SERVICE_LABELS: Record<SupportedServiceKey, string> = {
   calendar: "Google Calendar",
   "canvas-lms": "Canvas LMS",
+  discord: "Discord",
   gmail: "Gmail",
   "google-drive": "Google Drive",
   "google-sheets": "Google Sheets",

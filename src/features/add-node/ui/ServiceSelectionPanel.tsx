@@ -51,6 +51,7 @@ import {
 } from "@/entities/workflow";
 import { hydrateStore, useWorkflowStore } from "@/features/workflow-editor";
 import {
+  DiscordIcon,
   getApiErrorMessage,
   getCurrentRelativeUrl,
   getLeafNodeIds,
@@ -138,6 +139,14 @@ const WizardCard = ({
 
 const getCatalogServiceIcon = (serviceKey: string) =>
   CATALOG_SERVICE_ICON_MAP[serviceKey] ?? MdFolder;
+
+const renderCatalogServiceIcon = (serviceKey: string) => {
+  if (serviceKey === "discord") {
+    return <DiscordIcon size={64} />;
+  }
+
+  return <Icon as={getCatalogServiceIcon(serviceKey)} boxSize={16} />;
+};
 
 const getTargetSchemaType = (targetSchema: Record<string, unknown>) =>
   typeof targetSchema.type === "string" ? targetSchema.type : "text_input";
@@ -271,7 +280,7 @@ const CatalogServiceGrid = ({
                 h="64px"
                 justifyContent="center"
               >
-                <Icon as={getCatalogServiceIcon(service.key)} boxSize={16} />
+                {renderCatalogServiceIcon(service.key)}
               </Box>
               <Text fontSize="xs" fontWeight="medium" textAlign="center">
                 {service.label}

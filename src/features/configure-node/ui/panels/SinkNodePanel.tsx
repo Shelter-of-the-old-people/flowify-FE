@@ -9,6 +9,7 @@ import {
   Input,
   Spinner,
   Text,
+  Textarea,
 } from "@chakra-ui/react";
 
 import { type FlowNodeData } from "@/entities/node";
@@ -38,21 +39,13 @@ import {
 } from "@/shared";
 import { toaster } from "@/shared/utils";
 
-import { type NodePanelProps } from "../../model";
+import {
+  type NodePanelProps,
+  getSinkFieldPresentation,
+  shouldShowSinkSchemaPreview,
+} from "../../model";
 
 import { NodePanelShell } from "./NodePanelShell";
-
-const FIELD_LABELS: Record<string, string> = {
-  calendar_picker: "캘린더",
-  channel_picker: "채널",
-  email_input: "이메일",
-  folder_picker: "폴더",
-  number: "숫자",
-  page_picker: "페이지",
-  select: "선택",
-  sheet_picker: "시트",
-  text: "텍스트",
-};
 
 const GOOGLE_DRIVE_SERVICE_KEY = "google_drive";
 const GOOGLE_DRIVE_FOLDER_PICKER_MODE = "folder_all_files";
@@ -78,18 +71,6 @@ type PickerOptionLike = {
   id: string;
   label: string;
   metadata: Record<string, unknown>;
-};
-
-const getFieldInputType = (fieldType: string) => {
-  if (fieldType === "email_input") {
-    return "email";
-  }
-
-  if (fieldType === "number") {
-    return "number";
-  }
-
-  return "text";
 };
 
 const getAuxiliaryLabelKey = (fieldKey: string) => `${fieldKey}_label`;
@@ -792,6 +773,7 @@ const SinkSchemaEditor = ({
         {fields.map((field) => {
           const stringValue = draftValues[field.key] ?? "";
           const validationError = validationErrors[field.key] ?? null;
+          const presentation = getSinkFieldPresentation(serviceKey, field);
 
           return (
             <Box
@@ -801,7 +783,7 @@ const SinkSchemaEditor = ({
               gap={2}
             >
               <Text fontSize="sm" fontWeight="medium">
-                {field.label}
+                {presentation.label}
                 {field.required ? " *" : ""}
               </Text>
 
@@ -861,11 +843,23 @@ const SinkSchemaEditor = ({
                     handleRemotePickerFieldSelect(field, option)
                   }
                 />
+              ) : field.type === "textarea" ? (
+                <Textarea
+                  disabled={readOnly}
+                  minH="120px"
+                  placeholder={presentation.placeholder}
+                  resize="vertical"
+                  value={stringValue}
+                  onChange={(event) =>
+                    handleFieldChange(field.key, event.target.value)
+                  }
+                  onKeyDown={(event) => event.stopPropagation()}
+                />
               ) : (
                 <Input
                   disabled={readOnly}
-                  placeholder={`${FIELD_LABELS[field.type] ?? field.type} 입력`}
-                  type={getFieldInputType(field.type)}
+                  placeholder={presentation.placeholder}
+                  type={presentation.inputType}
                   value={stringValue}
                   onChange={(event) =>
                     handleFieldChange(field.key, event.target.value)
@@ -877,6 +871,12 @@ const SinkSchemaEditor = ({
                   }}
                 />
               )}
+
+              {presentation.helpText ? (
+                <Text color="text.secondary" fontSize="xs">
+                  {presentation.helpText}
+                </Text>
+              ) : null}
 
               {validationError ? (
                 <Text color="red.500" fontSize="xs">
@@ -961,6 +961,7 @@ export const SinkNodePanel = ({
   const nodeStatus = nodeStatuses[nodeId] ?? null;
   const missingFields =
     nodeStatus?.missingFields.map(getNodeStatusMissingFieldLabel) ?? [];
+  const shouldRenderSchemaPreview = shouldShowSinkSchemaPreview(serviceKey);
 
   const previewRequest = useMemo(() => {
     const previewNodes = nodes.filter((node) => node.id !== nodeId);
@@ -977,12 +978,16 @@ export const SinkNodePanel = ({
   }, [edges, endNodeIds, nodeId, nodes, startNodeId]);
 
   useEffect(() => {
-    if (!workflowId || previewRequest.nodes.length === 0) {
+    if (
+      !workflowId ||
+      !shouldRenderSchemaPreview ||
+      previewRequest.nodes.length === 0
+    ) {
       return;
     }
 
     previewSchema(previewRequest);
-  }, [previewRequest, previewSchema, workflowId]);
+  }, [previewRequest, previewSchema, shouldRenderSchemaPreview, workflowId]);
 
   const sinkEditorKey = useMemo(() => {
     if (!sinkSchema || !serviceKey) {
@@ -1038,51 +1043,53 @@ export const SinkNodePanel = ({
           </Text>
         </Box>
 
-        <Box display="flex" flexDirection="column" gap={3}>
-          <Text fontSize="sm" fontWeight="medium">
-            결과 스키마 미리보기
-          </Text>
-
-          {isSchemaPreviewPending ? (
-            <Box alignItems="center" display="flex" gap={2}>
-              <Spinner color="gray.500" size="sm" />
-              <Text color="text.secondary" fontSize="sm">
-                현재 결과 스키마를 계산하는 중입니다.
-              </Text>
-            </Box>
-          ) : schemaPreview ? (
-            <Box display="flex" flexDirection="column" gap={2}>
-              {schemaPreview.fields.map((field) => {
-                const valueTypeLabel = getSchemaValueTypeLabel(
-                  field.value_type,
-                );
-
-                return (
-                  <Box
-                    key={field.key}
-                    bg="gray.50"
-                    borderRadius="xl"
-                    px={4}
-                    py={3}
-                  >
-                    <Text fontSize="sm" fontWeight="semibold">
-                      {field.label || "항목"}
-                    </Text>
-                    {valueTypeLabel ? (
-                      <Text color="text.secondary" fontSize="xs">
-                        {valueTypeLabel}
-                      </Text>
-                    ) : null}
-                  </Box>
-                );
-              })}
-            </Box>
-          ) : (
-            <Text color="text.secondary" fontSize="sm">
-              표시할 스키마가 없습니다.
+        {shouldRenderSchemaPreview ? (
+          <Box display="flex" flexDirection="column" gap={3}>
+            <Text fontSize="sm" fontWeight="medium">
+              결과 스키마 미리보기
             </Text>
-          )}
-        </Box>
+
+            {isSchemaPreviewPending ? (
+              <Box alignItems="center" display="flex" gap={2}>
+                <Spinner color="gray.500" size="sm" />
+                <Text color="text.secondary" fontSize="sm">
+                  현재 결과 스키마를 계산하는 중입니다.
+                </Text>
+              </Box>
+            ) : schemaPreview ? (
+              <Box display="flex" flexDirection="column" gap={2}>
+                {schemaPreview.fields.map((field) => {
+                  const valueTypeLabel = getSchemaValueTypeLabel(
+                    field.value_type,
+                  );
+
+                  return (
+                    <Box
+                      key={field.key}
+                      bg="gray.50"
+                      borderRadius="xl"
+                      px={4}
+                      py={3}
+                    >
+                      <Text fontSize="sm" fontWeight="semibold">
+                        {field.label || "항목"}
+                      </Text>
+                      {valueTypeLabel ? (
+                        <Text color="text.secondary" fontSize="xs">
+                          {valueTypeLabel}
+                        </Text>
+                      ) : null}
+                    </Box>
+                  );
+                })}
+              </Box>
+            ) : (
+              <Text color="text.secondary" fontSize="sm">
+                표시할 스키마가 없습니다.
+              </Text>
+            )}
+          </Box>
+        ) : null}
 
         <Box display="flex" flexDirection="column" gap={3}>
           <Text fontSize="sm" fontWeight="medium">

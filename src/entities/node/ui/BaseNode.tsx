@@ -6,6 +6,7 @@ import { Box, Icon, IconButton, Text } from "@chakra-ui/react";
 import { Handle, Position } from "@xyflow/react";
 
 import { getNodeStatusSummaryLabel } from "@/entities/workflow";
+import { DiscordIcon } from "@/shared";
 
 import { getNodePresentation } from "../model";
 import { type FlowNodeData } from "../model/types";
@@ -46,6 +47,12 @@ const getSummaryContent = (
   return children ?? null;
 };
 
+const getNodeServiceKey = (data: FlowNodeData) => {
+  const config = data.config as unknown as Record<string, unknown>;
+
+  return typeof config.service === "string" ? config.service : null;
+};
+
 export const BaseNode = ({ id, data, children }: BaseNodeProps) => {
   const {
     canEditNodes,
@@ -72,6 +79,21 @@ export const BaseNode = ({ id, data, children }: BaseNodeProps) => {
     children,
   );
   const showNodeIcon = nodeStatus?.configured ?? data.config.isConfigured;
+  const serviceKey = getNodeServiceKey(data);
+
+  const renderNodeIcon = () => {
+    if (!showNodeIcon) {
+      return null;
+    }
+
+    if (serviceKey === "discord") {
+      return <DiscordIcon size={56} />;
+    }
+
+    return (
+      <Icon as={presentation.iconComponent} boxSize={14} color="text.primary" />
+    );
+  };
 
   const handleOpenPanel = () => {
     onOpenPanel(id);
@@ -108,13 +130,7 @@ export const BaseNode = ({ id, data, children }: BaseNodeProps) => {
       </Text>
 
       <Box h={14} display="flex" alignItems="center" justifyContent="center">
-        {showNodeIcon ? (
-          <Icon
-            as={presentation.iconComponent}
-            boxSize={14}
-            color="text.primary"
-          />
-        ) : null}
+        {renderNodeIcon()}
       </Box>
 
       <Text

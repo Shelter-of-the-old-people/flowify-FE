@@ -23,7 +23,7 @@ import {
   isMiddleWizardCompleted,
   useWorkflowStore,
 } from "@/features/workflow-editor";
-import { useDualPanelLayout } from "@/shared";
+import { DiscordIcon, useDualPanelLayout } from "@/shared";
 import {
   DataPreviewBlock,
   DataStateNotice,
@@ -227,6 +227,23 @@ export const OutputPanel = ({ wizardController }: Props) => {
     typeof activeNodeConfig?.service === "string"
       ? activeNodeConfig.service
       : null;
+  const renderActiveNodeIcon = () => {
+    if (!activeMeta) {
+      return null;
+    }
+
+    if (serviceKey === "discord") {
+      return <DiscordIcon size={24} />;
+    }
+
+    return (
+      <Icon
+        as={activeMeta.iconComponent}
+        boxSize={6}
+        color={activeMeta.color}
+      />
+    );
+  };
   const sinkInputType = activeNode?.data.inputTypes[0]
     ? toBackendDataType(activeNode.data.inputTypes[0])
     : null;
@@ -439,11 +456,7 @@ export const OutputPanel = ({ wizardController }: Props) => {
             px={3}
           >
             <Box display="flex" gap={2} alignItems="center">
-              <Icon
-                as={activeMeta.iconComponent}
-                boxSize={6}
-                color={activeMeta.color}
-              />
+              {renderActiveNodeIcon()}
               <Text fontSize="xl" fontWeight="medium" letterSpacing="-0.4px">
                 가져올 곳
               </Text>
@@ -521,11 +534,7 @@ export const OutputPanel = ({ wizardController }: Props) => {
             px={3}
           >
             <Box display="flex" gap={2} alignItems="center">
-              <Icon
-                as={activeMeta.iconComponent}
-                boxSize={6}
-                color={activeMeta.color}
-              />
+              {renderActiveNodeIcon()}
               <Text fontSize="xl" fontWeight="medium" letterSpacing="-0.4px">
                 보낼 곳
               </Text>
@@ -547,6 +556,7 @@ export const OutputPanel = ({ wizardController }: Props) => {
               hasConfigIssue={hasConfigIssue}
               inputLabel={sinkInputLabel}
               serviceLabel={selectedSinkService?.label ?? activeMeta.label}
+              serviceKey={selectedSinkService?.key ?? serviceKey}
               onEdit={() => setActivePanelMode("edit")}
             />
           </VStack>
@@ -560,11 +570,7 @@ export const OutputPanel = ({ wizardController }: Props) => {
             px={3}
           >
             <Box display="flex" gap={2} alignItems="center">
-              <Icon
-                as={activeMeta.iconComponent}
-                boxSize={6}
-                color={activeMeta.color}
-              />
+              {renderActiveNodeIcon()}
               <Text fontSize="xl" fontWeight="medium" letterSpacing="-0.4px">
                 처리 방식
               </Text>
@@ -590,11 +596,7 @@ export const OutputPanel = ({ wizardController }: Props) => {
             px={3}
           >
             <Box display="flex" gap={2} alignItems="center">
-              <Icon
-                as={activeMeta.iconComponent}
-                boxSize={6}
-                color={activeMeta.color}
-              />
+              {renderActiveNodeIcon()}
               <Text fontSize="xl" fontWeight="medium" letterSpacing="-0.4px">
                 遺꾧린
               </Text>
@@ -623,11 +625,7 @@ export const OutputPanel = ({ wizardController }: Props) => {
             px={3}
           >
             <Box display="flex" gap={2} alignItems="center">
-              <Icon
-                as={activeMeta.iconComponent}
-                boxSize={6}
-                color={activeMeta.color}
-              />
+              {renderActiveNodeIcon()}
               <Text fontSize="xl" fontWeight="medium" letterSpacing="-0.4px">
                 출력 데이터
               </Text>
@@ -739,11 +737,7 @@ export const OutputPanel = ({ wizardController }: Props) => {
             px={3}
           >
             <Box display="flex" gap={2} alignItems="center">
-              <Icon
-                as={activeMeta.iconComponent}
-                boxSize={6}
-                color={activeMeta.color}
-              />
+              {renderActiveNodeIcon()}
               <Text fontSize="xl" fontWeight="medium" letterSpacing="-0.4px">
                 설정
               </Text>

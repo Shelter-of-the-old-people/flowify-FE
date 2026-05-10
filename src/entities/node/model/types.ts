@@ -1,7 +1,7 @@
 // ─── 노드 타입 분류 ──────────────────────────────────────────
 /** 도메인 서비스 노드 */
 type DomainNodeType =
-  | "communication" // Gmail, Slack
+  | "communication" // Gmail, Slack, Discord
   | "storage" // Google Drive, Notion
   | "spreadsheet" // Google Sheets
   | "web-scraping" // 쿠팡, 원티드, 네이버 뉴스 등
@@ -64,7 +64,7 @@ interface BaseNodeConfig {
 
 // ─── 도메인 서비스 노드 Config ───────────────────────────────
 export interface CommunicationNodeConfig extends BaseNodeConfig {
-  service: "gmail" | "slack" | null;
+  service: "gmail" | "slack" | "discord" | null;
   account: string | null;
   channel: string | null;
   action: "send" | "receive" | null;

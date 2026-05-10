@@ -5,7 +5,11 @@ import { getTypedConfig } from "../../model";
 import { type FlowNodeData } from "../../model/types";
 import { BaseNode } from "../BaseNode";
 
-const COMMUNICATION_SERVICE_LABEL: Record<"gmail" | "slack", string> = {
+const COMMUNICATION_SERVICE_LABEL: Record<
+  "gmail" | "slack" | "discord",
+  string
+> = {
+  discord: "Discord",
   gmail: "Gmail",
   slack: "Slack",
 };

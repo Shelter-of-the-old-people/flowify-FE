@@ -11,6 +11,7 @@
 
 const TEMPLATE_SERVICE_LABELS: Record<string, string> = {
   canvas_lms: "Canvas LMS",
+  discord: "Discord",
   gmail: "Gmail",
   google_calendar: "Google Calendar",
   google_drive: "Google Drive",
