@@ -2,6 +2,7 @@ import {
   type NodeDefinitionResponse,
   type WorkflowListResponse,
   type WorkflowResponse,
+  normalizeWorkflowTrigger,
 } from "@/entities/workflow";
 import {
   getDateTimestamp,
@@ -35,6 +36,65 @@ export const filterWorkflowsByStatus = (
     default:
       return workflows;
   }
+};
+
+export type WorkflowAutoRunState =
+  | {
+      kind: "manual";
+      label: "수동 실행";
+      canToggle: false;
+      nextActive: null;
+    }
+  | {
+      kind: "enabled";
+      label: "자동 실행 켜짐";
+      canToggle: boolean;
+      nextActive: false;
+    }
+  | {
+      kind: "disabled";
+      label: "자동 실행 꺼짐";
+      canToggle: boolean;
+      nextActive: true;
+    };
+
+const isWorkflowOwner = (
+  workflow: WorkflowResponse,
+  viewerUserId: string | null,
+) => Boolean(viewerUserId && workflow.userId === viewerUserId);
+
+export const getWorkflowAutoRunState = (
+  workflow: WorkflowResponse,
+  viewerUserId: string | null,
+): WorkflowAutoRunState => {
+  const trigger = normalizeWorkflowTrigger(workflow.trigger);
+
+  if (trigger.type !== "schedule") {
+    return {
+      kind: "manual",
+      label: "수동 실행",
+      canToggle: false,
+      nextActive: null,
+    };
+  }
+
+  const canToggle = isWorkflowOwner(workflow, viewerUserId);
+
+  if (workflow.active) {
+    return {
+      kind: "enabled",
+      label: "자동 실행 켜짐",
+      canToggle,
+      nextActive: false,
+    };
+  }
+
+  return {
+    kind: "disabled",
+    label: "자동 실행 꺼짐",
+    canToggle,
+    nextActive: true,
+  };
 };
 
 export const getRelativeUpdateLabel = (updatedAt: string) =>

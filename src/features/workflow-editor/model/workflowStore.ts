@@ -11,6 +11,7 @@ import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
 
 import { type FlowNodeData } from "@/entities/node";
+import { type TriggerConfig, createManualTrigger } from "@/entities/workflow";
 
 import {
   type WorkflowHydratedState,
@@ -58,6 +59,8 @@ interface WorkflowEditorState {
   activePlaceholder: PlaceholderInfo | null;
   workflowId: string;
   workflowName: string;
+  workflowTrigger: TriggerConfig;
+  workflowActive: boolean;
   editorCapabilities: WorkflowEditorCapabilities;
   unsavedNodePositions: Record<string, NodePosition>;
   isDirty: boolean;
@@ -77,6 +80,7 @@ interface WorkflowEditorActions {
   setActivePanelMode: (mode: ActivePanelMode) => void;
   closePanel: () => void;
   setWorkflowMeta: (id: string, name: string) => void;
+  setWorkflowTriggerState: (trigger: TriggerConfig, active: boolean) => void;
   hydrateWorkflow: (payload: WorkflowHydratedState) => void;
   syncWorkflowGraph: (
     payload: WorkflowHydratedState,
@@ -112,6 +116,8 @@ const initialState: WorkflowEditorState = {
   activePlaceholder: null,
   workflowId: "",
   workflowName: "",
+  workflowTrigger: createManualTrigger(),
+  workflowActive: true,
   editorCapabilities: {
     canViewEditor: true,
     canEditNodes: true,
@@ -332,10 +338,19 @@ export const useWorkflowStore = create<
         state.workflowName = name;
       }),
 
+    setWorkflowTriggerState: (trigger, active) =>
+      set((state) => {
+        state.workflowTrigger = trigger;
+        state.workflowActive = active;
+        state.isDirty = true;
+      }),
+
     hydrateWorkflow: (payload) =>
       set((state) => {
         state.workflowId = payload.workflowId;
         state.workflowName = payload.workflowName;
+        state.workflowTrigger = payload.workflowTrigger;
+        state.workflowActive = payload.workflowActive;
         state.nodes = payload.nodes;
         state.edges = payload.edges;
         state.nodeStatuses = payload.nodeStatuses;
@@ -357,6 +372,7 @@ export const useWorkflowStore = create<
         const preserveActivePlaceholder =
           options?.preserveActivePlaceholder ?? true;
         const preserveDirty = options?.preserveDirty ?? true;
+        const shouldPreserveWorkflowMeta = preserveDirty && state.isDirty;
         const nextNodeIds = new Set(payload.nodes.map((node) => node.id));
         const preservedUnsavedNodePositions = Object.fromEntries(
           Object.entries(state.unsavedNodePositions).filter(([nodeId]) =>
@@ -365,7 +381,15 @@ export const useWorkflowStore = create<
         );
 
         state.workflowId = payload.workflowId;
-        state.workflowName = payload.workflowName;
+        state.workflowName = shouldPreserveWorkflowMeta
+          ? state.workflowName
+          : payload.workflowName;
+        state.workflowTrigger = shouldPreserveWorkflowMeta
+          ? state.workflowTrigger
+          : payload.workflowTrigger;
+        state.workflowActive = shouldPreserveWorkflowMeta
+          ? state.workflowActive
+          : payload.workflowActive;
         state.nodes = mergeNodesWithUnsavedPositions(
           payload.nodes,
           preservedUnsavedNodePositions,
