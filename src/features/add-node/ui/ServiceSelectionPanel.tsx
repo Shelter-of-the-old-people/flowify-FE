@@ -469,7 +469,10 @@ const SourceTargetForm = ({
       ) : null}
 
       <Box display="flex" justifyContent="flex-end" mt={6}>
-        <Button disabled={!value.value.trim()} onClick={onSubmit}>
+        <Button
+          disabled={!value.value.trim() || Boolean(validationMessage)}
+          onClick={onSubmit}
+        >
           다음
         </Button>
       </Box>
