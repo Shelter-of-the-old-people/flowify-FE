@@ -16,7 +16,7 @@ import { Box, Flex, Icon, Text } from "@chakra-ui/react";
 
 import { type ServiceBadgeKey } from "../utils";
 
-import { DiscordIcon } from "./icons";
+import { DiscordIcon, NaverIcon, SeBoardIcon } from "./icons";
 
 type Props = {
   type: ServiceBadgeKey;
@@ -29,7 +29,9 @@ const FALLBACK_NODE_ICONS: Record<ServiceBadgeKey, IconType> = {
   gmail: MdEmail,
   "google-drive": MdFolder,
   "google-sheets": MdTableChart,
+  "naver-news": MdLanguage,
   notion: MdFolder,
+  seboard: MdLanguage,
   slack: MdNotifications,
   communication: MdEmail,
   storage: MdFolder,
@@ -94,6 +96,38 @@ export const ServiceBadge = ({ type }: Props) => {
             boxShadow="0 6px 12px rgba(88, 101, 242, 0.18)"
           >
             <DiscordIcon size={22} />
+          </Flex>
+        );
+      case "naver-news":
+        return (
+          <Flex
+            boxSize="30px"
+            align="center"
+            justify="center"
+            bg="bg.surface"
+            borderRadius="lg"
+            border="1px solid"
+            borderColor="#03CF5D"
+            boxShadow="0 6px 12px rgba(3, 207, 93, 0.18)"
+            overflow="hidden"
+          >
+            <NaverIcon size={22} />
+          </Flex>
+        );
+      case "seboard":
+        return (
+          <Flex
+            boxSize="30px"
+            align="center"
+            justify="center"
+            bg="bg.surface"
+            borderRadius="lg"
+            border="1px solid"
+            borderColor="#38BDF8"
+            boxShadow="0 6px 12px rgba(56, 189, 248, 0.18)"
+            overflow="hidden"
+          >
+            <SeBoardIcon size={22} />
           </Flex>
         );
       case "notion":
