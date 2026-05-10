@@ -1,5 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { MdClose, MdDescription, MdFolder, MdForum } from "react-icons/md";
+import {
+  MdClose,
+  MdDescription,
+  MdFolder,
+  MdForum,
+  MdTableChart,
+} from "react-icons/md";
 
 import {
   Box,
@@ -53,10 +59,12 @@ const REMOTE_PICKER_FIELD_TYPES = new Set([
   "folder_picker",
   "channel_picker",
   "page_picker",
+  "sheet_picker",
 ]);
 const SINK_TARGET_OPTION_TYPES: Partial<Record<string, string>> = {
   channel_picker: "channel",
   page_picker: "page",
+  sheet_picker: "sheet",
 };
 
 type DraftValues = Record<string, string>;
@@ -207,11 +215,36 @@ const buildCommittedConfigFromDraft = ({
     );
   });
 
-  const isConfigured = fields
+  let isConfigured = fields
     .filter((field) => field.required)
     .every((field) =>
       Object.prototype.hasOwnProperty.call(nextConfig, field.key),
     );
+
+  if (nextConfig.service === "google_sheets") {
+    const sheetName =
+      typeof nextConfig.sheet_name === "string"
+        ? nextConfig.sheet_name.trim()
+        : "";
+    const writeMode =
+      typeof nextConfig.write_mode === "string" ? nextConfig.write_mode : "";
+    const keyColumn =
+      typeof nextConfig.key_column === "string"
+        ? nextConfig.key_column.trim()
+        : "";
+
+    if (!sheetName) {
+      isConfigured = false;
+    }
+
+    if (
+      (writeMode === "update_row_by_key" ||
+        writeMode === "upsert_row_by_key") &&
+      !keyColumn
+    ) {
+      isConfigured = false;
+    }
+  }
 
   return {
     ...nextConfig,
@@ -226,6 +259,7 @@ const createFolderPickerState = (scope: string): FolderPickerState => ({
 });
 
 const createSearchPickerState = (scope: string) => ({
+  path: [] as SinkTargetOptionItemResponse[],
   scope,
   searchQuery: "",
 });
@@ -247,6 +281,10 @@ const getSinkTargetOptionIcon = (option: RemoteOptionPickerItem) => {
 
   if (option.type === "page") {
     return MdDescription;
+  }
+
+  if (option.type === "sheet" || option.type === "spreadsheet") {
+    return MdTableChart;
   }
 
   return MdFolder;
@@ -528,7 +566,14 @@ const SinkRemotePickerField = ({
     pickerState.scope === pickerScope
       ? pickerState
       : createSearchPickerState(pickerScope);
-  const { searchQuery } = activePickerState;
+  const { path, searchQuery } = activePickerState;
+  const isGoogleSheetsPicker =
+    serviceKey === "google_sheets" && optionType === "sheet";
+  const parentId =
+    isGoogleSheetsPicker && path.length > 0
+      ? path[path.length - 1]?.id
+      : undefined;
+  const pickerPath = path.map(({ id, label }) => ({ id, label }));
   const {
     data: targetOptions,
     error,
@@ -541,6 +586,7 @@ const SinkRemotePickerField = ({
   } = useInfiniteSinkTargetOptionsQuery(
     serviceKey,
     {
+      parentId,
       type: optionType,
       query: searchQuery,
     },
@@ -568,13 +614,57 @@ const SinkRemotePickerField = ({
     });
   };
 
+  const handleBrowseOption = (option: RemoteOptionPickerItem) => {
+    const sinkOption = items.find((item) => item.id === option.id);
+    if (!sinkOption || sinkOption.type !== "spreadsheet") {
+      return;
+    }
+
+    setPickerState((current) => {
+      const base =
+        current.scope === pickerScope
+          ? current
+          : createSearchPickerState(pickerScope);
+
+      return {
+        ...base,
+        path: [...base.path, sinkOption],
+        searchQuery: "",
+      };
+    });
+  };
+
   const handleSelectOption = (option: RemoteOptionPickerItem) => {
     const sinkOption = items.find((item) => item.id === option.id);
     if (!sinkOption) {
       return;
     }
 
+    if (isGoogleSheetsPicker && sinkOption.type === "spreadsheet") {
+      handleBrowseOption(option);
+      return;
+    }
+
     onSelectOption(sinkOption);
+  };
+
+  const handleResetPath = () => {
+    setPickerState(createSearchPickerState(pickerScope));
+  };
+
+  const handlePathSelect = (index: number) => {
+    setPickerState((current) => {
+      const base =
+        current.scope === pickerScope
+          ? current
+          : createSearchPickerState(pickerScope);
+
+      return {
+        ...base,
+        path: base.path.slice(0, index + 1),
+        searchQuery: "",
+      };
+    });
   };
 
   return (
@@ -612,19 +702,28 @@ const SinkRemotePickerField = ({
       ) : null}
 
       <RemoteOptionPicker
+        canBrowseItem={(option) =>
+          isGoogleSheetsPicker && option.type === "spreadsheet"
+        }
         disabled={readOnly}
         emptyMessage="선택할 수 있는 항목이 없습니다."
         errorMessage={isError ? getApiErrorMessage(error) : null}
+        getBrowseLabel={(option) => `${option.label} 하위 시트 보기`}
         getItemIcon={getSinkTargetOptionIcon}
         hasMore={Boolean(hasNextPage)}
         isLoading={isLoading}
         isLoadingMore={isFetchingNextPage}
         items={items}
+        path={isGoogleSheetsPicker ? pickerPath : undefined}
         renderItemMetadata={renderRemotePickerMetadata}
+        rootLabel={isGoogleSheetsPicker ? "Google Sheets" : undefined}
         searchPlaceholder="이름으로 검색"
         searchValue={searchQuery}
         selectedId={selectedId}
+        onBrowse={isGoogleSheetsPicker ? handleBrowseOption : undefined}
         onLoadMore={() => void fetchNextPage()}
+        onPathSelect={isGoogleSheetsPicker ? handlePathSelect : undefined}
+        onResetPath={isGoogleSheetsPicker ? handleResetPath : undefined}
         onRetry={() => void refetch()}
         onSearchChange={setScopedSearchQuery}
         onSelect={handleSelectOption}
@@ -720,6 +819,15 @@ const SinkSchemaEditor = ({
     option: PickerOptionLike,
   ) => {
     handleFieldChange(field.key, option.id);
+    if (field.type === "sheet_picker") {
+      const sheetName =
+        typeof option.metadata.sheetName === "string"
+          ? option.metadata.sheetName
+          : null;
+      if (sheetName) {
+        handleFieldChange("sheet_name", sheetName);
+      }
+    }
     setAuxiliaryDraftValues((current) => ({
       ...current,
       [getAuxiliaryLabelKey(field.key)]: option.label,
@@ -729,6 +837,9 @@ const SinkSchemaEditor = ({
 
   const handleRemotePickerFieldClear = (field: SinkSchemaFieldResponse) => {
     handleFieldChange(field.key, "");
+    if (field.type === "sheet_picker") {
+      handleFieldChange("sheet_name", "");
+    }
     setAuxiliaryDraftValues((current) => {
       const nextAuxiliaryDraftValues = { ...current };
       delete nextAuxiliaryDraftValues[getAuxiliaryLabelKey(field.key)];

@@ -6,6 +6,7 @@ import {
   MdInsertDriveFile,
   MdLabel,
   MdSchool,
+  MdTableChart,
 } from "react-icons/md";
 
 import { Box, Button, Input, Text } from "@chakra-ui/react";
@@ -16,6 +17,7 @@ import {
   type SourceTargetOptionItemResponse,
   getWorkflowMetadataSummary,
   isGroupedSourceTargetOptionPicker,
+  isSeBoardNewPostsSourceMode,
   useInfiniteSourceTargetOptionsQuery,
 } from "@/entities/workflow";
 import {
@@ -41,7 +43,7 @@ type Props = {
 };
 
 type PickerState = {
-  folderPath: SourceTargetOptionItemResponse[];
+  path: SourceTargetOptionItemResponse[];
   scope: string;
   searchQuery: string;
 };
@@ -52,6 +54,8 @@ const TARGET_OPTION_ICON_MAP = {
   file: MdInsertDriveFile,
   folder: MdFolder,
   label: MdLabel,
+  sheet: MdTableChart,
+  spreadsheet: MdTableChart,
   term: MdCalendarMonth,
 };
 
@@ -70,7 +74,7 @@ const renderOptionMetadata = (option: RemoteOptionPickerItem) => {
 };
 
 const createPickerState = (scope: string): PickerState => ({
-  folderPath: [],
+  path: [],
   scope,
   searchQuery: "",
 });
@@ -84,7 +88,15 @@ const getPickerRootLabel = (serviceKey: string, schemaType: string) => {
     return "SE Board 게시판";
   }
 
-  return "내 드라이브";
+  if (serviceKey === "google_sheets" && schemaType === "sheet_picker") {
+    return "Google Sheets";
+  }
+
+  if (schemaType === "folder_picker") {
+    return "내 드라이브";
+  }
+
+  return "루트";
 };
 
 export const SourceTargetPicker = ({
@@ -96,9 +108,15 @@ export const SourceTargetPicker = ({
   const schemaType = getTargetSchemaType(mode.target_schema);
   const isRemotePicker = isRemoteTargetPicker(mode.target_schema);
   const isFolderPicker = schemaType === "folder_picker";
+  const isSheetPicker = schemaType === "sheet_picker";
   const isGroupedPicker = isGroupedSourceTargetOptionPicker(
     serviceKey,
     schemaType,
+  );
+  const supportsPathBrowsing = isFolderPicker || isSheetPicker;
+  const shouldShowKeywordInput = isSeBoardNewPostsSourceMode(
+    serviceKey,
+    mode.key,
   );
   const pickerScope = `${serviceKey}:${mode.key}:${schemaType}`;
   const [pickerState, setPickerState] = useState<PickerState>(() =>
@@ -108,12 +126,12 @@ export const SourceTargetPicker = ({
     pickerState.scope === pickerScope
       ? pickerState
       : createPickerState(pickerScope);
-  const { folderPath, searchQuery } = activePickerState;
+  const { path, searchQuery } = activePickerState;
   const parentId =
-    isFolderPicker && folderPath.length > 0
-      ? folderPath[folderPath.length - 1]?.id
+    supportsPathBrowsing && path.length > 0
+      ? path[path.length - 1]?.id
       : undefined;
-  const pickerPath = folderPath.map(({ id, label }) => ({ id, label }));
+  const pickerPath = path.map(({ id, label }) => ({ id, label }));
   const targetOptionsParams = useMemo(
     () =>
       isRemotePicker
@@ -158,7 +176,11 @@ export const SourceTargetPicker = ({
 
   const handleBrowseOption = (option: RemoteOptionPickerItem) => {
     const sourceOption = items.find((item) => item.id === option.id);
-    if (!sourceOption || sourceOption.type !== "folder") {
+    const canBrowseFolder = sourceOption?.type === "folder";
+    const canBrowseSpreadsheet =
+      isSheetPicker && sourceOption?.type === "spreadsheet";
+
+    if (!sourceOption || (!canBrowseFolder && !canBrowseSpreadsheet)) {
       return;
     }
 
@@ -170,7 +192,7 @@ export const SourceTargetPicker = ({
 
       return {
         ...base,
-        folderPath: [...base.folderPath, sourceOption],
+        path: [...base.path, sourceOption],
         searchQuery: "",
       };
     });
@@ -180,6 +202,11 @@ export const SourceTargetPicker = ({
   const handleSelectOption = (option: RemoteOptionPickerItem) => {
     const sourceOption = items.find((item) => item.id === option.id);
     if (!sourceOption) {
+      return;
+    }
+
+    if (isSheetPicker && sourceOption.type === "spreadsheet") {
+      handleBrowseOption(option);
       return;
     }
 
@@ -200,12 +227,32 @@ export const SourceTargetPicker = ({
 
       return {
         ...base,
-        folderPath: base.folderPath.slice(0, index + 1),
+        path: base.path.slice(0, index + 1),
         searchQuery: "",
       };
     });
     onChange({ ...value, option: null, value: "" });
   };
+
+  const handleKeywordChange = (keyword: string) => {
+    onChange({ ...value, keyword });
+  };
+
+  const keywordInput = shouldShowKeywordInput ? (
+    <Box mt={4}>
+      <Text fontSize="sm" fontWeight="semibold" mb={2}>
+        포함할 단어
+      </Text>
+      <Input
+        placeholder="예: 장학, 수강신청"
+        value={value.keyword}
+        onChange={(event) => handleKeywordChange(event.target.value)}
+      />
+      <Text color="text.secondary" fontSize="xs" mt={2}>
+        비워두면 선택한 게시판의 새 글을 모두 가져옵니다.
+      </Text>
+    </Box>
+  ) : null;
 
   if (schemaType === "day_picker") {
     return (
@@ -241,49 +288,60 @@ export const SourceTargetPicker = ({
 
   if (isGroupedPicker) {
     return (
-      <GroupedSourceTargetOptionPicker
-        emptyMessage="선택할 수 있는 게시판이 없습니다."
+      <Box>
+        <GroupedSourceTargetOptionPicker
+          emptyMessage="선택할 수 있는 게시판이 없습니다."
+          errorMessage={isError ? getApiErrorMessage(error) : null}
+          getItemIcon={getOptionIcon}
+          hasMore={Boolean(hasNextPage)}
+          isLoading={isLoading}
+          isLoadingMore={isFetchingNextPage}
+          items={items}
+          searchPlaceholder={`${getTargetSchemaLabel(mode.target_schema)} 검색`}
+          searchValue={searchQuery}
+          selectedId={value.value}
+          onLoadMore={() => void fetchNextPage()}
+          onRetry={() => void refetch()}
+          onSearchChange={setScopedSearchQuery}
+          onSelect={handleSelectOption}
+        />
+        {keywordInput}
+      </Box>
+    );
+  }
+
+  return (
+    <Box>
+      <RemoteOptionPicker
+        canBrowseItem={(option) =>
+          (isFolderPicker && option.type === "folder") ||
+          (isSheetPicker && option.type === "spreadsheet")
+        }
+        emptyMessage={`선택할 ${getTargetSchemaLabel(mode.target_schema)}가 없습니다.`}
         errorMessage={isError ? getApiErrorMessage(error) : null}
+        getBrowseLabel={(option) =>
+          isSheetPicker ? `${option.label} 시트 보기` : `${option.label} 내부 폴더 보기`
+        }
         getItemIcon={getOptionIcon}
         hasMore={Boolean(hasNextPage)}
         isLoading={isLoading}
         isLoadingMore={isFetchingNextPage}
         items={items}
+        path={supportsPathBrowsing ? pickerPath : undefined}
+        renderItemMetadata={renderOptionMetadata}
+        rootLabel={getPickerRootLabel(serviceKey, schemaType)}
         searchPlaceholder={`${getTargetSchemaLabel(mode.target_schema)} 검색`}
         searchValue={searchQuery}
         selectedId={value.value}
+        onBrowse={supportsPathBrowsing ? handleBrowseOption : undefined}
         onLoadMore={() => void fetchNextPage()}
+        onPathSelect={supportsPathBrowsing ? handlePathSelect : undefined}
+        onResetPath={supportsPathBrowsing ? handleResetPath : undefined}
         onRetry={() => void refetch()}
         onSearchChange={setScopedSearchQuery}
         onSelect={handleSelectOption}
       />
-    );
-  }
-
-  return (
-    <RemoteOptionPicker
-      canBrowseItem={(option) => isFolderPicker && option.type === "folder"}
-      emptyMessage={`선택할 수 있는 ${getTargetSchemaLabel(mode.target_schema)}이 없습니다.`}
-      errorMessage={isError ? getApiErrorMessage(error) : null}
-      getBrowseLabel={(option) => `${option.label} 내부 폴더 보기`}
-      getItemIcon={getOptionIcon}
-      hasMore={Boolean(hasNextPage)}
-      isLoading={isLoading}
-      isLoadingMore={isFetchingNextPage}
-      items={items}
-      path={isFolderPicker ? pickerPath : undefined}
-      renderItemMetadata={renderOptionMetadata}
-      rootLabel={getPickerRootLabel(serviceKey, schemaType)}
-      searchPlaceholder={`${getTargetSchemaLabel(mode.target_schema)} 검색`}
-      searchValue={searchQuery}
-      selectedId={value.value}
-      onBrowse={isFolderPicker ? handleBrowseOption : undefined}
-      onLoadMore={() => void fetchNextPage()}
-      onPathSelect={isFolderPicker ? handlePathSelect : undefined}
-      onResetPath={isFolderPicker ? handleResetPath : undefined}
-      onRetry={() => void refetch()}
-      onSearchChange={setScopedSearchQuery}
-      onSelect={handleSelectOption}
-    />
+      {keywordInput}
+    </Box>
   );
 };

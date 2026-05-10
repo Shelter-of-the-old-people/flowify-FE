@@ -42,7 +42,6 @@ import {
   getCanonicalInputTypeLabel,
   getDataTypeDisplayLabel,
   getPrimarySourceModeLabel,
-  getSourceTargetOptionDisplayLabel,
   getTriggerKindLabel,
   getVisualNodeTypeFromServiceKey,
   isSeBoardNewPostsSourceMode,
@@ -54,6 +53,7 @@ import {
   useSinkCatalogQuery,
   useSourceCatalogQuery,
 } from "@/entities/workflow";
+import { buildSourceNodeConfigDraft } from "@/features/configure-node/model";
 import { hydrateStore, useWorkflowStore } from "@/features/workflow-editor";
 import {
   ServiceIcon,
@@ -140,32 +140,6 @@ const renderCatalogServiceIcon = (serviceKey: string) => {
 
 const hasTargetSchema = (targetSchema: Record<string, unknown>) =>
   Object.keys(targetSchema).length > 0;
-
-const buildSourceTargetConfig = ({
-  hasTarget,
-  targetValue,
-}: {
-  hasTarget: boolean;
-  targetValue: SourceTargetPickerValue;
-}) => {
-  const keyword = targetValue.keyword.trim();
-  const keywordConfig = keyword ? { keyword } : {};
-
-  if (!hasTarget) {
-    return { target: EMPTY_TARGET_SENTINEL, ...keywordConfig };
-  }
-
-  if (targetValue.option) {
-    return {
-      target: targetValue.option.id,
-      target_label: getSourceTargetOptionDisplayLabel(targetValue.option),
-      target_meta: targetValue.option.metadata,
-      ...keywordConfig,
-    };
-  }
-
-  return { target: targetValue.value.trim(), ...keywordConfig };
-};
 
 const toCanonicalInputType = (canonicalInputType: string): DataType =>
   toFrontendDataType(canonicalInputType);
@@ -959,6 +933,20 @@ export const ServiceSelectionPanel = () => {
     const outputType = toCanonicalInputType(
       selectedSourceMode.canonical_input_type,
     );
+    const nextSourceConfig = buildSourceNodeConfigDraft({
+      currentConfig: {
+        isConfigured: false,
+        canonical_input_type: selectedSourceMode.canonical_input_type,
+        service: selectedSourceService.key,
+        source_mode: selectedSourceMode.key,
+        target: hasTargetSchema(selectedSourceMode.target_schema)
+          ? EMPTY_TARGET_SENTINEL
+          : null,
+        trigger_kind: selectedSourceMode.trigger_kind,
+      } as FlowNodeData["config"],
+      targetSchema: selectedSourceMode.target_schema,
+      targetValue: selectedTargetValue,
+    });
 
     void (async () => {
       const nextWorkflow = await addWorkflowNode({
@@ -967,17 +955,7 @@ export const ServiceSelectionPanel = () => {
           type: nodeType,
           position: activePlaceholder.position,
           role: "start",
-          config: {
-            isConfigured: true,
-            canonical_input_type: selectedSourceMode.canonical_input_type,
-            service: selectedSourceService.key,
-            source_mode: selectedSourceMode.key,
-            trigger_kind: selectedSourceMode.trigger_kind,
-            ...buildSourceTargetConfig({
-              hasTarget: hasTargetSchema(selectedSourceMode.target_schema),
-              targetValue: selectedTargetValue,
-            }),
-          } as Partial<FlowNodeData["config"]>,
+          config: nextSourceConfig as Partial<FlowNodeData["config"]>,
           outputTypes: [outputType],
         }),
       });

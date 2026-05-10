@@ -1,7 +1,15 @@
 import { type FlowNodeData } from "@/entities/node";
-import { getSourceTargetOptionDisplayLabel } from "@/entities/workflow";
+import {
+  getSourceTargetOptionDisplayLabel,
+  type SourceTargetOptionItemResponse,
+} from "@/entities/workflow";
 
 import { type SourceNodeConfigDraftParameters } from "./setup-types";
+
+const GOOGLE_SHEETS_SERVICE_KEY = "google_sheets";
+const DEFAULT_HEADER_ROW = 1;
+const DEFAULT_DATA_START_ROW = 2;
+const DEFAULT_INITIAL_SYNC_MODE = "skip_existing";
 
 export const createEmptySourceTargetSetupValue = () => ({
   keyword: "",
@@ -27,17 +35,105 @@ export const isSourceTargetRequired = (
     : true;
 };
 
-const hasStringConfigValue = (config: FlowNodeData["config"], key: string) => {
-  const value = (config as unknown as Record<string, unknown>)[key];
-  return typeof value === "string" && value.trim().length > 0;
-};
+const toConfigRecord = (config: FlowNodeData["config"]) =>
+  config as unknown as Record<string, unknown>;
 
 const getConfigValue = (config: FlowNodeData["config"], key: string) =>
-  (config as unknown as Record<string, unknown>)[key];
+  toConfigRecord(config)[key];
 
 const getStringConfigValue = (config: FlowNodeData["config"], key: string) => {
   const value = getConfigValue(config, key);
-  return typeof value === "string" ? value : null;
+  return typeof value === "string" && value.trim().length > 0
+    ? value.trim()
+    : null;
+};
+
+const hasStringConfigValue = (config: FlowNodeData["config"], key: string) =>
+  getStringConfigValue(config, key) !== null;
+
+const getMetadataString = (
+  option: SourceTargetOptionItemResponse | null,
+  key: string,
+) => {
+  const value = option?.metadata?.[key];
+  return typeof value === "string" && value.trim().length > 0
+    ? value.trim()
+    : null;
+};
+
+const isGoogleSheetsService = (config: FlowNodeData["config"]) =>
+  getStringConfigValue(config, "service") === GOOGLE_SHEETS_SERVICE_KEY;
+
+const buildGoogleSheetsTargetConfig = ({
+  currentConfig,
+  option,
+  target,
+}: {
+  currentConfig: FlowNodeData["config"];
+  option: SourceTargetOptionItemResponse | null;
+  target: string;
+}) => {
+  const spreadsheetId = getMetadataString(option, "spreadsheetId") ?? target;
+  const sheetName =
+    getMetadataString(option, "sheetName") ??
+    getStringConfigValue(currentConfig, "sheet_name");
+  const sheetId = option?.metadata?.sheetId;
+  const nextConfig: Record<string, unknown> = {
+    spreadsheet_id: spreadsheetId,
+    sheet_name: sheetName,
+    header_row: toConfigRecord(currentConfig).header_row ?? DEFAULT_HEADER_ROW,
+    data_start_row:
+      toConfigRecord(currentConfig).data_start_row ?? DEFAULT_DATA_START_ROW,
+    initial_sync_mode:
+      toConfigRecord(currentConfig).initial_sync_mode ??
+      DEFAULT_INITIAL_SYNC_MODE,
+  };
+
+  if (sheetId !== undefined && sheetId !== null) {
+    nextConfig.sheet_id = sheetId;
+  }
+
+  return nextConfig;
+};
+
+export const buildSourceTargetConfigDraft = ({
+  currentConfig,
+  targetValue,
+}: Pick<SourceNodeConfigDraftParameters, "currentConfig" | "targetValue">) => {
+  const target = targetValue.value.trim();
+  const currentTarget = getStringConfigValue(currentConfig, "target") ?? "";
+  const shouldPreserveTargetSummary =
+    !targetValue.option && target.length > 0 && target === currentTarget;
+  const preservedTargetLabel = shouldPreserveTargetSummary
+    ? getConfigValue(currentConfig, "target_label")
+    : null;
+  const preservedTargetMeta = shouldPreserveTargetSummary
+    ? getConfigValue(currentConfig, "target_meta")
+    : null;
+  const selectedTargetLabel = targetValue.option
+    ? getSourceTargetOptionDisplayLabel(targetValue.option)
+    : null;
+
+  const nextConfig: Record<string, unknown> = {
+    ...toConfigRecord(currentConfig),
+    target,
+    target_label:
+      selectedTargetLabel ?? preservedTargetLabel ?? (target || null),
+    target_meta: targetValue.option?.metadata ?? preservedTargetMeta ?? null,
+  };
+
+  if (isGoogleSheetsService(currentConfig)) {
+    Object.assign(
+      nextConfig,
+      buildGoogleSheetsTargetConfig({
+        currentConfig,
+        option: targetValue.option,
+        target,
+      }),
+    );
+  }
+
+  return nextConfig as unknown as FlowNodeData["config"];
 };
 
 export const isSourceNodeSetupComplete = (
@@ -52,11 +148,33 @@ export const isSourceNodeSetupComplete = (
     return false;
   }
 
-  if (!isSourceTargetRequired(targetSchema)) {
-    return true;
+  const isGoogleSheets = isGoogleSheetsService(config);
+
+  if (isSourceTargetRequired(targetSchema)) {
+    const hasTarget = isGoogleSheets
+      ? hasStringConfigValue(config, "spreadsheet_id") ||
+        hasStringConfigValue(config, "target")
+      : hasStringConfigValue(config, "target");
+
+    if (!hasTarget) {
+      return false;
+    }
   }
 
-  return hasStringConfigValue(config, "target");
+  if (isGoogleSheets) {
+    if (!hasStringConfigValue(config, "sheet_name")) {
+      return false;
+    }
+
+    if (
+      getStringConfigValue(config, "source_mode") === "row_updated" &&
+      !hasStringConfigValue(config, "key_column")
+    ) {
+      return false;
+    }
+  }
+
+  return true;
 };
 
 export const buildSourceNodeConfigDraft = ({
@@ -64,26 +182,10 @@ export const buildSourceNodeConfigDraft = ({
   targetSchema,
   targetValue,
 }: SourceNodeConfigDraftParameters): FlowNodeData["config"] => {
-  const target = targetValue.value.trim();
-  const currentTarget = getStringConfigValue(currentConfig, "target") ?? "";
-  const shouldPreserveTargetSummary =
-    !targetValue.option && target.length > 0 && target === currentTarget;
-  const preservedTargetLabel = shouldPreserveTargetSummary
-    ? getConfigValue(currentConfig, "target_label")
-    : null;
-  const preservedTargetMeta = shouldPreserveTargetSummary
-    ? getConfigValue(currentConfig, "target_meta")
-    : null;
-  const selectedTargetLabel = targetValue.option
-    ? getSourceTargetOptionDisplayLabel(targetValue.option)
-    : null;
-  const nextConfig = {
-    ...currentConfig,
-    target,
-    target_label:
-      selectedTargetLabel ?? preservedTargetLabel ?? (target || null),
-    target_meta: targetValue.option?.metadata ?? preservedTargetMeta ?? null,
-  } as FlowNodeData["config"] & Record<string, unknown>;
+  const nextConfig = buildSourceTargetConfigDraft({
+    currentConfig,
+    targetValue,
+  }) as FlowNodeData["config"] & Record<string, unknown>;
   const keyword = targetValue.keyword.trim();
 
   if (keyword) {

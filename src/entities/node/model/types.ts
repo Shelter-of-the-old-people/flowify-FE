@@ -83,10 +83,33 @@ export interface StorageNodeConfig extends BaseNodeConfig {
 
 export interface SpreadsheetNodeConfig extends BaseNodeConfig {
   service: "google_sheets" | null;
-  spreadsheetId: string | null;
-  sheetName: string | null;
-  action: "read" | "write" | "append" | "update" | null;
-  range: string | null;
+  action?: "read_range" | "search_text" | "lookup_row_by_key" | null;
+  write_mode?:
+    | "append_rows"
+    | "overwrite_range"
+    | "update_row_by_key"
+    | "upsert_row_by_key"
+    | null;
+  spreadsheet_id?: string | null;
+  sheet_name?: string | null;
+  range_a1?: string | null;
+  key_column?: string | null;
+  header_row?: number | string | null;
+  data_start_row?: number | string | null;
+  initial_sync_mode?: "skip_existing" | "emit_existing" | null;
+  search_source?: "value" | "input_field" | null;
+  search_field?: string | null;
+  search_value?: string | null;
+  search_columns?: string | null;
+  match_mode?: "contains" | "exact" | "starts_with" | null;
+  case_sensitive?: boolean | null;
+  result_limit?: number | string | null;
+  lookup_source?: "value" | "input_field" | null;
+  lookup_field?: string | null;
+  lookup_value?: string | null;
+  spreadsheetId?: string | null;
+  sheetName?: string | null;
+  range?: string | null;
 }
 
 export interface WebScrapingNodeConfig extends BaseNodeConfig {

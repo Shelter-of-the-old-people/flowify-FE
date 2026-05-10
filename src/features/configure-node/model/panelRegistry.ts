@@ -1,4 +1,4 @@
-import { CommunicationPanel } from "../ui/panels";
+import { CommunicationPanel, SpreadsheetPanel } from "../ui/panels";
 
 import { type NodePanelRegistry } from "./types";
 
@@ -8,4 +8,5 @@ import { type NodePanelRegistry } from "./types";
  */
 export const NODE_PANEL_REGISTRY: NodePanelRegistry = {
   communication: CommunicationPanel,
+  spreadsheet: SpreadsheetPanel,
 };

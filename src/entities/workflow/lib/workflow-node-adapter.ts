@@ -155,16 +155,14 @@ const toDisplayEdgeLabel = (routingKey: RoutingEdgeKey | null) =>
 
 const getPersistedBackendType = ({
   config,
-  role,
   type,
 }: {
   config: Partial<NodeConfig> | Record<string, unknown> | undefined;
-  role: NodeDefinitionResponse["role"] | undefined;
   type: NodeType;
 }) => {
   const backendType = toBackendNodeType(type);
 
-  if (role === "start" || role === "end") {
+  if (NODE_TYPES_WITH_SERVICE_CONFIG.has(type)) {
     const serviceKey = getServiceKeyFromConfig(config);
     if (serviceKey) {
       return {
@@ -225,7 +223,7 @@ export const toNodeAddRequest = ({
   authWarning = false,
 }: NodeDraftOptions): NodeAddRequest => {
   const meta = NODE_REGISTRY[type];
-  const backendType = getPersistedBackendType({ config, role, type });
+  const backendType = getPersistedBackendType({ config, type });
   const mergedInputTypes = inputTypes ?? [...meta.defaultInputTypes];
   const mergedOutputTypes = outputTypes ?? [...meta.defaultOutputTypes];
 
@@ -303,7 +301,6 @@ export const toNodeDefinition = (
           : "middle";
   const backendType = getPersistedBackendType({
     config: node.data.config as Partial<NodeConfig>,
-    role,
     type: node.data.type,
   });
 
@@ -338,7 +335,6 @@ export const toFlowNode = (
   } as NodeConfig;
 
   if (
-    (node.role === "start" || node.role === "end") &&
     NODE_TYPES_WITH_SERVICE_CONFIG.has(nodeType) &&
     getServiceKeyFromConfig(config as unknown as Record<string, unknown>) ===
       null
