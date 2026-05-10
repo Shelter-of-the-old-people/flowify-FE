@@ -1980,3 +1980,135 @@ export const SOURCE_SERVICE_ROLLOUT_ALLOWLIST = {
 | 기사 본문까지 기대하는 오해 | 1차 범위는 기사 목록/요약 metadata만 명시 |
 | 검색 결과가 너무 많아 LLM 길이 초과 | 기본 10개, 최대 20개 제한 |
 | SSRF 위험 | 사용자 입력을 URL fetch가 아니라 고정 API의 query로만 사용 |
+
+## 21. 인터넷 계열 표시명과 서비스 아이콘 보완 설계
+
+### 21.1 보완 배경
+
+`naver_news`와 `web_news`는 백엔드 계약상 서로 다른 source service다. 하지만 사용자의 mental model에서는 둘 다 "인터넷에서 글을 가져오는 기능"에 속한다. 따라서 내부 계약을 합치기보다는, 프론트 표시 계층에서 인터넷 계열로 자연스럽게 보이도록 보정한다.
+
+이번 보완의 핵심은 다음과 같다.
+
+- 백엔드 service key는 유지한다.
+- `naver_news`를 `web_news` 안으로 합치지 않는다.
+- 사용자에게 보이는 `web_news` 이름은 `인터넷 글/공지`가 아니라 `인터넷`으로 줄인다.
+- 노드와 설정 패널의 아이콘은 범용 노드 타입 아이콘보다 실제 선택된 서비스 아이콘을 우선한다.
+- `web_news`는 mode에 따라 아이콘을 다르게 보여준다.
+
+### 21.2 표시명 정책
+
+| 내부 key | 현재 문구 | 보정 문구 | 비고 |
+| --- | --- | --- | --- |
+| `web_news` | 인터넷 글/공지 | 인터넷 | 사용자에게 더 넓고 쉬운 카테고리로 표현 |
+| `web_news/seboard_posts` | SE Board 게시글 | SE Board 게시글 | 유지 |
+| `web_news/website_feed` | RSS 지원 사이트 | RSS 지원 사이트 | 유지 |
+| `naver_news` | 네이버 뉴스 | 네이버 뉴스 | 유지 |
+| `naver_news/article_search` | 네이버 뉴스 검색 | 네이버 뉴스 검색 | 유지 |
+
+`인터넷`은 UX label일 뿐이며, Spring/FastAPI의 service key를 의미하지 않는다.
+
+### 21.3 아이콘 컴포넌트 정책
+
+Discord 아이콘과 동일한 방식으로 SVG를 React 컴포넌트화한다.
+
+추가 대상:
+
+| 파일 | 역할 |
+| --- | --- |
+| `src/shared/ui/icons/NaverIcon.tsx` | 네이버 전용 아이콘 |
+| `src/shared/ui/icons/SeBoardIcon.tsx` | SE Board 전용 아이콘 |
+| `src/shared/ui/icons/index.ts` | 신규 아이콘 export |
+
+공통 props:
+
+```tsx
+type Props = Omit<SVGProps<SVGSVGElement>, "height" | "width"> & {
+  size?: number | string;
+};
+```
+
+공통 렌더링 규칙:
+
+- `width` attribute와 `height="auto"` attribute를 직접 넣지 않는다.
+- `style={{ width: size, height: "auto", ...style }}`를 사용한다.
+- `aria-hidden="true"`와 `focusable="false"`를 적용한다.
+- `size` 기본값은 `24`다.
+- 노드 본문에서는 `size={56}`, 서비스 선택 카드에서는 `size={64}`, 패널 헤더에서는 `size={24}`를 사용한다.
+
+네이버 아이콘:
+
+- 사용자가 제공한 SVG path를 그대로 사용한다.
+- `viewBox="0 0 120 120"`을 유지한다.
+- 초록 배경과 흰색 `N`을 유지한다.
+
+SE Board 아이콘:
+
+- 첨부 이미지의 visual intent를 SVG로 재현한다.
+- 짙은 남색 배경, 파란 테두리, `SE` 텍스트를 사용한다.
+- 이미지 파일을 추가하지 않고 inline SVG 컴포넌트로 만든다.
+- 서비스 공식 로고가 아니라 프로젝트 내 서비스 식별용 아이콘으로 사용한다.
+
+### 21.4 서비스 아이콘 해석 규칙
+
+아이콘은 `serviceKey`만으로 충분하지 않은 경우가 있다. 특히 `web_news`는 `seboard_posts`와 `website_feed`가 같은 service key를 공유한다. 따라서 공통 helper는 `serviceKey`와 `sourceMode`를 함께 받는다.
+
+권장 helper:
+
+```tsx
+type ServiceIconProps = {
+  fallbackIcon?: IconType;
+  serviceKey: string | null;
+  size?: number | string;
+  sourceMode?: string | null;
+};
+```
+
+해석 순서:
+
+1. `serviceKey === "discord"` → `DiscordIcon`
+2. `serviceKey === "naver_news"` → `NaverIcon`
+3. `serviceKey === "web_news" && sourceMode === "seboard_posts"` → `SeBoardIcon`
+4. `serviceKey === "web_news" && sourceMode === "website_feed"` → fallback 인터넷/RSS 아이콘
+5. 그 외 service는 기존 `react-icons`/registry fallback 사용
+
+`web_news` service 카드 자체에는 SE Board 아이콘을 쓰지 않는다. service 선택 전에는 사용자가 아직 `seboard_posts`를 고른 것이 아니기 때문이다. service 카드에는 범용 인터넷 아이콘을 유지하고, 설정 완료 후 mode가 `seboard_posts`로 확정되면 SE Board 아이콘을 보여준다.
+
+### 21.5 적용 위치
+
+| 위치 | 현재 상태 | 보정 방향 |
+| --- | --- | --- |
+| `BaseNode.tsx` | Discord만 예외 처리 | 공통 service icon helper 사용 |
+| `OutputPanel.tsx` | Discord만 예외 처리 | 설정 패널 헤더에 서비스별 아이콘 표시 |
+| `InputPanel.tsx` | registry icon 사용 | source service/mode가 있으면 서비스별 아이콘 우선 |
+| `ServiceSelectionPanel.tsx` | service key별 icon map | `naver_news`는 네이버 아이콘, `web_news`는 범용 인터넷 아이콘 |
+| `ServiceBadge.tsx` | Discord 일부 예외 처리 | 필요 시 네이버/SE Board 아이콘도 같은 helper 사용 |
+| `nodePresentation.ts` | `web_news` label이 인터넷 글/공지 | `인터넷`으로 보정 |
+
+### 21.6 구현 순서
+
+1. `NaverIcon`, `SeBoardIcon` 컴포넌트를 추가한다.
+2. `shared/ui/icons/index.ts`에 신규 아이콘을 export한다.
+3. 서비스 아이콘 helper 또는 `ServiceIcon` 컴포넌트를 추가한다.
+4. `BaseNode`의 Discord 전용 분기를 공통 helper로 교체한다.
+5. `OutputPanel`, `InputPanel` 헤더 아이콘도 같은 helper를 사용하도록 보정한다.
+6. `ServiceSelectionPanel`에서 `naver_news` 카드에는 `NaverIcon`, `web_news` 카드에는 범용 인터넷 아이콘을 사용한다.
+7. `nodePresentation.ts`에서 `web_news` 표시명을 `인터넷`으로 변경한다.
+
+### 21.7 완료 기준
+
+- 네이버 뉴스로 설정된 노드는 네이버 아이콘을 보여준다.
+- SE Board 게시글로 설정된 노드는 SE Board 아이콘을 보여준다.
+- RSS 지원 사이트는 SE Board 아이콘을 사용하지 않는다.
+- 설정 패널 왼쪽 상단 아이콘도 실제 선택된 서비스에 맞게 보인다.
+- 서비스 선택 단계의 `web_news` 카드는 특정 mode를 암시하지 않는다.
+- `인터넷 글/공지` 문구가 사용자 화면에서 `인터넷`으로 보인다.
+- Discord 아이콘 기존 동작은 깨지지 않는다.
+- SVG `height="auto"` attribute 에러가 다시 발생하지 않는다.
+
+### 21.8 비범위
+
+- `naver_news`를 `web_news` service 하위로 합치는 계약 변경
+- Spring catalog의 service group 구조 추가
+- FastAPI runtime source key 변경
+- 네이버 뉴스와 RSS 지원 사이트를 하나의 mode로 병합
+- 모든 기존 서비스 아이콘을 한 번에 마이그레이션
