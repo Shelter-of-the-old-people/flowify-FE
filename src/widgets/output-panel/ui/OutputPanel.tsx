@@ -23,7 +23,7 @@ import {
   isMiddleWizardCompleted,
   useWorkflowStore,
 } from "@/features/workflow-editor";
-import { DiscordIcon, useDualPanelLayout } from "@/shared";
+import { ServiceIcon, useDualPanelLayout } from "@/shared";
 import {
   DataPreviewBlock,
   DataStateNotice,
@@ -227,20 +227,22 @@ export const OutputPanel = ({ wizardController }: Props) => {
     typeof activeNodeConfig?.service === "string"
       ? activeNodeConfig.service
       : null;
+  const sourceMode =
+    typeof activeNodeConfig?.source_mode === "string"
+      ? activeNodeConfig.source_mode
+      : null;
   const renderActiveNodeIcon = () => {
     if (!activeMeta) {
       return null;
     }
 
-    if (serviceKey === "discord") {
-      return <DiscordIcon size={24} />;
-    }
-
     return (
-      <Icon
-        as={activeMeta.iconComponent}
-        boxSize={6}
+      <ServiceIcon
         color={activeMeta.color}
+        fallbackIcon={activeMeta.iconComponent}
+        serviceKey={serviceKey}
+        size={24}
+        sourceMode={sourceMode}
       />
     );
   };

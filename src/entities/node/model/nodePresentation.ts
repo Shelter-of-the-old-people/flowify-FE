@@ -60,7 +60,7 @@ const WEB_SCRAPING_SERVICE_TITLE: Record<
   coupang: "Coupang",
   github: "GitHub",
   naver_news: "네이버 뉴스",
-  web_news: "인터넷 글/공지",
+  web_news: "인터넷",
   youtube: "YouTube",
 };
 

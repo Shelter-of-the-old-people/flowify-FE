@@ -13,6 +13,7 @@ import {
   MdArticle,
   MdCancel,
   MdFolder,
+  MdLanguage,
   MdSchool,
   MdSearch,
 } from "react-icons/md";
@@ -51,7 +52,7 @@ import {
 } from "@/entities/workflow";
 import { hydrateStore, useWorkflowStore } from "@/features/workflow-editor";
 import {
-  DiscordIcon,
+  ServiceIcon,
   getApiErrorMessage,
   getCurrentRelativeUrl,
   getLeafNodeIds,
@@ -93,7 +94,7 @@ const CATALOG_SERVICE_ICON_MAP: Record<string, IconType> = {
   naver_news: MdSearch,
   notion: MdArticle,
   slack: SiSlack,
-  web_news: MdArticle,
+  web_news: MdLanguage,
 };
 
 const WizardCard = ({
@@ -124,11 +125,13 @@ const getCatalogServiceIcon = (serviceKey: string) =>
   CATALOG_SERVICE_ICON_MAP[serviceKey] ?? MdFolder;
 
 const renderCatalogServiceIcon = (serviceKey: string) => {
-  if (serviceKey === "discord") {
-    return <DiscordIcon size={64} />;
-  }
-
-  return <Icon as={getCatalogServiceIcon(serviceKey)} boxSize={16} />;
+  return (
+    <ServiceIcon
+      fallbackIcon={getCatalogServiceIcon(serviceKey)}
+      serviceKey={serviceKey}
+      size={64}
+    />
+  );
 };
 
 const hasTargetSchema = (targetSchema: Record<string, unknown>) =>
