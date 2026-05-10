@@ -1,6 +1,7 @@
 import { type DataType } from "@/entities/node";
 
 export const WORKFLOW_DATA_TYPE_LABELS: Record<string, string> = {
+  ARTICLE_LIST: "글 목록",
   API_RESPONSE: "API 응답",
   EMAIL_LIST: "이메일 목록",
   FILE_LIST: "여러 파일",
@@ -11,6 +12,7 @@ export const WORKFLOW_DATA_TYPE_LABELS: Record<string, string> = {
   SPREADSHEET_DATA: "스프레드시트",
   TEXT: "텍스트",
   "api-response": "API 응답",
+  "article-list": "글 목록",
   "email-list": "이메일 목록",
   "file-list": "여러 파일",
   "schedule-data": "일정 데이터",
@@ -23,6 +25,7 @@ export const WORKFLOW_DATA_TYPE_LABELS: Record<string, string> = {
 
 export const WORKFLOW_FRONTEND_DATA_TYPE_LABELS: Record<DataType, string> = {
   "api-response": "API 응답",
+  "article-list": "글 목록",
   "email-list": "이메일 목록",
   "file-list": "여러 파일",
   "schedule-data": "일정 데이터",

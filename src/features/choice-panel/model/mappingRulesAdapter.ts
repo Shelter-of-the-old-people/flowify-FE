@@ -20,6 +20,7 @@ const SUPPORTED_MAPPING_DATA_TYPE_KEYS = [
   "SINGLE_FILE",
   "EMAIL_LIST",
   "SINGLE_EMAIL",
+  "ARTICLE_LIST",
   "SPREADSHEET_DATA",
   "API_RESPONSE",
   "SCHEDULE_DATA",
@@ -237,6 +238,10 @@ export const toChoiceMappingRules = (
       SINGLE_EMAIL: toDataTypeMapping(
         "SINGLE_EMAIL",
         response.data_types.SINGLE_EMAIL,
+      ),
+      ARTICLE_LIST: toDataTypeMapping(
+        "ARTICLE_LIST",
+        response.data_types.ARTICLE_LIST,
       ),
       SPREADSHEET_DATA: toDataTypeMapping(
         "SPREADSHEET_DATA",

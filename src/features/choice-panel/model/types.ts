@@ -6,6 +6,7 @@ export type MappingDataTypeKey =
   | "SINGLE_FILE"
   | "EMAIL_LIST"
   | "SINGLE_EMAIL"
+  | "ARTICLE_LIST"
   | "SPREADSHEET_DATA"
   | "API_RESPONSE"
   | "SCHEDULE_DATA"

@@ -93,6 +93,7 @@ export interface WebScrapingNodeConfig extends BaseNodeConfig {
     | "coupang"
     | "github"
     | "naver_news"
+    | "web_news"
     | "youtube"
     | null;
   source_mode?: string | null;

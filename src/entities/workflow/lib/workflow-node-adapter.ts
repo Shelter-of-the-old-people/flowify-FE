@@ -23,6 +23,7 @@ const DATA_TYPE_MAP = {
   SPREADSHEET_DATA: "spreadsheet",
   EMAIL_LIST: "email-list",
   SINGLE_EMAIL: "single-email",
+  ARTICLE_LIST: "article-list",
   API_RESPONSE: "api-response",
   SCHEDULE_DATA: "schedule-data",
 } as const satisfies Record<string, DataType>;
@@ -67,6 +68,7 @@ const SERVICE_KEY_TO_NODE_TYPE = {
   naver_news: "web-scraping",
   notion: "storage",
   slack: "communication",
+  web_news: "web-scraping",
   youtube: "web-scraping",
 } as const satisfies Record<string, NodeType>;
 
