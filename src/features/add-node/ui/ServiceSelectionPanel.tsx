@@ -90,8 +90,10 @@ const CATALOG_SERVICE_ICON_MAP: Record<string, IconType> = {
   google_calendar: SiGooglecalendar,
   google_drive: SiGoogledrive,
   google_sheets: SiGooglesheets,
+  naver_news: MdSearch,
   notion: MdArticle,
   slack: SiSlack,
+  web_news: MdArticle,
 };
 
 const WizardCard = ({

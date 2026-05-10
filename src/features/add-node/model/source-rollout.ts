@@ -17,6 +17,7 @@ export const SOURCE_SERVICE_ROLLOUT_ALLOWLIST = {
     "attachment_email",
   ],
   slack: ["channel_messages"],
+  naver_news: ["article_search"],
   web_news: ["seboard_posts", "website_feed"],
 } as const satisfies Record<string, readonly string[]>;
 
