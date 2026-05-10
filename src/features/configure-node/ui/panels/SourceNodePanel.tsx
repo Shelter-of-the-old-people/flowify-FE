@@ -24,6 +24,7 @@ import {
   type SourceTargetSetupValue,
   buildSourceNodeConfigDraft,
   createEmptySourceTargetSetupValue,
+  getSourceTargetSchemaValidationMessage,
   hasTargetSchema,
   isSourceNodeSetupComplete,
 } from "../../model";
@@ -130,6 +131,12 @@ export const SourceNodePanel = ({
     sourceNextConfig && sourceMode
       ? isSourceNodeSetupComplete(sourceNextConfig, sourceMode.target_schema)
       : false;
+  const sourceTargetValidationMessage = sourceMode
+    ? getSourceTargetSchemaValidationMessage(
+        sourceMode.target_schema,
+        sourceTargetValue.value,
+      )
+    : null;
   const existingTargetLabel = getStringConfigValue(data.config, "target_label");
 
   const handleConnectService = (targetServiceKey: string) => {
@@ -158,7 +165,7 @@ export const SourceNodePanel = ({
   };
 
   const handleApplySourceSetup = () => {
-    if (!sourceMode) {
+    if (!sourceMode || sourceTargetValidationMessage) {
       return;
     }
 
@@ -264,7 +271,7 @@ export const SourceNodePanel = ({
               취소
             </Button>
             <Button
-              disabled={!canEditSetup}
+              disabled={!canEditSetup || Boolean(sourceTargetValidationMessage)}
               size="sm"
               onClick={handleApplySourceSetup}
             >
