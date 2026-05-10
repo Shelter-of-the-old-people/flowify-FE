@@ -10,6 +10,7 @@ import {
   createTriggerDraft,
   getWeekdayLabel,
   getWorkflowTriggerSummary,
+  hasTriggerDraftChanges,
   validateTriggerDraft,
 } from "@/entities/workflow";
 import { useWorkflowStore } from "@/features/workflow-editor";
@@ -78,6 +79,11 @@ export const TriggerSettingsButton = ({
     [workflowActive, workflowTrigger],
   );
   const validationError = validateTriggerDraft(draft);
+  const hasDraftChanges = hasTriggerDraftChanges(
+    draft,
+    workflowTrigger,
+    workflowActive,
+  );
 
   useEffect(() => {
     if (!isOpen) {
@@ -86,19 +92,29 @@ export const TriggerSettingsButton = ({
 
     const handlePointerDown = (event: MouseEvent) => {
       if (!panelRef.current?.contains(event.target as Node)) {
+        if (canEdit && hasDraftChanges) {
+          return;
+        }
         setIsOpen(false);
       }
     };
 
     document.addEventListener("mousedown", handlePointerDown);
     return () => document.removeEventListener("mousedown", handlePointerDown);
-  }, [isOpen]);
+  }, [canEdit, hasDraftChanges, isOpen]);
 
   const handleToggleOpen = () => {
     if (!isOpen) {
       setDraft(createTriggerDraft(workflowTrigger, workflowActive));
+      setIsOpen(true);
+      return;
     }
-    setIsOpen((current) => !current);
+
+    if (canEdit && hasDraftChanges) {
+      return;
+    }
+
+    setIsOpen(false);
   };
 
   const handleApply = () => {
@@ -108,6 +124,11 @@ export const TriggerSettingsButton = ({
 
     const nextState = buildTriggerStateFromDraft(draft);
     setWorkflowTriggerState(nextState.trigger, nextState.active);
+    setIsOpen(false);
+  };
+
+  const handleCancel = () => {
+    setDraft(createTriggerDraft(workflowTrigger, workflowActive));
     setIsOpen(false);
   };
 
@@ -421,13 +442,15 @@ export const TriggerSettingsButton = ({
               </Text>
             ) : null}
 
+            {canEdit && hasDraftChanges ? (
+              <Text color="#666" fontSize="11px">
+                변경 사항은 적용해야 저장됩니다.
+              </Text>
+            ) : null}
+
             <Box display="flex" justifyContent="flex-end" gap="8px">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsOpen(false)}
-              >
-                닫기
+              <Button type="button" variant="outline" onClick={handleCancel}>
+                {canEdit ? "취소" : "닫기"}
               </Button>
               <Button
                 type="button"

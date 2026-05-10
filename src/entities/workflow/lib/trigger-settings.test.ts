@@ -5,6 +5,7 @@ import {
   createManualTrigger,
   createTriggerDraft,
   getWorkflowTriggerSummary,
+  hasTriggerDraftChanges,
   normalizeWorkflowActive,
   normalizeWorkflowTrigger,
   validateTriggerDraft,
@@ -80,5 +81,25 @@ describe("trigger settings helpers", () => {
         false,
       ),
     ).toBe("자동 실행 꺼짐");
+  });
+
+  it("detects unsaved trigger draft changes", () => {
+    const trigger = {
+      type: "schedule" as const,
+      config: {
+        schedule_mode: "interval" as const,
+        cron: "0 0 */4 * * *",
+        timezone: "Asia/Seoul",
+        interval_hours: 4,
+        skip_if_running: true,
+      },
+    };
+    const draft = createTriggerDraft(trigger, true);
+
+    expect(hasTriggerDraftChanges(draft, trigger, true)).toBe(false);
+
+    draft.active = false;
+
+    expect(hasTriggerDraftChanges(draft, trigger, true)).toBe(true);
   });
 });

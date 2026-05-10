@@ -177,6 +177,13 @@ export const createTriggerDraft = (
   };
 };
 
+export const hasTriggerDraftChanges = (
+  draft: WorkflowTriggerDraft,
+  trigger: TriggerConfig | null | undefined,
+  active: boolean | null | undefined,
+) =>
+  JSON.stringify(draft) !== JSON.stringify(createTriggerDraft(trigger, active));
+
 export const validateTriggerDraft = (draft: WorkflowTriggerDraft) => {
   if (draft.type === "manual") {
     return null;

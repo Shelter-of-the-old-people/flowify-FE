@@ -66,9 +66,11 @@ V1은 아래 두 가지만 정식 지원한다.
 - 몇 시간마다 확인
 - 매일 특정 시간 실행
 - 매주 특정 요일/시간 실행
-- 고급 cron
 
 하지만 저장 시에는 Spring이 바로 재등록할 수 있도록 `type + config` 구조로 보낸다.
+
+- FE는 `interval`, `daily`, `weekly`만 사용자 입력으로 노출한다.
+- `cron`은 사용자 입력값이 아니라, FE가 위 세 모드에서 파생해 함께 저장하는 내부 실행용 필드다.
 
 ### 3.3 수동 실행 버튼과 자동 실행 설정을 분리한다
 
@@ -111,7 +113,7 @@ V1 호환 규칙:
 export type WorkflowTriggerType = "manual" | "schedule";
 
 export interface WorkflowTriggerConfig {
-  schedule_mode?: "interval" | "daily" | "weekly" | "cron";
+  schedule_mode?: "interval" | "daily" | "weekly";
   cron?: string;
   timezone?: string;
   interval_hours?: number;
@@ -148,7 +150,7 @@ export interface TriggerConfig {
     "type": "schedule",
     "config": {
       "schedule_mode": "interval",
-      "cron": "0 */4 * * *",
+      "cron": "0 0 */4 * * *",
       "timezone": "Asia/Seoul",
       "interval_hours": 4,
       "skip_if_running": true
@@ -166,7 +168,7 @@ export interface TriggerConfig {
     "type": "schedule",
     "config": {
       "schedule_mode": "weekly",
-      "cron": "0 9 * * 1,3,5",
+      "cron": "0 0 9 * * MON,WED,FRI",
       "timezone": "Asia/Seoul",
       "time_of_day": "09:00",
       "weekdays": ["MON", "WED", "FRI"],
@@ -213,7 +215,6 @@ trigger 설정 진입점은 `EditorRemoteBar`에 둔다.
 - `4시간마다 확인`
 - `매일 09:00 실행`
 - `매주 월, 수, 금 09:00`
-- `고급 cron`
 
 ### 5.3 편집 폼 단계
 
@@ -227,7 +228,6 @@ B. 자동 실행 세부 방식
 - 몇 시간마다 확인
 - 매일 특정 시간
 - 매주 특정 요일/시간
-- 고급 cron 직접 입력
 
 C. 공통 옵션
 
@@ -246,6 +246,14 @@ C. 공통 옵션
 - owner: trigger 편집 가능, 저장 가능
 - shared user: 값 조회 가능, 편집 UI disabled
 - 권한 부족 상태에서는 값을 숨기지 않고 read-only summary와 disabled control만 노출한다.
+
+### 5.6 적용 전 draft 동작
+
+- trigger 설정 패널 내부 변경은 draft 상태로만 유지한다.
+- 실제 workflow store 반영은 `적용` 버튼을 눌렀을 때만 수행한다.
+- draft 변경이 있는 상태에서는 바깥 영역 클릭이나 요약 버튼 재클릭만으로 패널을 닫지 않는다.
+- 사용자가 변경을 버리려면 `취소`를 눌러 현재 draft를 초기화하고 닫아야 한다.
+- 패널 하단에는 `변경 사항은 적용해야 저장됩니다.` 안내를 노출해 저장 시점을 명확히 한다.
 
 ---
 
@@ -305,23 +313,24 @@ workflowActive: boolean;
 
 - `interval_hours`는 1 이상 정수
 - V1에서는 24시간 초과 반복은 허용하지 않는다
-- 24시간 이상 주기는 `daily`, `weekly`, `cron`으로 유도한다
+- 24시간 이상 주기는 `daily`, `weekly`로 유도한다
 
 ### 7.2 daily
 
 - `time_of_day` 필수
-- `cron`은 `분 시 * * *` 형태로 계산
+- `cron`은 `초 분 시 * * *` 형태로 계산
 
 ### 7.3 weekly
 
 - `time_of_day` 필수
 - `weekdays` 최소 1개 필요
-- `cron`은 `분 시 * * 요일목록` 형태로 계산
+- `cron`은 `초 분 시 * * 요일목록` 형태로 계산
 
 ### 7.4 cron
 
-- FE는 기본 형식 검증만 수행한다
-- 최종 authoritative validation은 Spring이 담당한다
+- FE는 `cron`을 직접 입력받지 않는다.
+- FE는 `interval`, `daily`, `weekly` 값을 기준으로 내부 실행용 `cron`을 계산해 함께 저장한다.
+- 최종 authoritative validation은 Spring이 담당한다.
 
 ---
 
@@ -352,7 +361,7 @@ workflowActive: boolean;
 
 ### 9.1 단위 테스트
 
-- trigger summary formatter가 manual, interval, daily, weekly, cron을 올바르게 요약한다.
+- trigger summary formatter가 manual, interval, daily, weekly를 올바르게 요약한다.
 - FE trigger -> Spring payload 변환이 올바른 `type + config` 구조를 만든다.
 - `manual -> schedule -> manual` 전환 시 schedule 잔재가 저장되지 않는다.
 - dirty state가 trigger 변경에도 정확히 반응한다.
@@ -362,6 +371,8 @@ workflowActive: boolean;
 - `EditorRemoteBar`에서 trigger settings를 열고 저장값을 수정할 수 있다.
 - `schedule`에서만 active toggle이 노출된다.
 - shared user는 동일한 UI를 보되 수정은 막힌다.
+- draft 변경이 있는 상태에서는 바깥 클릭만으로 패널이 닫히지 않는다.
+- `취소`를 누르면 draft가 초기화되고 패널이 닫힌다.
 - 새로고침 hydrate 후에도 같은 trigger 값이 폼에 복원된다.
 
 ### 9.3 계약 테스트
