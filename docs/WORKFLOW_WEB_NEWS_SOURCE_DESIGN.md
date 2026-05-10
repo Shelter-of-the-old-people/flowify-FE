@@ -2112,3 +2112,118 @@ type ServiceIconProps = {
 - FastAPI runtime source key 변경
 - 네이버 뉴스와 RSS 지원 사이트를 하나의 mode로 병합
 - 모든 기존 서비스 아이콘을 한 번에 마이그레이션
+
+## 22. ServiceBadge 아이콘 일관화 보완 설계
+
+### 22.1 보완 배경
+
+노드 본문과 설정 패널은 `serviceKey`와 `sourceMode`를 함께 볼 수 있으므로 네이버 뉴스와 SE Board 아이콘을 정확히 표시할 수 있다. 하지만 대시보드, 템플릿, 워크플로우 리스트에서 쓰는 작은 `ServiceBadge`는 현재 `type`만 받는다.
+
+따라서 `ServiceBadge` 자체에 모든 판별 책임을 넣으면 안 된다. `ServiceBadge`는 badge key를 렌더링하는 작은 presentational component로 유지하고, `source_mode`가 필요한 판별은 node config를 볼 수 있는 호출부에서 처리한다.
+
+### 22.2 현재 호출 구조
+
+현재 작은 배지는 다음 흐름으로 렌더링된다.
+
+```tsx
+<ServiceBadge type={badgeKey} />
+```
+
+주요 호출부:
+
+| 위치 | 현재 알 수 있는 정보 |
+| --- | --- |
+| 워크플로우 리스트 | node 전체, `node.config.service`, `node.config.source_mode` |
+| 대시보드 이슈/요약 | node 전체, `node.config.service`, `node.config.source_mode` |
+| 템플릿 카드 | `icon`, `requiredServices` 문자열 |
+| 템플릿 상세 필요 서비스 | service 문자열 |
+
+워크플로우 리스트와 대시보드는 node config를 볼 수 있으므로 SE Board 판별이 가능하다. 반면 템플릿 카드/상세는 보통 service 문자열만 있으므로 `web_news`가 SE Board인지 RSS인지 알 수 없다.
+
+### 22.3 Badge key 확장
+
+`ServiceBadgeKey`에 다음 값을 추가한다.
+
+```ts
+type ServiceBadgeKey =
+  | ...
+  | "naver-news"
+  | "seboard";
+```
+
+매핑 규칙:
+
+| 입력 | 결과 |
+| --- | --- |
+| `naver_news` | `naver-news` |
+| `naver-news` | `naver-news` |
+| `seboard` | `seboard` |
+| `seboard_posts` | `seboard` |
+| `web_news` | `web-scraping` |
+| `website_feed` | `web-scraping` |
+
+중요한 점은 `web_news` 자체를 `seboard`로 매핑하지 않는 것이다. `web_news`에는 `seboard_posts`와 `website_feed`가 함께 있기 때문이다.
+
+### 22.4 node config 기반 판별 helper
+
+워크플로우 리스트와 대시보드처럼 node 전체를 볼 수 있는 곳은 공통 helper를 추가하거나 기존 helper를 보강한다.
+
+권장 helper:
+
+```ts
+export const getServiceBadgeKeyFromNodeConfig = (
+  service: unknown,
+  sourceMode: unknown,
+): ServiceBadgeKey => {
+  if (service === "web_news" && sourceMode === "seboard_posts") {
+    return "seboard";
+  }
+
+  return getServiceBadgeKeyFromService(
+    typeof service === "string" ? service : null,
+  );
+};
+```
+
+적용 대상:
+
+| 파일 | 보정 |
+| --- | --- |
+| `src/pages/workflows/model/workflow-list.ts` | `node.config.service`와 `node.config.source_mode`를 함께 봄 |
+| `src/pages/dashboard/model/dashboard.ts` | 동일 helper 사용 |
+
+이렇게 하면 실제 워크플로우 노드가 SE Board source로 설정된 경우에만 SE Board 배지가 나온다.
+
+### 22.5 ServiceBadge 렌더링 보정
+
+`ServiceBadge.tsx`는 새 key만 렌더링한다.
+
+| type | 아이콘 |
+| --- | --- |
+| `naver-news` | `NaverIcon` |
+| `seboard` | `SeBoardIcon` |
+| `web-scraping` | 기존 범용 인터넷 아이콘 |
+
+`ServiceBadge`에 `sourceMode` prop을 추가하지 않는다. 이 컴포넌트는 이미 여러 곳에서 단순 badge key로 쓰이고 있으므로, prop을 확장하기보다 badge key 계산 책임을 호출부에 두는 편이 영향 범위가 작다.
+
+### 22.6 템플릿 화면 정책
+
+템플릿 화면은 `requiredServices` 문자열만 받는 경우가 많다.
+
+따라서 다음 정책을 사용한다.
+
+- `requiredServices: ["naver_news"]` → 네이버 배지
+- `requiredServices: ["web_news"]` → 인터넷 fallback 배지
+- `requiredServices: ["seboard_posts"]` 또는 `icon: "seboard_posts"` → SE Board 배지
+- mode 정보가 없는 `web_news`는 SE Board로 추정하지 않는다.
+
+이 정책은 틀린 아이콘을 보여주지 않는 것을 우선한다.
+
+### 22.7 완료 기준
+
+- 워크플로우 리스트에서 네이버 뉴스 시작 노드는 네이버 배지로 보인다.
+- 워크플로우 리스트에서 `web_news/seboard_posts` 시작 노드는 SE Board 배지로 보인다.
+- 워크플로우 리스트에서 `web_news/website_feed` 시작 노드는 범용 인터넷 배지로 보인다.
+- 대시보드에서도 같은 규칙이 적용된다.
+- 템플릿 required service가 `web_news`만 가진 경우에는 SE Board로 오인하지 않는다.
+- 기존 Gmail, Google Drive, Discord, Notion 배지는 깨지지 않는다.
