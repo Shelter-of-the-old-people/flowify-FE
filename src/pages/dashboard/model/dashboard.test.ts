@@ -98,4 +98,27 @@ describe("dashboard summary mappers", () => {
       recommendedServices.map((service) => service.serviceKey),
     ).not.toContain("gmail");
   });
+
+  it("marks alias services as non-disconnectable", () => {
+    const services = [
+      {
+        service: "google_sheets",
+        connected: true,
+        accountEmail: null,
+        expiresAt: null,
+        aliasOf: "google_drive",
+        disconnectable: false,
+        reason: null,
+      },
+    ];
+
+    const connectedServices = getConnectedServiceCardsFromSummary(services);
+
+    expect(connectedServices[0]).toMatchObject({
+      serviceKey: "google_sheets",
+      statusLabel: "google_drive 연결 사용",
+      actionLabel: "해제 불가",
+      actionDisabled: true,
+    });
+  });
 });

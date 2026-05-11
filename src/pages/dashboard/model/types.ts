@@ -37,4 +37,6 @@ export type DashboardServiceCard = {
   statusLabel: string;
   actionKind: "connect" | "disconnect";
   actionLabel: string;
+  actionDisabled?: boolean;
+  disabledReason?: string;
 };

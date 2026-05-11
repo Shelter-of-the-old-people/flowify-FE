@@ -19,9 +19,13 @@ export const ServiceConnectionCard = ({
   onAction,
 }: Props) => {
   const isConnectCard = service.actionKind === "connect";
+  const isActionDisabled = isPending || service.actionDisabled === true;
 
   const handleDisconnectClick = (event: MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
+    if (isActionDisabled) {
+      return;
+    }
     onAction?.();
   };
 
@@ -40,7 +44,7 @@ export const ServiceConnectionCard = ({
       cursor={isConnectCard ? "pointer" : "default"}
       transition="transform 180ms ease, box-shadow 180ms ease"
       _hover={
-        isConnectCard
+        isConnectCard && !isActionDisabled
           ? {
               transform: "translateY(-1px)",
               boxShadow: "0 12px 24px rgba(15, 23, 42, 0.06)",
@@ -51,8 +55,9 @@ export const ServiceConnectionCard = ({
         cursor: "not-allowed",
         opacity: 0.7,
       }}
-      aria-disabled={isConnectCard ? isPending : undefined}
-      onClick={isConnectCard && !isPending ? onAction : undefined}
+      aria-disabled={isConnectCard ? isActionDisabled : undefined}
+      title={service.disabledReason}
+      onClick={isConnectCard && !isActionDisabled ? onAction : undefined}
     >
       <Flex align="center" gap={3} minW={0} flex={1}>
         <ServiceBadge type={service.badgeKey} />
@@ -82,7 +87,7 @@ export const ServiceConnectionCard = ({
           variant="ghost"
           size="sm"
           flexShrink={0}
-          disabled={isPending}
+          disabled={isActionDisabled}
           onClick={handleDisconnectClick}
         >
           {isPending ? <Spinner size="xs" /> : <MdClose />}

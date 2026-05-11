@@ -176,6 +176,22 @@ export const getDashboardIssuesFromSummary = (
 const getServiceKey = (service: DashboardServiceResponse) =>
   service.service?.trim() ?? "";
 
+const getConnectedServiceStatusLabel = (service: DashboardServiceResponse) => {
+  if (service.accountEmail?.trim()) {
+    return service.accountEmail.trim();
+  }
+
+  if (service.aliasOf?.trim()) {
+    return `${service.aliasOf.trim()} 연결 사용`;
+  }
+
+  if (service.reason?.trim()) {
+    return service.reason.trim();
+  }
+
+  return "연결됨";
+};
+
 export const getConnectedServiceCardsFromSummary = (
   services: DashboardServiceResponse[] | null | undefined,
 ) =>
@@ -193,9 +209,15 @@ export const getConnectedServiceCardsFromSummary = (
             : getServiceLabelFromBadgeKey(badgeKey),
         badgeKey,
         serviceKey,
-        statusLabel: service.accountEmail?.trim() || "연결됨",
+        statusLabel: getConnectedServiceStatusLabel(service),
         actionKind: "disconnect",
-        actionLabel: "연결 해제",
+        actionLabel:
+          service.disconnectable === false ? "해제 불가" : "연결 해제",
+        actionDisabled: service.disconnectable === false,
+        disabledReason:
+          service.disconnectable === false
+            ? "다른 서비스 연결을 공유하고 있어 직접 해제할 수 없습니다."
+            : undefined,
       };
     });
 
