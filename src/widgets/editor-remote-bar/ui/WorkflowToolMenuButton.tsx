@@ -93,6 +93,8 @@ export const WorkflowToolMenuButton = ({
         <Menu.Content
           minW="168px"
           p={1.5}
+          bg="bg.surface"
+          border="1px solid"
           borderRadius="xl"
           borderColor="border.default"
           boxShadow="lg"
