@@ -24,10 +24,10 @@ export const TriggerControlButton = ({
     maxW={{ base: "160px", lg: "200px", xl: "240px" }}
     px={{ base: 2, xl: 3 }}
     py={1}
-    bg={active ? "primary.subtle" : "bg.surface"}
+    bg="bg.surface"
     color="text.primary"
     border="1px solid"
-    borderColor={active ? "border.selected" : "border.default"}
+    borderColor="border.default"
     borderRadius="lg"
     fontFamily="'Pretendard Variable', sans-serif"
     fontWeight="medium"
@@ -36,12 +36,12 @@ export const TriggerControlButton = ({
     whiteSpace="nowrap"
     gap={1.5}
     _hover={{
-      bg: active ? "primary.subtle" : "bg.overlay",
-      borderColor: active ? "border.selected" : "border.strong",
+      bg: "bg.overlay",
+      borderColor: "border.strong",
     }}
-    _active={{ bg: active ? "primary.subtle" : "neutral.200" }}
+    _active={{ bg: "neutral.200" }}
   >
-    <Icon as={MdSchedule} boxSize={4} flexShrink={0} />
+    {active ? <Icon as={MdSchedule} boxSize={4} flexShrink={0} /> : null}
     <Text as="span" minW={0} overflow="hidden" textOverflow="ellipsis">
       {getTriggerButtonLabel(summary, active)}
     </Text>
