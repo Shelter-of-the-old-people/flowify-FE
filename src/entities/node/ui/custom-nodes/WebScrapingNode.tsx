@@ -18,6 +18,11 @@ const WEB_SCRAPING_SOURCE_MODE_LABELS: Record<string, string> = {
 
 const getWebScrapingSummary = (config: FlowNodeData["config"]) => {
   const typedConfig = getTypedConfig("web-scraping", config);
+  const targetLabel =
+    typeof typedConfig.target_label === "string" &&
+    typedConfig.target_label.trim().length > 0
+      ? typedConfig.target_label
+      : typedConfig.target;
 
   if (typedConfig.service) {
     const parts = [
@@ -25,7 +30,7 @@ const getWebScrapingSummary = (config: FlowNodeData["config"]) => {
         ? (WEB_SCRAPING_SOURCE_MODE_LABELS[typedConfig.source_mode] ??
           typedConfig.source_mode)
         : null,
-      typedConfig.target ? `대상: ${typedConfig.target}` : null,
+      targetLabel ? `대상: ${targetLabel}` : null,
     ].filter((value): value is string => Boolean(value));
 
     if (parts.length > 0) {

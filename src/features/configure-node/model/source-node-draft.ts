@@ -1,4 +1,5 @@
 import { type FlowNodeData } from "@/entities/node";
+import { getSourceTargetOptionDisplayLabel } from "@/entities/workflow";
 
 import { type SourceNodeConfigDraftParameters } from "./setup-types";
 
@@ -31,6 +32,14 @@ const hasStringConfigValue = (config: FlowNodeData["config"], key: string) => {
   return typeof value === "string" && value.trim().length > 0;
 };
 
+const getConfigValue = (config: FlowNodeData["config"], key: string) =>
+  (config as unknown as Record<string, unknown>)[key];
+
+const getStringConfigValue = (config: FlowNodeData["config"], key: string) => {
+  const value = getConfigValue(config, key);
+  return typeof value === "string" ? value : null;
+};
+
 export const isSourceNodeSetupComplete = (
   config: FlowNodeData["config"],
   targetSchema: Record<string, unknown>,
@@ -56,11 +65,24 @@ export const buildSourceNodeConfigDraft = ({
   targetValue,
 }: SourceNodeConfigDraftParameters): FlowNodeData["config"] => {
   const target = targetValue.value.trim();
+  const currentTarget = getStringConfigValue(currentConfig, "target") ?? "";
+  const shouldPreserveTargetSummary =
+    !targetValue.option && target.length > 0 && target === currentTarget;
+  const preservedTargetLabel = shouldPreserveTargetSummary
+    ? getConfigValue(currentConfig, "target_label")
+    : null;
+  const preservedTargetMeta = shouldPreserveTargetSummary
+    ? getConfigValue(currentConfig, "target_meta")
+    : null;
+  const selectedTargetLabel = targetValue.option
+    ? getSourceTargetOptionDisplayLabel(targetValue.option)
+    : null;
   const nextConfig = {
     ...currentConfig,
     target,
-    target_label: targetValue.option?.label ?? (target || null),
-    target_meta: targetValue.option?.metadata ?? null,
+    target_label:
+      selectedTargetLabel ?? preservedTargetLabel ?? (target || null),
+    target_meta: targetValue.option?.metadata ?? preservedTargetMeta ?? null,
   } as FlowNodeData["config"] & Record<string, unknown>;
   const keyword = targetValue.keyword.trim();
 

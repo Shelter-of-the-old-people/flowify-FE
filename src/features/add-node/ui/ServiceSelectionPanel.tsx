@@ -42,6 +42,7 @@ import {
   getCanonicalInputTypeLabel,
   getDataTypeDisplayLabel,
   getPrimarySourceModeLabel,
+  getSourceTargetOptionDisplayLabel,
   getTriggerKindLabel,
   getVisualNodeTypeFromServiceKey,
   isSeBoardNewPostsSourceMode,
@@ -157,7 +158,7 @@ const buildSourceTargetConfig = ({
   if (targetValue.option) {
     return {
       target: targetValue.option.id,
-      target_label: targetValue.option.label,
+      target_label: getSourceTargetOptionDisplayLabel(targetValue.option),
       target_meta: targetValue.option.metadata,
       ...keywordConfig,
     };
