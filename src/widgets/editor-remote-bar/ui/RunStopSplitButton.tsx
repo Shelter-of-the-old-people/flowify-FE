@@ -19,6 +19,7 @@ type RunStopSplitButtonProps = {
   canOpenMenu: boolean;
   onRun: () => void;
   onStop: () => void;
+  onOpenMenu?: () => void;
   onOpenTriggerSettings: () => void;
   onCheckBeforeRun: () => void;
 };
@@ -32,6 +33,7 @@ export const RunStopSplitButton = ({
   canOpenMenu,
   onRun,
   onStop,
+  onOpenMenu,
   onOpenTriggerSettings,
   onCheckBeforeRun,
 }: RunStopSplitButtonProps) => {
@@ -79,7 +81,16 @@ export const RunStopSplitButton = ({
         </Text>
       </Button>
 
-      <Menu.Root lazyMount unmountOnExit positioning={{ placement: "top-end" }}>
+      <Menu.Root
+        lazyMount
+        unmountOnExit
+        positioning={{ placement: "top-end" }}
+        onOpenChange={(details) => {
+          if (details.open) {
+            onOpenMenu?.();
+          }
+        }}
+      >
         <Menu.Trigger asChild>
           <Button
             type="button"

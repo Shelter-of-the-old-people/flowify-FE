@@ -511,6 +511,7 @@ export const EditorRemoteBar = () => {
           <WorkflowToolMenuButton
             isDeletePending={isDeletePending}
             canDelete={canDelete}
+            onOpenMenu={handleCloseTriggerSettings}
             onDelete={handleDeleteRequest}
           />
 
@@ -537,6 +538,7 @@ export const EditorRemoteBar = () => {
             canOpenMenu={canOpenRunMenu}
             onRun={() => void handleRun()}
             onStop={() => void handleStop()}
+            onOpenMenu={handleCloseTriggerSettings}
             onOpenTriggerSettings={handleOpenTriggerSettings}
             onCheckBeforeRun={handleCheckBeforeRun}
           />
