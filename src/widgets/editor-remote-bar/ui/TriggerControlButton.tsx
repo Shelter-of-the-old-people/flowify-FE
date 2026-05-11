@@ -1,3 +1,4 @@
+import { forwardRef } from "react";
 import { MdKeyboardArrowDown, MdSchedule } from "react-icons/md";
 
 import { Button, Icon, Text } from "@chakra-ui/react";
@@ -11,15 +12,15 @@ type TriggerControlButtonProps = {
 const getTriggerButtonLabel = (summary: string, active: boolean) =>
   active ? summary : "자동 실행 꺼짐";
 
-export const TriggerControlButton = ({
-  summary,
-  active,
-  onClick,
-}: TriggerControlButtonProps) => {
+export const TriggerControlButton = forwardRef<
+  HTMLButtonElement,
+  TriggerControlButtonProps
+>(({ summary, active, onClick }, ref) => {
   const label = getTriggerButtonLabel(summary, active);
 
   return (
     <Button
+      ref={ref}
       type="button"
       aria-label={label}
       title={label}
@@ -59,4 +60,6 @@ export const TriggerControlButton = ({
       <Icon as={MdKeyboardArrowDown} boxSize={4} flexShrink={0} />
     </Button>
   );
-};
+});
+
+TriggerControlButton.displayName = "TriggerControlButton";

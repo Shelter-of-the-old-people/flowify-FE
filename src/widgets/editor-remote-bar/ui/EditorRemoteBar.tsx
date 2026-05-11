@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 
 import { Box } from "@chakra-ui/react";
@@ -102,6 +102,7 @@ export const EditorRemoteBar = () => {
   );
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [triggerSettingsOpen, setTriggerSettingsOpen] = useState(false);
+  const triggerButtonRef = useRef<HTMLButtonElement | null>(null);
   const { data: executions, refetch: refetchExecutions } =
     useWorkflowExecutionsQuery(workflowId || undefined, {
       enabled: Boolean(workflowId),
@@ -346,6 +347,14 @@ export const EditorRemoteBar = () => {
     setTriggerSettingsOpen(true);
   };
 
+  const handleToggleTriggerSettings = () => {
+    if (!workflowId) {
+      return;
+    }
+
+    setTriggerSettingsOpen((open) => !open);
+  };
+
   const handleCloseTriggerSettings = () => {
     setTriggerSettingsOpen(false);
   };
@@ -512,9 +521,10 @@ export const EditorRemoteBar = () => {
           />
 
           <TriggerControlButton
+            ref={triggerButtonRef}
             summary={triggerSummary}
             active={triggerControlActive}
-            onClick={handleOpenTriggerSettings}
+            onClick={handleToggleTriggerSettings}
           />
 
           <RunStopSplitButton
