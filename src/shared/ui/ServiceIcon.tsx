@@ -30,7 +30,10 @@ export const ServiceIcon = ({
     return <NaverIcon size={size} />;
   }
 
-  if (serviceKey === "web_news" && sourceMode === "seboard_posts") {
+  if (
+    serviceKey === "web_news" &&
+    (sourceMode === "seboard_posts" || sourceMode === "seboard_new_posts")
+  ) {
     return <SeBoardIcon size={size} />;
   }
 

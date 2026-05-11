@@ -46,6 +46,7 @@ export const getServiceBadgeKeyFromService = (
     case "notion":
       return "notion";
     case "seboard":
+    case "seboard_new_posts":
     case "seboard_posts":
       return "seboard";
     case "slack":
@@ -65,7 +66,10 @@ export const getServiceBadgeKeyFromNodeConfig = (
   service: unknown,
   sourceMode: unknown,
 ): ServiceBadgeKey => {
-  if (service === "web_news" && sourceMode === "seboard_posts") {
+  if (
+    service === "web_news" &&
+    (sourceMode === "seboard_posts" || sourceMode === "seboard_new_posts")
+  ) {
     return "seboard";
   }
 

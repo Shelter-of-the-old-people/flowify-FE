@@ -36,6 +36,7 @@ export const WORKFLOW_FRONTEND_DATA_TYPE_LABELS: Record<DataType, string> = {
 };
 
 const TRIGGER_KIND_LABELS: Record<string, string> = {
+  event: "새 항목 감지",
   manual: "직접 실행",
   polling: "주기적으로 확인",
   schedule: "예약 실행",
