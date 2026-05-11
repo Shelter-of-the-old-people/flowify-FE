@@ -43,6 +43,22 @@ type ToggleButtonProps = {
   onClick: () => void;
 };
 
+type SettingsSectionProps = {
+  title?: string;
+  children: ReactNode;
+};
+
+const SettingsSection = ({ title, children }: SettingsSectionProps) => (
+  <Box display="flex" flexDirection="column" gap={1.5}>
+    {title ? (
+      <Text color="text.secondary" fontSize="xs" fontWeight="semibold">
+        {title}
+      </Text>
+    ) : null}
+    {children}
+  </Box>
+);
+
 const ToggleButton = ({
   active,
   children,
@@ -166,21 +182,21 @@ const TriggerSettingsPanelContent = ({
       ref={panelRef}
       position="absolute"
       right="0"
-      bottom={{ base: "56px", xl: "72px" }}
-      width="min(360px, calc(100vw - 32px))"
+      bottom={{ base: "44px", xl: "48px" }}
+      width="min(340px, calc(100vw - 32px))"
       maxH="calc(100vh - 120px)"
       overflowY="auto"
       bg="bg.surface"
       border="1px solid"
       borderColor="border.default"
-      borderRadius="2xl"
+      borderRadius="xl"
       boxShadow="lg"
-      px={{ base: 4, xl: 5 }}
-      py={4}
+      px={3}
+      py={3}
     >
-      <Box display="flex" flexDirection="column" gap="14px">
-        <Box>
-          <Text fontSize="14px" fontWeight="bold" mb="8px">
+      <Box display="flex" flexDirection="column" gap={3}>
+        <SettingsSection>
+          <Text fontSize="sm" fontWeight="semibold">
             자동 실행 설정
           </Text>
           <Box display="flex" gap="8px" flexWrap="wrap">
@@ -209,12 +225,17 @@ const TriggerSettingsPanelContent = ({
               자동 실행
             </ToggleButton>
           </Box>
-        </Box>
+        </SettingsSection>
 
         {draft.type === "schedule" ? (
           <>
             <Box>
-              <Text fontSize="12px" fontWeight="medium" mb="8px">
+              <Text
+                color="text.secondary"
+                fontSize="xs"
+                fontWeight="semibold"
+                mb={1.5}
+              >
                 실행 주기
               </Text>
               <Box display="flex" gap="8px" flexWrap="wrap">
@@ -243,7 +264,12 @@ const TriggerSettingsPanelContent = ({
             </Box>
 
             <Box>
-              <Text fontSize="12px" fontWeight="medium" mb="8px">
+              <Text
+                color="text.secondary"
+                fontSize="xs"
+                fontWeight="semibold"
+                mb={1.5}
+              >
                 자동 실행 상태
               </Text>
               <Box display="flex" gap="8px">
@@ -275,7 +301,12 @@ const TriggerSettingsPanelContent = ({
             </Box>
 
             <Box>
-              <Text fontSize="12px" fontWeight="medium" mb="6px">
+              <Text
+                color="text.secondary"
+                fontSize="xs"
+                fontWeight="semibold"
+                mb={1.5}
+              >
                 시간대
               </Text>
               <Box
@@ -291,8 +322,12 @@ const TriggerSettingsPanelContent = ({
             </Box>
 
             {draft.scheduleMode === "interval" ? (
-              <Box display="flex" flexDirection="column" gap="8px">
-                <Text fontSize="12px" fontWeight="medium">
+              <Box display="flex" flexDirection="column" gap={1.5}>
+                <Text
+                  color="text.secondary"
+                  fontSize="xs"
+                  fontWeight="semibold"
+                >
                   확인 주기
                 </Text>
                 <Box display="flex" gap="8px" flexWrap="wrap">
@@ -338,7 +373,12 @@ const TriggerSettingsPanelContent = ({
 
             {draft.scheduleMode === "daily" ? (
               <Box>
-                <Text fontSize="12px" fontWeight="medium" mb="8px">
+                <Text
+                  color="text.secondary"
+                  fontSize="xs"
+                  fontWeight="semibold"
+                  mb={1.5}
+                >
                   실행 시간
                 </Text>
                 <Input
@@ -356,8 +396,12 @@ const TriggerSettingsPanelContent = ({
             ) : null}
 
             {draft.scheduleMode === "weekly" ? (
-              <Box display="flex" flexDirection="column" gap="8px">
-                <Text fontSize="12px" fontWeight="medium">
+              <Box display="flex" flexDirection="column" gap={1.5}>
+                <Text
+                  color="text.secondary"
+                  fontSize="xs"
+                  fontWeight="semibold"
+                >
                   요일과 시간
                 </Text>
                 <Box display="flex" gap="8px" flexWrap="wrap">
@@ -404,7 +448,12 @@ const TriggerSettingsPanelContent = ({
             ) : null}
 
             <Box>
-              <Text fontSize="12px" fontWeight="medium" mb="8px">
+              <Text
+                color="text.secondary"
+                fontSize="xs"
+                fontWeight="semibold"
+                mb={1.5}
+              >
                 실행 중일 때 다음 주기 처리
               </Text>
               <Box display="flex" gap="8px">
