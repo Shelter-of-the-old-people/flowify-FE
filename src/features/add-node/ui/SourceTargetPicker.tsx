@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import {
+  MdArticle,
   MdCalendarMonth,
   MdFolder,
   MdInsertDriveFile,
@@ -10,9 +11,11 @@ import {
 import { Box, Button, Input, Text } from "@chakra-ui/react";
 
 import {
+  GroupedSourceTargetOptionPicker,
   type SourceModeResponse,
   type SourceTargetOptionItemResponse,
   getWorkflowMetadataSummary,
+  isGroupedSourceTargetOptionPicker,
   useInfiniteSourceTargetOptionsQuery,
 } from "@/entities/workflow";
 import {
@@ -44,6 +47,7 @@ type PickerState = {
 };
 
 const TARGET_OPTION_ICON_MAP = {
+  category: MdArticle,
   course: MdSchool,
   file: MdInsertDriveFile,
   folder: MdFolder,
@@ -76,6 +80,10 @@ const getPickerRootLabel = (serviceKey: string, schemaType: string) => {
     return "Gmail 라벨";
   }
 
+  if (serviceKey === "web_news" && schemaType === "category_picker") {
+    return "SE Board 게시판";
+  }
+
   return "내 드라이브";
 };
 
@@ -88,6 +96,10 @@ export const SourceTargetPicker = ({
   const schemaType = getTargetSchemaType(mode.target_schema);
   const isRemotePicker = isRemoteTargetPicker(mode.target_schema);
   const isFolderPicker = schemaType === "folder_picker";
+  const isGroupedPicker = isGroupedSourceTargetOptionPicker(
+    serviceKey,
+    schemaType,
+  );
   const pickerScope = `${serviceKey}:${mode.key}:${schemaType}`;
   const [pickerState, setPickerState] = useState<PickerState>(() =>
     createPickerState(pickerScope),
@@ -162,7 +174,7 @@ export const SourceTargetPicker = ({
         searchQuery: "",
       };
     });
-    onChange({ option: null, value: "" });
+    onChange({ ...value, option: null, value: "" });
   };
 
   const handleSelectOption = (option: RemoteOptionPickerItem) => {
@@ -171,12 +183,12 @@ export const SourceTargetPicker = ({
       return;
     }
 
-    onChange({ option: sourceOption, value: sourceOption.id });
+    onChange({ ...value, option: sourceOption, value: sourceOption.id });
   };
 
   const handleResetPath = () => {
     setPickerState(createPickerState(pickerScope));
-    onChange({ option: null, value: "" });
+    onChange({ ...value, option: null, value: "" });
   };
 
   const handlePathSelect = (index: number) => {
@@ -192,7 +204,7 @@ export const SourceTargetPicker = ({
         searchQuery: "",
       };
     });
-    onChange({ option: null, value: "" });
+    onChange({ ...value, option: null, value: "" });
   };
 
   if (schemaType === "day_picker") {
@@ -203,7 +215,9 @@ export const SourceTargetPicker = ({
             key={option.value}
             justifyContent="flex-start"
             variant={value.value === option.value ? "solid" : "outline"}
-            onClick={() => onChange({ option: null, value: option.value })}
+            onClick={() =>
+              onChange({ ...value, option: null, value: option.value })
+            }
           >
             {option.label}
           </Button>
@@ -219,8 +233,29 @@ export const SourceTargetPicker = ({
         type={schemaType === "time_picker" ? "time" : "text"}
         value={value.value}
         onChange={(event) =>
-          onChange({ option: null, value: event.target.value })
+          onChange({ ...value, option: null, value: event.target.value })
         }
+      />
+    );
+  }
+
+  if (isGroupedPicker) {
+    return (
+      <GroupedSourceTargetOptionPicker
+        emptyMessage="선택할 수 있는 게시판이 없습니다."
+        errorMessage={isError ? getApiErrorMessage(error) : null}
+        getItemIcon={getOptionIcon}
+        hasMore={Boolean(hasNextPage)}
+        isLoading={isLoading}
+        isLoadingMore={isFetchingNextPage}
+        items={items}
+        searchPlaceholder={`${getTargetSchemaLabel(mode.target_schema)} 검색`}
+        searchValue={searchQuery}
+        selectedId={value.value}
+        onLoadMore={() => void fetchNextPage()}
+        onRetry={() => void refetch()}
+        onSearchChange={setScopedSearchQuery}
+        onSelect={handleSelectOption}
       />
     );
   }

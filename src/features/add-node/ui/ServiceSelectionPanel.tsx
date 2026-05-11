@@ -13,6 +13,7 @@ import {
   MdArticle,
   MdCancel,
   MdFolder,
+  MdLanguage,
   MdSchool,
   MdSearch,
 } from "react-icons/md";
@@ -40,8 +41,12 @@ import {
   findAddedNodeId,
   getCanonicalInputTypeLabel,
   getDataTypeDisplayLabel,
+  getPrimarySourceModeLabel,
+  getSourceTargetOptionDisplayLabel,
   getTriggerKindLabel,
   getVisualNodeTypeFromServiceKey,
+  isSeBoardNewPostsSourceMode,
+  shouldHideSourceModeFromPrimaryList,
   toBackendDataType,
   toFrontendDataType,
   toNodeAddRequest,
@@ -51,7 +56,7 @@ import {
 } from "@/entities/workflow";
 import { hydrateStore, useWorkflowStore } from "@/features/workflow-editor";
 import {
-  DiscordIcon,
+  ServiceIcon,
   getApiErrorMessage,
   getCurrentRelativeUrl,
   getLeafNodeIds,
@@ -61,8 +66,14 @@ import {
 import { isSinkServiceInRollout } from "../model/sink-rollout";
 import { isSourceModeInRollout } from "../model/source-rollout";
 import {
+  DAY_PICKER_OPTIONS,
   type SourceTargetPickerValue,
   createEmptySourceTargetPickerValue,
+  getTargetSchemaHelperText,
+  getTargetSchemaLabel,
+  getTargetSchemaPlaceholder,
+  getTargetSchemaType,
+  getTargetSchemaValidationMessage,
   isRemoteTargetPicker,
 } from "../model/source-target-picker";
 
@@ -84,34 +95,11 @@ const CATALOG_SERVICE_ICON_MAP: Record<string, IconType> = {
   google_calendar: SiGooglecalendar,
   google_drive: SiGoogledrive,
   google_sheets: SiGooglesheets,
+  naver_news: MdSearch,
   notion: MdArticle,
   slack: SiSlack,
+  web_news: MdLanguage,
 };
-
-const TARGET_SCHEMA_LABELS: Record<string, string> = {
-  course_picker: "과목",
-  term_picker: "학기",
-  channel_picker: "채널",
-  day_picker: "요일",
-  email_picker: "이메일",
-  file_picker: "파일",
-  folder_picker: "폴더",
-  label_picker: "라벨",
-  page_picker: "페이지",
-  sheet_picker: "시트",
-  text_input: "대상",
-  time_picker: "시간",
-};
-
-const DAY_PICKER_OPTIONS = [
-  { label: "월요일", value: "monday" },
-  { label: "화요일", value: "tuesday" },
-  { label: "수요일", value: "wednesday" },
-  { label: "목요일", value: "thursday" },
-  { label: "금요일", value: "friday" },
-  { label: "토요일", value: "saturday" },
-  { label: "일요일", value: "sunday" },
-] as const;
 
 const WizardCard = ({
   children,
@@ -141,23 +129,14 @@ const getCatalogServiceIcon = (serviceKey: string) =>
   CATALOG_SERVICE_ICON_MAP[serviceKey] ?? MdFolder;
 
 const renderCatalogServiceIcon = (serviceKey: string) => {
-  if (serviceKey === "discord") {
-    return <DiscordIcon size={64} />;
-  }
-
-  return <Icon as={getCatalogServiceIcon(serviceKey)} boxSize={16} />;
+  return (
+    <ServiceIcon
+      fallbackIcon={getCatalogServiceIcon(serviceKey)}
+      serviceKey={serviceKey}
+      size={64}
+    />
+  );
 };
-
-const getTargetSchemaType = (targetSchema: Record<string, unknown>) =>
-  typeof targetSchema.type === "string" ? targetSchema.type : "text_input";
-
-const getTargetSchemaLabel = (targetSchema: Record<string, unknown>) =>
-  TARGET_SCHEMA_LABELS[getTargetSchemaType(targetSchema)] ?? "대상";
-
-const getTargetSchemaPlaceholder = (targetSchema: Record<string, unknown>) =>
-  typeof targetSchema.placeholder === "string"
-    ? targetSchema.placeholder
-    : `${getTargetSchemaLabel(targetSchema)} 입력`;
 
 const hasTargetSchema = (targetSchema: Record<string, unknown>) =>
   Object.keys(targetSchema).length > 0;
@@ -169,19 +148,23 @@ const buildSourceTargetConfig = ({
   hasTarget: boolean;
   targetValue: SourceTargetPickerValue;
 }) => {
+  const keyword = targetValue.keyword.trim();
+  const keywordConfig = keyword ? { keyword } : {};
+
   if (!hasTarget) {
-    return { target: EMPTY_TARGET_SENTINEL };
+    return { target: EMPTY_TARGET_SENTINEL, ...keywordConfig };
   }
 
   if (targetValue.option) {
     return {
       target: targetValue.option.id,
-      target_label: targetValue.option.label,
+      target_label: getSourceTargetOptionDisplayLabel(targetValue.option),
       target_meta: targetValue.option.metadata,
+      ...keywordConfig,
     };
   }
 
-  return { target: targetValue.value.trim() };
+  return { target: targetValue.value.trim(), ...keywordConfig };
 };
 
 const toCanonicalInputType = (canonicalInputType: string): DataType =>
@@ -381,27 +364,30 @@ const SourceModeList = ({
     </Text>
 
     <Box display="flex" flexDirection="column" gap={3}>
-      {service.source_modes.map((mode) => (
-        <Box
-          key={mode.key}
-          borderRadius="3xl"
-          cursor="pointer"
-          px={6}
-          py={5}
-          transition="background 150ms ease"
-          _hover={{ bg: "gray.50" }}
-          onClick={() => onSelect(mode)}
-        >
-          <Text fontSize="md" fontWeight="bold" mb={1}>
-            {mode.label}
-          </Text>
-          <Text color="text.secondary" fontSize="sm">
-            {getCanonicalInputTypeLabel(mode.canonical_input_type) ?? "데이터"}
-            {" · "}
-            {getTriggerKindLabel(mode.trigger_kind) ?? "실행 방식"}
-          </Text>
-        </Box>
-      ))}
+      {service.source_modes.map((mode) =>
+        shouldHideSourceModeFromPrimaryList(service.key, mode.key) ? null : (
+          <Box
+            key={mode.key}
+            borderRadius="3xl"
+            cursor="pointer"
+            px={6}
+            py={5}
+            transition="background 150ms ease"
+            _hover={{ bg: "gray.50" }}
+            onClick={() => onSelect(mode)}
+          >
+            <Text fontSize="md" fontWeight="bold" mb={1}>
+              {getPrimarySourceModeLabel(service.key, mode)}
+            </Text>
+            <Text color="text.secondary" fontSize="sm">
+              {getCanonicalInputTypeLabel(mode.canonical_input_type) ??
+                "데이터"}
+              {" · "}
+              {getTriggerKindLabel(mode.trigger_kind) ?? "실행 방식"}
+            </Text>
+          </Box>
+        ),
+      )}
     </Box>
   </WizardCard>
 );
@@ -423,6 +409,36 @@ const SourceTargetForm = ({
 }) => {
   const schemaType = getTargetSchemaType(mode.target_schema);
   const isRemotePicker = isRemoteTargetPicker(mode.target_schema);
+  const helperText = getTargetSchemaHelperText(mode.target_schema);
+  const validationMessage = getTargetSchemaValidationMessage(
+    mode.target_schema,
+    value.value,
+  );
+  const shouldShowKeywordInput = isSeBoardNewPostsSourceMode(
+    serviceKey,
+    mode.key,
+  );
+  const handleTargetChange = (nextValue: SourceTargetPickerValue) => {
+    onChange({ ...nextValue, keyword: value.keyword });
+  };
+  const handleKeywordChange = (keyword: string) => {
+    onChange({ ...value, keyword });
+  };
+  const keywordInput = shouldShowKeywordInput ? (
+    <Box mt={4}>
+      <Text fontSize="sm" fontWeight="semibold" mb={2}>
+        포함할 단어
+      </Text>
+      <Input
+        placeholder="예: 장학, 수강신청"
+        value={value.keyword}
+        onChange={(event) => handleKeywordChange(event.target.value)}
+      />
+      <Text color="text.secondary" fontSize="xs" mt={2}>
+        비워두면 선택한 게시판의 새 글을 모두 가져옵니다.
+      </Text>
+    </Box>
+  ) : null;
 
   return (
     <WizardCard minWidth="520px" maxWidth="640px">
@@ -443,16 +459,21 @@ const SourceTargetForm = ({
       <Text fontSize="xl" fontWeight="bold" mb={2}>
         대상 선택
       </Text>
-      <Text color="text.secondary" fontSize="sm" mb={6}>
+      <Text color="text.secondary" fontSize="sm" mb={helperText ? 2 : 6}>
         {getTargetSchemaLabel(mode.target_schema)} 정보를 입력해주세요.
       </Text>
+      {helperText ? (
+        <Text color="text.secondary" fontSize="sm" mb={6}>
+          {helperText}
+        </Text>
+      ) : null}
 
       {isRemotePicker ? (
         <SourceTargetPicker
           mode={mode}
           serviceKey={serviceKey}
           value={value}
-          onChange={onChange}
+          onChange={handleTargetChange}
         />
       ) : schemaType === "day_picker" ? (
         <Box display="flex" flexDirection="column" gap={3}>
@@ -461,7 +482,9 @@ const SourceTargetForm = ({
               key={option.value}
               justifyContent="flex-start"
               variant={value.value === option.value ? "solid" : "outline"}
-              onClick={() => onChange({ option: null, value: option.value })}
+              onClick={() =>
+                onChange({ ...value, option: null, value: option.value })
+              }
             >
               {option.label}
             </Button>
@@ -473,13 +496,22 @@ const SourceTargetForm = ({
           type={schemaType === "time_picker" ? "time" : "text"}
           value={value.value}
           onChange={(event) =>
-            onChange({ option: null, value: event.target.value })
+            onChange({ ...value, option: null, value: event.target.value })
           }
         />
       )}
+      {keywordInput}
+      {validationMessage ? (
+        <Text color="orange.500" fontSize="xs" mt={2}>
+          {validationMessage}
+        </Text>
+      ) : null}
 
       <Box display="flex" justifyContent="flex-end" mt={6}>
-        <Button disabled={!value.value.trim()} onClick={onSubmit}>
+        <Button
+          disabled={!value.value.trim() || Boolean(validationMessage)}
+          onClick={onSubmit}
+        >
           다음
         </Button>
       </Box>
@@ -492,12 +524,14 @@ const StartNodeConfirm = ({
   onBack,
   onConfirm,
   service,
+  keyword,
   targetValue,
 }: {
   mode: SourceModeResponse;
   onBack: () => void;
   onConfirm: () => void;
   service: SourceServiceResponse;
+  keyword: string;
   targetValue: string;
 }) => (
   <WizardCard minWidth="520px" maxWidth="640px">
@@ -536,9 +570,19 @@ const StartNodeConfirm = ({
           가져오는 방식
         </Text>
         <Text fontSize="md" fontWeight="semibold">
-          {mode.label}
+          {getPrimarySourceModeLabel(service.key, mode)}
         </Text>
       </Box>
+      {keyword ? (
+        <Box bg="gray.50" borderRadius="2xl" px={5} py={4}>
+          <Text color="text.secondary" fontSize="sm">
+            포함할 단어
+          </Text>
+          <Text fontSize="md" fontWeight="semibold">
+            {keyword}
+          </Text>
+        </Box>
+      ) : null}
       <Box bg="gray.50" borderRadius="2xl" px={5} py={4}>
         <Text color="text.secondary" fontSize="sm">
           가져오는 데이터
@@ -1201,6 +1245,7 @@ export const ServiceSelectionPanel = () => {
               selectedSourceMode &&
               selectedSourceService ? (
                 <StartNodeConfirm
+                  keyword={selectedTargetValue.keyword.trim()}
                   mode={selectedSourceMode}
                   service={selectedSourceService}
                   targetValue={

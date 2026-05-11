@@ -9,6 +9,7 @@ export const OUTPUT_DATA_LABELS: Record<DataType, string> = {
   spreadsheet: "스프레드시트 데이터",
   "email-list": "이메일 목록",
   "single-email": "단일 이메일",
+  "article-list": "글 목록",
   "schedule-data": "일정 데이터",
   "api-response": "API 응답",
 };

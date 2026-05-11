@@ -495,6 +495,82 @@ const SchedulePreview = ({ data }: { data: DataRecord }) => {
   );
 };
 
+const ArticleItemCard = ({
+  item,
+  index,
+}: {
+  item: DataRecord;
+  index: number;
+}) => {
+  const title = getString(item.title) || `글 ${index + 1}`;
+  const body =
+    getString(item.summary) ||
+    getString(item.content) ||
+    getString(item.description);
+
+  return (
+    <Box
+      px={4}
+      py={3}
+      borderRadius="xl"
+      bg="white"
+      border="1px solid"
+      borderColor="gray.100"
+    >
+      <Text fontSize="sm" fontWeight="semibold" wordBreak="break-word">
+        {title}
+      </Text>
+      <Box mt={1} display="flex" flexDirection="column" gap={1}>
+        <FieldText label="출처" value={item.source} />
+        <FieldText label="작성자" value={item.author} />
+        <FieldText
+          label="작성일"
+          value={formatDateTime(
+            item.published_at ?? item.publishedAt ?? item.created_at,
+          )}
+        />
+        {body ? (
+          <Text fontSize="xs" color="text.secondary" whiteSpace="pre-wrap">
+            {truncateText(body, 280)}
+          </Text>
+        ) : null}
+        <ExternalLink href={item.url} />
+      </Box>
+    </Box>
+  );
+};
+
+const ArticleListPreview = ({ data }: { data: DataRecord }) => {
+  const items = getFirstRecordItems(data, ["items", "articles"]);
+  const previewItems = items.slice(0, MAX_LIST_PREVIEW_COUNT);
+  const omittedCount = items.length - previewItems.length;
+
+  return (
+    <Box display="flex" flexDirection="column" gap={3}>
+      <SummaryCard
+        title={`${items.length}개 글`}
+        description={
+          items.length > 0
+            ? "다음 단계로 전달할 글 목록입니다."
+            : "전달할 글이 없습니다."
+        }
+      />
+      {previewItems.map((item, index) => (
+        <ArticleItemCard
+          key={`${getString(item.id) || getString(item.title)}-${index}`}
+          item={item}
+          index={index}
+        />
+      ))}
+      {omittedCount > 0 ? (
+        <Text fontSize="xs" color="text.secondary">
+          외 {omittedCount}개 글은 미리보기에서 생략했습니다.
+        </Text>
+      ) : null}
+    </Box>
+  );
+};
+
 const ApiResponsePreview = ({ data }: { data: DataRecord }) => {
   const responseData = data.data;
   const itemCount =
@@ -604,6 +680,8 @@ const CanonicalPreview = ({ data }: { data: unknown }) => {
       return <SpreadsheetPreview data={data} />;
     case "SCHEDULE_DATA":
       return <SchedulePreview data={data} />;
+    case "ARTICLE_LIST":
+      return <ArticleListPreview data={data} />;
     case "SEND_RESULT":
       return <SendResultPreview data={data} />;
     case "API_RESPONSE":

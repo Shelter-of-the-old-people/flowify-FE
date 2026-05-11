@@ -537,6 +537,54 @@ export const MAPPING_RULES: MappingRules = {
       ],
     },
 
+    ARTICLE_LIST: {
+      label: "글 목록",
+      description: "여러 기사, 공지, 게시글이 들어오는 경우",
+      requires_processing_method: true,
+      processing_method: {
+        question: "글들을 어떻게 처리할까요?",
+        options: [
+          {
+            id: "one_by_one",
+            label: "글 하나씩 처리",
+            node_type: "LOOP",
+            output_data_type: "TEXT",
+            priority: 1,
+          },
+          {
+            id: "all_at_once",
+            label: "전체를 하나로 묶어 처리",
+            node_type: null,
+            output_data_type: "ARTICLE_LIST",
+            priority: 2,
+          },
+        ],
+      },
+      actions: [
+        {
+          id: "ai_summarize",
+          label: "AI로 요약",
+          node_type: "AI",
+          output_data_type: "TEXT",
+          priority: 1,
+        },
+        {
+          id: "filter_fields",
+          label: "필요한 정보만 사용",
+          node_type: "DATA_FILTER",
+          output_data_type: "TEXT",
+          priority: 2,
+        },
+        {
+          id: "passthrough",
+          label: "그대로 전달",
+          node_type: "PASSTHROUGH",
+          output_data_type: "ARTICLE_LIST",
+          priority: 99,
+        },
+      ],
+    },
+
     SCHEDULE_DATA: {
       label: "일정 데이터",
       description: "캘린더 일정 목록 (제목, 시간, 참석자 등)",

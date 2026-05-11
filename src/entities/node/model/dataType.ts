@@ -9,6 +9,7 @@ export type DataType =
   | "spreadsheet"
   | "email-list"
   | "single-email"
+  | "article-list"
   | "schedule-data"
   | "api-response";
 

@@ -1,17 +1,20 @@
 import { type SourceTargetOptionItemResponse } from "@/entities/workflow";
 
 export type SourceTargetPickerValue = {
+  keyword: string;
   option: SourceTargetOptionItemResponse | null;
   value: string;
 };
 
 export const createEmptySourceTargetPickerValue =
   (): SourceTargetPickerValue => ({
+    keyword: "",
     option: null,
     value: "",
   });
 
 export const TARGET_SCHEMA_LABELS: Record<string, string> = {
+  category_picker: "게시판",
   channel_picker: "채널",
   course_picker: "과목",
   day_picker: "요일",
@@ -37,6 +40,7 @@ export const DAY_PICKER_OPTIONS = [
 ] as const;
 
 const REMOTE_TARGET_SCHEMA_TYPES = new Set([
+  "category_picker",
   "course_picker",
   "term_picker",
   "file_picker",
@@ -57,8 +61,42 @@ export const getTargetSchemaPlaceholder = (
     ? targetSchema.placeholder
     : `${getTargetSchemaLabel(targetSchema)} 입력`;
 
+export const getTargetSchemaHelperText = (
+  targetSchema: Record<string, unknown>,
+) =>
+  typeof targetSchema.helper_text === "string"
+    ? targetSchema.helper_text
+    : null;
+
+export const getTargetSchemaValidation = (
+  targetSchema: Record<string, unknown>,
+) =>
+  typeof targetSchema.validation === "string" ? targetSchema.validation : null;
+
+export const getTargetSchemaValidationMessage = (
+  targetSchema: Record<string, unknown>,
+  value: string,
+) => {
+  if (getTargetSchemaValidation(targetSchema) !== "url" || !value.trim()) {
+    return null;
+  }
+
+  return isValidHttpsUrl(value)
+    ? null
+    : "https://로 시작하는 사이트 주소를 입력해주세요.";
+};
+
 export const hasTargetSchema = (targetSchema: Record<string, unknown>) =>
   Object.keys(targetSchema).length > 0;
 
 export const isRemoteTargetPicker = (targetSchema: Record<string, unknown>) =>
   REMOTE_TARGET_SCHEMA_TYPES.has(getTargetSchemaType(targetSchema));
+
+const isValidHttpsUrl = (value: string) => {
+  try {
+    const parsedUrl = new URL(value.trim());
+    return parsedUrl.protocol === "https:" && Boolean(parsedUrl.hostname);
+  } catch {
+    return false;
+  }
+};

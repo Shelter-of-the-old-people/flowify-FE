@@ -12,6 +12,7 @@ const DATA_TYPE_TO_MAPPING_KEY: Record<DataType, MappingDataTypeKey> = {
   spreadsheet: "SPREADSHEET_DATA",
   "email-list": "EMAIL_LIST",
   "single-email": "SINGLE_EMAIL",
+  "article-list": "ARTICLE_LIST",
   "schedule-data": "SCHEDULE_DATA",
   "api-response": "API_RESPONSE",
 };
@@ -23,6 +24,7 @@ const MAPPING_KEY_TO_DATA_TYPE: Record<MappingDataTypeKey, DataType> = {
   SPREADSHEET_DATA: "spreadsheet",
   EMAIL_LIST: "email-list",
   SINGLE_EMAIL: "single-email",
+  ARTICLE_LIST: "article-list",
   SCHEDULE_DATA: "schedule-data",
   API_RESPONSE: "api-response",
 };

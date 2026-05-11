@@ -5,7 +5,9 @@ export type ServiceBadgeKey =
   | "gmail"
   | "google-drive"
   | "google-sheets"
+  | "naver-news"
   | "notion"
+  | "seboard"
   | "slack"
   | "communication"
   | "storage"
@@ -38,14 +40,40 @@ export const getServiceBadgeKeyFromService = (
     case "google-sheets":
     case "google_sheets":
       return "google-sheets";
+    case "naver-news":
+    case "naver_news":
+      return "naver-news";
     case "notion":
       return "notion";
+    case "seboard":
+    case "seboard_new_posts":
+    case "seboard_posts":
+      return "seboard";
     case "slack":
       return "slack";
     case "web":
+    case "web-news":
+    case "web_news":
     case "web-scraping":
+    case "website_feed":
       return "web-scraping";
     default:
       return "unknown";
   }
+};
+
+export const getServiceBadgeKeyFromNodeConfig = (
+  service: unknown,
+  sourceMode: unknown,
+): ServiceBadgeKey => {
+  if (
+    service === "web_news" &&
+    (sourceMode === "seboard_posts" || sourceMode === "seboard_new_posts")
+  ) {
+    return "seboard";
+  }
+
+  return getServiceBadgeKeyFromService(
+    typeof service === "string" ? service : null,
+  );
 };

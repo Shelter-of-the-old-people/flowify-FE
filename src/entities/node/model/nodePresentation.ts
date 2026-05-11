@@ -59,7 +59,8 @@ const WEB_SCRAPING_SERVICE_TITLE: Record<
   canvas_lms: "Canvas LMS",
   coupang: "Coupang",
   github: "GitHub",
-  naver_news: "Naver News",
+  naver_news: "네이버 뉴스",
+  web_news: "인터넷",
   youtube: "YouTube",
 };
 

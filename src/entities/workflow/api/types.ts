@@ -29,7 +29,12 @@ export interface SourceCatalogResponse {
   services: SourceServiceResponse[];
 }
 
-export type SourceTargetOptionType = "course" | "term" | "file" | "folder";
+export type SourceTargetOptionType =
+  | "category"
+  | "course"
+  | "term"
+  | "file"
+  | "folder";
 
 export interface SourceTargetOptionItemResponse {
   id: string;

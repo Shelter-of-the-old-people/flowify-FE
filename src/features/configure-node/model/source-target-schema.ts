@@ -1,5 +1,6 @@
 export const SOURCE_TARGET_SCHEMA_LABELS: Record<string, string> = {
   calendar_picker: "캘린더",
+  category_picker: "게시판",
   channel_picker: "채널",
   course_picker: "과목",
   day_picker: "요일",
@@ -26,6 +27,7 @@ export const DAY_PICKER_OPTIONS = [
 
 const REMOTE_SOURCE_TARGET_SCHEMA_TYPES = new Set([
   "calendar_picker",
+  "category_picker",
   "channel_picker",
   "course_picker",
   "file_picker",
@@ -53,9 +55,46 @@ export const getSourceTargetSchemaPlaceholder = (
     ? targetSchema.placeholder
     : `${getSourceTargetSchemaLabel(targetSchema)} 입력`;
 
+export const getSourceTargetSchemaHelperText = (
+  targetSchema: Record<string, unknown>,
+) =>
+  typeof targetSchema.helper_text === "string"
+    ? targetSchema.helper_text
+    : null;
+
+export const getSourceTargetSchemaValidation = (
+  targetSchema: Record<string, unknown>,
+) =>
+  typeof targetSchema.validation === "string" ? targetSchema.validation : null;
+
+export const getSourceTargetSchemaValidationMessage = (
+  targetSchema: Record<string, unknown>,
+  value: string,
+) => {
+  if (
+    getSourceTargetSchemaValidation(targetSchema) !== "url" ||
+    !value.trim()
+  ) {
+    return null;
+  }
+
+  return isValidHttpsUrl(value)
+    ? null
+    : "https://로 시작하는 사이트 주소를 입력해주세요.";
+};
+
 export const isRemoteSourceTargetPicker = (
   targetSchema: Record<string, unknown>,
 ) =>
   REMOTE_SOURCE_TARGET_SCHEMA_TYPES.has(
     getSourceTargetSchemaType(targetSchema),
   );
+
+const isValidHttpsUrl = (value: string) => {
+  try {
+    const parsedUrl = new URL(value.trim());
+    return parsedUrl.protocol === "https:" && Boolean(parsedUrl.hostname);
+  } catch {
+    return false;
+  }
+};

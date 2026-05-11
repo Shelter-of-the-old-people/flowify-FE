@@ -18,7 +18,7 @@ import {
   isMiddleWizardCompleted,
   useWorkflowStore,
 } from "@/features/workflow-editor";
-import { useDualPanelLayout } from "@/shared";
+import { ServiceIcon, useDualPanelLayout } from "@/shared";
 import {
   DataPreviewBlock,
   DataStateNotice,
@@ -62,6 +62,17 @@ export const InputPanel = () => {
   const { activeNode, sourceNode, isStartNode, isEndNode } = nodeDataPanel;
   const sourceData = sourceNode?.data ?? null;
   const sourceMeta = sourceData ? NODE_REGISTRY[sourceData.type] : null;
+  const headerNodeData = sourceData ?? (isStartNode ? activeNode?.data : null);
+  const headerMeta = headerNodeData ? NODE_REGISTRY[headerNodeData.type] : null;
+  const headerConfig = headerNodeData?.config as
+    | Record<string, unknown>
+    | undefined;
+  const headerServiceKey =
+    typeof headerConfig?.service === "string" ? headerConfig.service : null;
+  const headerSourceMode =
+    typeof headerConfig?.source_mode === "string"
+      ? headerConfig.source_mode
+      : null;
   const isMiddleNode = Boolean(activeNode) && !isStartNode && !isEndNode;
   const storeNodeStatus = activePanelNodeId
     ? (nodeStatuses[activePanelNodeId] ?? null)
@@ -134,11 +145,13 @@ export const InputPanel = () => {
         px={3}
       >
         <Box display="flex" gap={2} alignItems="center">
-          {sourceMeta ? (
-            <Icon
-              as={sourceMeta.iconComponent}
-              boxSize={6}
-              color={sourceMeta.color}
+          {headerMeta ? (
+            <ServiceIcon
+              color={headerMeta.color}
+              fallbackIcon={headerMeta.iconComponent}
+              serviceKey={headerServiceKey}
+              size={24}
+              sourceMode={headerSourceMode}
             />
           ) : null}
           <Text fontSize="xl" fontWeight="medium" letterSpacing="-0.4px">

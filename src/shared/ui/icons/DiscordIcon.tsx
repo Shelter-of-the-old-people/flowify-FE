@@ -4,14 +4,13 @@ type Props = Omit<SVGProps<SVGSVGElement>, "height" | "width"> & {
   size?: number | string;
 };
 
-export const DiscordIcon = ({ size = 24, ...props }: Props) => {
+export const DiscordIcon = ({ size = 24, style, ...props }: Props) => {
   return (
     <svg
       aria-hidden="true"
       focusable="false"
-      height="auto"
+      style={{ height: "auto", width: size, ...style }}
       viewBox="0 0 60 47"
-      width={size}
       xmlns="http://www.w3.org/2000/svg"
       {...props}
     >

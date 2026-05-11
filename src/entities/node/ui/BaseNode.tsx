@@ -2,11 +2,11 @@ import { useState } from "react";
 import { type MouseEvent, type ReactNode } from "react";
 import { MdCancel } from "react-icons/md";
 
-import { Box, Icon, IconButton, Text } from "@chakra-ui/react";
+import { Box, IconButton, Text } from "@chakra-ui/react";
 import { Handle, Position } from "@xyflow/react";
 
 import { getNodeStatusSummaryLabel } from "@/entities/workflow";
-import { DiscordIcon } from "@/shared";
+import { ServiceIcon } from "@/shared";
 
 import { getNodePresentation } from "../model";
 import { type FlowNodeData } from "../model/types";
@@ -53,6 +53,12 @@ const getNodeServiceKey = (data: FlowNodeData) => {
   return typeof config.service === "string" ? config.service : null;
 };
 
+const getNodeSourceMode = (data: FlowNodeData) => {
+  const config = data.config as unknown as Record<string, unknown>;
+
+  return typeof config.source_mode === "string" ? config.source_mode : null;
+};
+
 export const BaseNode = ({ id, data, children }: BaseNodeProps) => {
   const {
     canEditNodes,
@@ -80,18 +86,21 @@ export const BaseNode = ({ id, data, children }: BaseNodeProps) => {
   );
   const showNodeIcon = nodeStatus?.configured ?? data.config.isConfigured;
   const serviceKey = getNodeServiceKey(data);
+  const sourceMode = getNodeSourceMode(data);
 
   const renderNodeIcon = () => {
     if (!showNodeIcon) {
       return null;
     }
 
-    if (serviceKey === "discord") {
-      return <DiscordIcon size={56} />;
-    }
-
     return (
-      <Icon as={presentation.iconComponent} boxSize={14} color="text.primary" />
+      <ServiceIcon
+        color="text.primary"
+        fallbackIcon={presentation.iconComponent}
+        serviceKey={serviceKey}
+        size={56}
+        sourceMode={sourceMode}
+      />
     );
   };
 

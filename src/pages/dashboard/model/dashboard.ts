@@ -11,6 +11,7 @@ import {
   type ValidationWarning,
   getDateTimestamp,
   getRelativeTimeLabel,
+  getServiceBadgeKeyFromNodeConfig,
   getServiceBadgeKeyFromService,
 } from "@/shared";
 
@@ -121,12 +122,12 @@ const getWorkflowServiceBadgeKey = (
     return "unknown";
   }
 
-  const service = node.config?.["service"];
-  if (typeof service === "string") {
-    const serviceBadgeKey = getServiceBadgeKeyFromService(service);
-    if (serviceBadgeKey !== "unknown") {
-      return serviceBadgeKey;
-    }
+  const serviceBadgeKey = getServiceBadgeKeyFromNodeConfig(
+    node.config?.["service"],
+    node.config?.["source_mode"],
+  );
+  if (serviceBadgeKey !== "unknown") {
+    return serviceBadgeKey;
   }
 
   const typeBadgeKey = getServiceBadgeKeyFromService(node.type);
