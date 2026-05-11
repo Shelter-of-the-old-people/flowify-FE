@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 
-import { Box } from "@chakra-ui/react";
+import { Box, Button, Spinner } from "@chakra-ui/react";
 
 import {
   executionPollInterval,
@@ -17,6 +17,7 @@ import {
 import {
   type WorkflowNodeStatusResponse,
   type WorkflowResponse,
+  getWorkflowTriggerSummary,
   useDeleteWorkflowMutation,
 } from "@/entities/workflow";
 import {
@@ -31,7 +32,8 @@ import { DeleteConfirmDialog } from "./DeleteConfirmDialog";
 import { ExecutionStatusBadge } from "./ExecutionStatusBadge";
 import { MiddleSlotButtons } from "./MiddleSlotButtons";
 import { RunStopSplitButton } from "./RunStopSplitButton";
-import { TriggerSettingsButton } from "./TriggerSettingsButton";
+import { TriggerSettingsPanel } from "./TriggerSettingsPanel";
+import { TriggerSummaryChip } from "./TriggerSummaryChip";
 import { WorkflowNameField } from "./WorkflowNameField";
 
 const getExecutableBlockers = (
@@ -97,6 +99,7 @@ export const EditorRemoteBar = () => {
     null,
   );
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [triggerSettingsOpen, setTriggerSettingsOpen] = useState(false);
   const { data: executions, refetch: refetchExecutions } =
     useWorkflowExecutionsQuery(workflowId || undefined, {
       enabled: Boolean(workflowId),
@@ -138,6 +141,10 @@ export const EditorRemoteBar = () => {
   const executableBlockers = useMemo(
     () => getExecutableBlockers(Object.values(nodeStatuses)),
     [nodeStatuses],
+  );
+  const triggerSummary = useMemo(
+    () => getWorkflowTriggerSummary(workflowTrigger, workflowActive),
+    [workflowActive, workflowTrigger],
   );
   const hasExecutableBlock = !isDirty && executableBlockers.length > 0;
   const executionStatusLabel =
@@ -185,6 +192,7 @@ export const EditorRemoteBar = () => {
     effectiveRunPhase === "idle" &&
     !isRemoteExecutionInFlight &&
     !isDeletePending;
+  const canOpenRunMenu = Boolean(workflowId) && !isDeletePending;
   const canRollback =
     Boolean(workflowId) &&
     canRunWorkflow &&
@@ -325,6 +333,61 @@ export const EditorRemoteBar = () => {
       });
     }
   };
+
+  const handleOpenTriggerSettings = () => {
+    if (!workflowId) {
+      return;
+    }
+
+    setTriggerSettingsOpen(true);
+  };
+
+  const handleCloseTriggerSettings = () => {
+    setTriggerSettingsOpen(false);
+  };
+
+  const handleCheckBeforeRun = () => {
+    if (!workflowId) {
+      toaster.create({
+        title: "워크플로우 정보 없음",
+        description: "워크플로우 정보를 불러온 후 다시 확인해 주세요.",
+        type: "error",
+      });
+      return;
+    }
+
+    if (!canRunWorkflow) {
+      toaster.create({
+        title: "실행 권한 없음",
+        description: "이 워크플로우를 실행할 권한이 없습니다.",
+        type: "error",
+      });
+      return;
+    }
+
+    if (isDirty) {
+      toaster.create({
+        title: "저장 필요",
+        description:
+          "저장되지 않은 변경사항이 있습니다. 저장 후 최신 설정 상태를 확인해 주세요.",
+      });
+      return;
+    }
+
+    if (executableBlockers.length > 0) {
+      toaster.create({
+        title: "설정 확인 필요",
+        description: getExecutionBlockerMessage(executableBlockers.length),
+        type: "error",
+      });
+      return;
+    }
+
+    toaster.create({
+      title: "실행 준비 완료",
+      description: "현재 저장된 설정으로 워크플로우를 실행할 수 있습니다.",
+    });
+  };
   const handleRollback = async () => {
     if (!workflowId || !activeExecution || !canRollback) {
       return;
@@ -386,7 +449,11 @@ export const EditorRemoteBar = () => {
     >
       <Box position="relative" pointerEvents="auto">
         <ExecutionStatusBadge label={executionStatusLabel} />
-        <TriggerSettingsButton canEdit={canEditTrigger} />
+        <TriggerSettingsPanel
+          open={triggerSettingsOpen}
+          canEdit={canEditTrigger}
+          onClose={handleCloseTriggerSettings}
+        />
 
         <Box
           display="flex"
@@ -424,18 +491,49 @@ export const EditorRemoteBar = () => {
             onRollback={() => void handleRollback()}
           />
 
+          <TriggerSummaryChip
+            summary={triggerSummary}
+            onClick={handleOpenTriggerSettings}
+          />
+
           <RunStopSplitButton
             isRunning={isRunning}
             isRunPending={isExecutePending || isStarting}
             isStopPending={isStopPending}
-            isSavePending={isSavePending}
             canRun={canRun}
             canStop={canStop}
-            canSave={canSave}
+            canOpenMenu={canOpenRunMenu}
             onRun={() => void handleRun()}
             onStop={() => void handleStop()}
-            onSave={() => void handleSave()}
+            onOpenTriggerSettings={handleOpenTriggerSettings}
+            onCheckBeforeRun={handleCheckBeforeRun}
           />
+
+          <Button
+            type="button"
+            onClick={() => void handleSave()}
+            disabled={!canSave || isSavePending}
+            height="32px"
+            minWidth="auto"
+            px="8px"
+            py="4px"
+            bg="#272727"
+            color="#efefef"
+            borderRadius="10px"
+            fontFamily="'Pretendard Variable', sans-serif"
+            fontWeight="normal"
+            fontSize="14px"
+            lineHeight="normal"
+            _hover={{ bg: "#3a3a3a" }}
+            _active={{ bg: "#1f1f1f" }}
+            _disabled={{
+              opacity: 0.5,
+              cursor: "not-allowed",
+              _hover: { bg: "#272727" },
+            }}
+          >
+            {isSavePending ? <Spinner size="xs" color="#efefef" /> : "저장"}
+          </Button>
         </Box>
       </Box>
 
