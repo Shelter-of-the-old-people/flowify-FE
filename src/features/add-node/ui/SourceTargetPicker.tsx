@@ -11,9 +11,11 @@ import {
 import { Box, Button, Input, Text } from "@chakra-ui/react";
 
 import {
+  GroupedSourceTargetOptionPicker,
   type SourceModeResponse,
   type SourceTargetOptionItemResponse,
   getWorkflowMetadataSummary,
+  isGroupedSourceTargetOptionPicker,
   useInfiniteSourceTargetOptionsQuery,
 } from "@/entities/workflow";
 import {
@@ -94,6 +96,10 @@ export const SourceTargetPicker = ({
   const schemaType = getTargetSchemaType(mode.target_schema);
   const isRemotePicker = isRemoteTargetPicker(mode.target_schema);
   const isFolderPicker = schemaType === "folder_picker";
+  const isGroupedPicker = isGroupedSourceTargetOptionPicker(
+    serviceKey,
+    schemaType,
+  );
   const pickerScope = `${serviceKey}:${mode.key}:${schemaType}`;
   const [pickerState, setPickerState] = useState<PickerState>(() =>
     createPickerState(pickerScope),
@@ -229,6 +235,27 @@ export const SourceTargetPicker = ({
         onChange={(event) =>
           onChange({ ...value, option: null, value: event.target.value })
         }
+      />
+    );
+  }
+
+  if (isGroupedPicker) {
+    return (
+      <GroupedSourceTargetOptionPicker
+        emptyMessage="선택할 수 있는 게시판이 없습니다."
+        errorMessage={isError ? getApiErrorMessage(error) : null}
+        getItemIcon={getOptionIcon}
+        hasMore={Boolean(hasNextPage)}
+        isLoading={isLoading}
+        isLoadingMore={isFetchingNextPage}
+        items={items}
+        searchPlaceholder={`${getTargetSchemaLabel(mode.target_schema)} 검색`}
+        searchValue={searchQuery}
+        selectedId={value.value}
+        onLoadMore={() => void fetchNextPage()}
+        onRetry={() => void refetch()}
+        onSearchChange={setScopedSearchQuery}
+        onSelect={handleSelectOption}
       />
     );
   }
