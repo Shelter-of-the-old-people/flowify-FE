@@ -1,5 +1,7 @@
 import { addWorkflowNodeAPI } from "./add-workflow-node.api";
 import { createGoogleDriveFolderAPI } from "./create-google-drive-folder.api";
+import { createGoogleSheetAPI } from "./create-google-sheet.api";
+import { createGoogleSheetsSpreadsheetAPI } from "./create-google-sheets-spreadsheet.api";
 import { createWorkflowAPI } from "./create-workflow.api";
 import { deleteWorkflowNodeAPI } from "./delete-workflow-node.api";
 import { deleteWorkflowAPI } from "./delete-workflow.api";
@@ -36,7 +38,9 @@ export const workflowApi = {
   getSchemaPreview: getWorkflowSchemaPreviewAPI,
   getNodeSchemaPreview: getWorkflowNodeSchemaPreviewAPI,
   create: createWorkflowAPI,
+  createGoogleSheet: createGoogleSheetAPI,
   createGoogleDriveFolder: createGoogleDriveFolderAPI,
+  createGoogleSheetsSpreadsheet: createGoogleSheetsSpreadsheetAPI,
   update: updateWorkflowAPI,
   delete: deleteWorkflowAPI,
   addNode: addWorkflowNodeAPI,

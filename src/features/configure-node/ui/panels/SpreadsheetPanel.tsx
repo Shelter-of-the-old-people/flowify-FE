@@ -11,14 +11,22 @@ import {
 import {
   type SourceTargetOptionItemResponse,
   getWorkflowMetadataSummary,
+  useCreateGoogleSheetMutation,
+  useCreateGoogleSheetsSpreadsheetMutation,
   useInfiniteSourceTargetOptionsQuery,
 } from "@/entities/workflow";
+import {
+  getGoogleSheetsSelectedSheetOptionId,
+  getGoogleSheetsSheetName,
+  getGoogleSheetsSpreadsheetId,
+} from "@/entities/workflow/lib/google-sheets-target-option";
 import { useWorkflowStore } from "@/features/workflow-editor";
 import {
   RemoteOptionPicker,
   type RemoteOptionPickerItem,
   getApiErrorMessage,
 } from "@/shared";
+import { toaster } from "@/shared/utils";
 
 import { type NodePanelProps } from "../../model";
 
@@ -258,6 +266,17 @@ export const SpreadsheetPanel = ({
   const items =
     targetOptions?.pages.flatMap((page) => page.items) ??
     ([] as SourceTargetOptionItemResponse[]);
+  const currentSpreadsheet = path.length > 0 ? path[path.length - 1] : null;
+  const [newSpreadsheetName, setNewSpreadsheetName] = useState("");
+  const [newSheetName, setNewSheetName] = useState("");
+  const createSpreadsheetMutation = useCreateGoogleSheetsSpreadsheetMutation({
+    showErrorToast: true,
+    errorMessage: "Google Sheets 스프레드시트 생성에 실패했습니다.",
+  });
+  const createSheetMutation = useCreateGoogleSheetMutation({
+    showErrorToast: true,
+    errorMessage: "Google Sheets 시트 생성에 실패했습니다.",
+  });
   const hasChanges = useMemo(
     () => JSON.stringify(values) !== JSON.stringify(initialValues),
     [initialValues, values],
@@ -316,10 +335,74 @@ export const SpreadsheetPanel = ({
       return;
     }
 
-    updateDraft("spreadsheetId", sourceOption.id);
+    updateDraft("spreadsheetId", getGoogleSheetsSpreadsheetId(sourceOption));
     updateDraft("spreadsheetLabel", sourceOption.label);
-    if (typeof sourceOption.metadata.sheetName === "string") {
-      updateDraft("sheetName", sourceOption.metadata.sheetName);
+    const sheetName = getGoogleSheetsSheetName(sourceOption);
+    if (sheetName) {
+      updateDraft("sheetName", sheetName);
+    }
+  };
+
+  const handleCreateSpreadsheet = async () => {
+    const trimmedName = newSpreadsheetName.trim();
+    if (readOnly || trimmedName.length === 0) {
+      return;
+    }
+
+    try {
+      const createdSpreadsheet = await createSpreadsheetMutation.mutateAsync({
+        name: trimmedName,
+      });
+      setPickerState((current) => {
+        const base =
+          current.scope === pickerScope
+            ? current
+            : createPickerState(pickerScope);
+
+        return {
+          ...base,
+          path: [createdSpreadsheet],
+          searchQuery: "",
+        };
+      });
+      setNewSpreadsheetName("");
+      setNewSheetName("");
+      updateDraft("spreadsheetId", "");
+      updateDraft("spreadsheetLabel", "");
+      updateDraft("sheetName", "");
+      toaster.create({
+        type: "success",
+        description: "새 스프레드시트를 만들고 바로 열었습니다.",
+      });
+    } catch {
+      // mutation toast handles the error state
+    }
+  };
+
+  const handleCreateSheet = async () => {
+    const trimmedSheetName = newSheetName.trim();
+    if (!currentSpreadsheet || readOnly || trimmedSheetName.length === 0) {
+      return;
+    }
+
+    try {
+      const createdSheet = await createSheetMutation.mutateAsync({
+        spreadsheetId: currentSpreadsheet.id,
+        sheetName: trimmedSheetName,
+      });
+      setNewSheetName("");
+      updateDraft("spreadsheetId", getGoogleSheetsSpreadsheetId(createdSheet));
+      updateDraft("spreadsheetLabel", createdSheet.label);
+      const sheetName = getGoogleSheetsSheetName(createdSheet);
+      if (sheetName) {
+        updateDraft("sheetName", sheetName);
+      }
+      toaster.create({
+        type: "success",
+        description: "시트를 준비하고 바로 선택했습니다.",
+      });
+    } catch {
+      // mutation toast handles the error state
     }
   };
 
@@ -432,7 +515,10 @@ export const SpreadsheetPanel = ({
             rootLabel="Google Sheets"
             searchPlaceholder="시트 검색"
             searchValue={searchQuery}
-            selectedId={values.spreadsheetId}
+            selectedId={getGoogleSheetsSelectedSheetOptionId({
+              spreadsheetId: values.spreadsheetId,
+              sheetName: values.sheetName,
+            })}
             onBrowse={handleBrowseOption}
             onLoadMore={() => void fetchNextPage()}
             onPathSelect={(index) => {
@@ -449,6 +535,68 @@ export const SpreadsheetPanel = ({
             onSearchChange={setScopedSearchQuery}
             onSelect={handleSelectSheet}
           />
+
+          {currentSpreadsheet ? (
+            <Box display="flex" flexDirection="column" gap={2}>
+              <Text color="text.secondary" fontSize="xs">
+                현재 스프레드시트에 원하는 탭이 없으면 새 시트를 만들 수
+                있습니다.
+              </Text>
+              <Box display="flex" gap={2}>
+                <Input
+                  disabled={readOnly}
+                  placeholder="새 시트 이름"
+                  value={newSheetName}
+                  onChange={(event) => setNewSheetName(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      void handleCreateSheet();
+                    }
+                  }}
+                />
+                <Button
+                  disabled={readOnly || newSheetName.trim().length === 0}
+                  flexShrink={0}
+                  loading={createSheetMutation.isPending}
+                  onClick={() => void handleCreateSheet()}
+                >
+                  새 시트 만들기
+                </Button>
+              </Box>
+            </Box>
+          ) : (
+            <Box display="flex" flexDirection="column" gap={2}>
+              <Text color="text.secondary" fontSize="xs">
+                원하는 스프레드시트가 없으면 새 파일을 만들고 바로 들어갈 수
+                있습니다.
+              </Text>
+              <Box display="flex" gap={2}>
+                <Input
+                  disabled={readOnly}
+                  placeholder="새 스프레드시트 이름"
+                  value={newSpreadsheetName}
+                  onChange={(event) =>
+                    setNewSpreadsheetName(event.target.value)
+                  }
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      void handleCreateSpreadsheet();
+                    }
+                  }}
+                />
+                <Button
+                  disabled={readOnly || newSpreadsheetName.trim().length === 0}
+                  flexShrink={0}
+                  loading={createSpreadsheetMutation.isPending}
+                  onClick={() => void handleCreateSpreadsheet()}
+                >
+                  새 스프레드시트 만들기
+                </Button>
+              </Box>
+            </Box>
+          )}
 
           <Box display="grid" gap={3} gridTemplateColumns="repeat(2, 1fr)">
             <Box>

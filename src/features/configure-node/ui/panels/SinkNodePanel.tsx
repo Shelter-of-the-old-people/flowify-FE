@@ -31,12 +31,19 @@ import {
   toEdgeDefinition,
   toNodeDefinition,
   useCreateGoogleDriveFolderMutation,
+  useCreateGoogleSheetMutation,
+  useCreateGoogleSheetsSpreadsheetMutation,
   useInfiniteSinkTargetOptionsQuery,
   useInfiniteSourceTargetOptionsQuery,
   useSinkCatalogQuery,
   useSinkSchemaQuery,
   useWorkflowSchemaPreviewMutation,
 } from "@/entities/workflow";
+import {
+  getGoogleSheetsSelectedSheetOptionId,
+  getGoogleSheetsSheetName,
+  getGoogleSheetsSpreadsheetId,
+} from "@/entities/workflow/lib/google-sheets-target-option";
 import { useWorkflowStore } from "@/features/workflow-editor";
 import {
   RemoteOptionPicker,
@@ -599,6 +606,18 @@ const SinkRemotePickerField = ({
     targetOptions?.pages.flatMap((page) => page.items) ??
     ([] as SinkTargetOptionItemResponse[]);
   const hint = getSinkPickerHint(serviceKey, optionType);
+  const currentSpreadsheet =
+    isGoogleSheetsPicker && path.length > 0 ? path[path.length - 1] : null;
+  const [newSpreadsheetName, setNewSpreadsheetName] = useState("");
+  const [newSheetName, setNewSheetName] = useState("");
+  const createSpreadsheetMutation = useCreateGoogleSheetsSpreadsheetMutation({
+    showErrorToast: true,
+    errorMessage: "Google Sheets 스프레드시트 생성에 실패했습니다.",
+  });
+  const createSheetMutation = useCreateGoogleSheetMutation({
+    showErrorToast: true,
+    errorMessage: "Google Sheets 시트 생성에 실패했습니다.",
+  });
 
   const setScopedSearchQuery = (nextQuery: string) => {
     setPickerState((current) => {
@@ -667,6 +686,61 @@ const SinkRemotePickerField = ({
     });
   };
 
+  const handleCreateSpreadsheet = async () => {
+    const trimmedName = newSpreadsheetName.trim();
+    if (!isGoogleSheetsPicker || readOnly || trimmedName.length === 0) {
+      return;
+    }
+
+    try {
+      const createdSpreadsheet = await createSpreadsheetMutation.mutateAsync({
+        name: trimmedName,
+      });
+      setPickerState((current) => {
+        const base =
+          current.scope === pickerScope
+            ? current
+            : createSearchPickerState(pickerScope);
+
+        return {
+          ...base,
+          path: [createdSpreadsheet as SinkTargetOptionItemResponse],
+          searchQuery: "",
+        };
+      });
+      setNewSpreadsheetName("");
+      setNewSheetName("");
+      toaster.create({
+        type: "success",
+        description: "새 스프레드시트를 만들고 바로 열었습니다.",
+      });
+    } catch {
+      // mutation toast handles the error state
+    }
+  };
+
+  const handleCreateSheet = async () => {
+    const trimmedSheetName = newSheetName.trim();
+    if (!currentSpreadsheet || readOnly || trimmedSheetName.length === 0) {
+      return;
+    }
+
+    try {
+      const createdSheet = await createSheetMutation.mutateAsync({
+        spreadsheetId: currentSpreadsheet.id,
+        sheetName: trimmedSheetName,
+      });
+      setNewSheetName("");
+      onSelectOption(createdSheet as SinkTargetOptionItemResponse);
+      toaster.create({
+        type: "success",
+        description: "시트를 준비하고 바로 선택했습니다.",
+      });
+    } catch {
+      // mutation toast handles the error state
+    }
+  };
+
   return (
     <Box display="flex" flexDirection="column" gap={3}>
       {selectedId ? (
@@ -733,6 +807,72 @@ const SinkRemotePickerField = ({
         <Text color="text.secondary" fontSize="xs">
           {hint}
         </Text>
+      ) : null}
+
+      {isGoogleSheetsPicker ? (
+        <Box display="flex" flexDirection="column" gap={2}>
+          {currentSpreadsheet ? (
+            <>
+              <Text color="text.secondary" fontSize="xs">
+                현재 스프레드시트에 원하는 탭이 없으면 새 시트를 만들 수
+                있습니다.
+              </Text>
+              <Box display="flex" gap={2}>
+                <Input
+                  disabled={readOnly}
+                  placeholder="새 시트 이름"
+                  value={newSheetName}
+                  onChange={(event) => setNewSheetName(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      void handleCreateSheet();
+                    }
+                  }}
+                />
+                <Button
+                  disabled={readOnly || newSheetName.trim().length === 0}
+                  flexShrink={0}
+                  loading={createSheetMutation.isPending}
+                  onClick={() => void handleCreateSheet()}
+                >
+                  새 시트 만들기
+                </Button>
+              </Box>
+            </>
+          ) : (
+            <>
+              <Text color="text.secondary" fontSize="xs">
+                원하는 스프레드시트가 없으면 새 파일을 만들고 바로 들어갈 수
+                있습니다.
+              </Text>
+              <Box display="flex" gap={2}>
+                <Input
+                  disabled={readOnly}
+                  placeholder="새 스프레드시트 이름"
+                  value={newSpreadsheetName}
+                  onChange={(event) =>
+                    setNewSpreadsheetName(event.target.value)
+                  }
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      void handleCreateSpreadsheet();
+                    }
+                  }}
+                />
+                <Button
+                  disabled={readOnly || newSpreadsheetName.trim().length === 0}
+                  flexShrink={0}
+                  loading={createSpreadsheetMutation.isPending}
+                  onClick={() => void handleCreateSpreadsheet()}
+                >
+                  새 스프레드시트 만들기
+                </Button>
+              </Box>
+            </>
+          )}
+        </Box>
       ) : null}
     </Box>
   );
@@ -818,12 +958,13 @@ const SinkSchemaEditor = ({
     field: SinkSchemaFieldResponse,
     option: PickerOptionLike,
   ) => {
-    handleFieldChange(field.key, option.id);
+    const selectedValue =
+      field.type === "sheet_picker"
+        ? getGoogleSheetsSpreadsheetId(option)
+        : option.id;
+    handleFieldChange(field.key, selectedValue);
     if (field.type === "sheet_picker") {
-      const sheetName =
-        typeof option.metadata.sheetName === "string"
-          ? option.metadata.sheetName
-          : null;
+      const sheetName = getGoogleSheetsSheetName(option);
       if (sheetName) {
         handleFieldChange("sheet_name", sheetName);
       }
@@ -938,7 +1079,17 @@ const SinkSchemaEditor = ({
                   fieldKey={field.key}
                   optionType={SINK_TARGET_OPTION_TYPES[field.type] as string}
                   readOnly={readOnly}
-                  selectedId={stringValue}
+                  selectedId={
+                    field.type === "sheet_picker"
+                      ? getGoogleSheetsSelectedSheetOptionId({
+                          spreadsheetId: stringValue,
+                          sheetName:
+                            typeof draftValues.sheet_name === "string"
+                              ? draftValues.sheet_name
+                              : "",
+                        })
+                      : stringValue
+                  }
                   selectedLabel={
                     typeof auxiliaryDraftValues[
                       getAuxiliaryLabelKey(field.key)

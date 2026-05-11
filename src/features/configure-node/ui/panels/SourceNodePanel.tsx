@@ -15,6 +15,7 @@ import {
   isSeBoardNewPostsSourceMode,
   useSourceCatalogQuery,
 } from "@/entities/workflow";
+import { buildGoogleSheetsSheetOptionId } from "@/entities/workflow/lib/google-sheets-target-option";
 import { useWorkflowStore } from "@/features/workflow-editor";
 import {
   getApiErrorMessage,
@@ -86,7 +87,24 @@ const createInitialSourceTargetValue = (
 ): SourceTargetSetupValue => ({
   keyword: getStringConfigValue(config, "keyword") ?? "",
   option: null,
-  value: getStringConfigValue(config, "target") ?? "",
+  value: (() => {
+    const target = getStringConfigValue(config, "target") ?? "";
+    const service = getStringConfigValue(config, "service");
+
+    if (service !== GOOGLE_SHEETS_SERVICE_KEY) {
+      return target;
+    }
+
+    const spreadsheetId =
+      getStringConfigValue(config, "spreadsheet_id") ?? target;
+    const sheetName = getStringConfigValue(config, "sheet_name");
+
+    if (!spreadsheetId || !sheetName) {
+      return target;
+    }
+
+    return buildGoogleSheetsSheetOptionId(spreadsheetId, sheetName);
+  })(),
 });
 
 const createInitialGoogleSheetsDraftValues = (

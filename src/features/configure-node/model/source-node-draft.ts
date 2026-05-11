@@ -101,9 +101,14 @@ export const buildSourceTargetConfigDraft = ({
   targetValue,
 }: Pick<SourceNodeConfigDraftParameters, "currentConfig" | "targetValue">) => {
   const target = targetValue.value.trim();
+  const resolvedTarget = isGoogleSheetsService(currentConfig)
+    ? (getMetadataString(targetValue.option, "spreadsheetId") ?? target)
+    : target;
   const currentTarget = getStringConfigValue(currentConfig, "target") ?? "";
   const shouldPreserveTargetSummary =
-    !targetValue.option && target.length > 0 && target === currentTarget;
+    !targetValue.option &&
+    resolvedTarget.length > 0 &&
+    resolvedTarget === currentTarget;
   const preservedTargetLabel = shouldPreserveTargetSummary
     ? getConfigValue(currentConfig, "target_label")
     : null;
@@ -116,9 +121,9 @@ export const buildSourceTargetConfigDraft = ({
 
   const nextConfig: Record<string, unknown> = {
     ...toConfigRecord(currentConfig),
-    target,
+    target: resolvedTarget,
     target_label:
-      selectedTargetLabel ?? preservedTargetLabel ?? (target || null),
+      selectedTargetLabel ?? preservedTargetLabel ?? (resolvedTarget || null),
     target_meta: targetValue.option?.metadata ?? preservedTargetMeta ?? null,
   };
 

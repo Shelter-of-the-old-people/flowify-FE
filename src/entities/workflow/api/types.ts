@@ -64,6 +64,15 @@ export interface CreateGoogleDriveFolderRequest {
   parentId?: string;
 }
 
+export interface CreateGoogleSheetsSpreadsheetRequest {
+  name: string;
+}
+
+export interface CreateGoogleSheetRequest {
+  spreadsheetId: string;
+  sheetName: string;
+}
+
 export type SinkTargetOptionType =
   | "channel"
   | "page"

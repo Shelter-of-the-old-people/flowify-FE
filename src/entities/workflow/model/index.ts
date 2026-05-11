@@ -5,6 +5,8 @@ export * from "./normalize-workflow-list-response";
 export * from "./useAddWorkflowNodeMutation";
 export * from "./useCreateWorkflowMutation";
 export * from "./useCreateGoogleDriveFolderMutation";
+export * from "./useCreateGoogleSheetMutation";
+export * from "./useCreateGoogleSheetsSpreadsheetMutation";
 export * from "./useDeleteWorkflowMutation";
 export * from "./useDeleteWorkflowNodeMutation";
 export * from "./useGenerateWorkflowMutation";

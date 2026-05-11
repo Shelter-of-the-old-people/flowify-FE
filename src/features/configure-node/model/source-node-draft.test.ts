@@ -26,7 +26,7 @@ const sourceConfig = (
 describe("buildSourceNodeConfigDraft", () => {
   it("preserves existing target summary when only keyword changes", () => {
     const result = buildSourceNodeConfigDraft({
-      currentConfig: sourceConfig({ keyword: "장학" }),
+      currentConfig: sourceConfig({ keyword: "수학" }),
       targetSchema: webNewsTargetSchema,
       targetValue: {
         keyword: "수강신청",
@@ -120,9 +120,9 @@ describe("buildSourceNodeConfigDraft", () => {
       } as never,
       targetValue: {
         keyword: "",
-        value: "spreadsheet-1",
+        value: "spreadsheet-1::sheet::Sheet1",
         option: {
-          id: "spreadsheet-1",
+          id: "spreadsheet-1::sheet::Sheet1",
           label: "Budget 2026 / Sheet1",
           description: "Google Sheets tab",
           type: "sheet",
@@ -158,9 +158,9 @@ describe("buildSourceNodeConfigDraft", () => {
       targetSchema: { type: "sheet_picker", required: true },
       targetValue: {
         keyword: "",
-        value: "spreadsheet-1",
+        value: "spreadsheet-1::sheet::Sheet1",
         option: {
-          id: "spreadsheet-1",
+          id: "spreadsheet-1::sheet::Sheet1",
           label: "Budget 2026 / Sheet1",
           description: "Google Sheets tab",
           type: "sheet",
@@ -189,9 +189,9 @@ describe("buildSourceNodeConfigDraft", () => {
       targetSchema: { type: "sheet_picker", required: true },
       targetValue: {
         keyword: "",
-        value: "spreadsheet-1",
+        value: "spreadsheet-1::sheet::Sheet1",
         option: {
-          id: "spreadsheet-1",
+          id: "spreadsheet-1::sheet::Sheet1",
           label: "Budget 2026 / Sheet1",
           description: "Google Sheets tab",
           type: "sheet",
