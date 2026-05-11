@@ -69,30 +69,38 @@ const ToggleButton = ({
     type="button"
     onClick={onClick}
     disabled={disabled}
-    height="28px"
+    height="30px"
     minWidth="auto"
     px={2.5}
-    py={1}
-    bg={active ? "neutral.900" : "bg.overlay"}
+    py={0}
+    bg={active ? "neutral.900" : "bg.surface"}
     color={active ? "text.inverse" : "text.primary"}
-    borderRadius="full"
+    borderRadius="lg"
     fontFamily="'Pretendard Variable', sans-serif"
     fontWeight="medium"
     fontSize="xs"
     lineHeight="normal"
     border="1px solid"
     borderColor={active ? "neutral.900" : "border.default"}
-    _hover={{ bg: active ? "neutral.800" : "neutral.200" }}
-    _active={{ bg: active ? "neutral.950" : "neutral.300" }}
+    _hover={{ bg: active ? "neutral.800" : "bg.overlay" }}
+    _active={{ bg: active ? "neutral.950" : "neutral.200" }}
     _disabled={{
       opacity: 0.55,
       cursor: "not-allowed",
-      _hover: { bg: active ? "neutral.900" : "bg.overlay" },
+      _hover: { bg: active ? "neutral.900" : "bg.surface" },
     }}
   >
     {children}
   </Button>
 );
+
+const triggerInputProps = {
+  height: "32px",
+  fontSize: "sm",
+  borderRadius: "lg",
+  bg: "bg.surface",
+  borderColor: "border.default",
+} as const;
 
 export const TriggerSettingsPanel = ({
   open,
@@ -199,7 +207,7 @@ const TriggerSettingsPanelContent = ({
           <Text fontSize="sm" fontWeight="semibold">
             자동 실행 설정
           </Text>
-          <Box display="flex" gap="8px" flexWrap="wrap">
+          <Box display="flex" gap={2} flexWrap="wrap">
             <ToggleButton
               active={draft.type === "manual"}
               disabled={!canEdit}
@@ -238,7 +246,7 @@ const TriggerSettingsPanelContent = ({
               >
                 실행 주기
               </Text>
-              <Box display="flex" gap="8px" flexWrap="wrap">
+              <Box display="flex" gap={2} flexWrap="wrap">
                 {(
                   [
                     ["interval", "몇 시간마다"],
@@ -272,7 +280,7 @@ const TriggerSettingsPanelContent = ({
               >
                 자동 실행 상태
               </Text>
-              <Box display="flex" gap="8px">
+              <Box display="flex" gap={2}>
                 <ToggleButton
                   active={draft.active}
                   disabled={!canEdit}
@@ -310,14 +318,14 @@ const TriggerSettingsPanelContent = ({
                 시간대
               </Text>
               <Box
-                px="12px"
-                py="9px"
+                px={2.5}
+                py={2}
                 border="1px solid"
                 borderColor="border.default"
-                borderRadius="xl"
+                borderRadius="lg"
                 bg="bg.overlay"
               >
-                <Text fontSize="13px">{DEFAULT_WORKFLOW_TIMEZONE}</Text>
+                <Text fontSize="sm">{DEFAULT_WORKFLOW_TIMEZONE}</Text>
               </Box>
             </Box>
 
@@ -330,7 +338,7 @@ const TriggerSettingsPanelContent = ({
                 >
                   확인 주기
                 </Text>
-                <Box display="flex" gap="8px" flexWrap="wrap">
+                <Box display="flex" gap={2} flexWrap="wrap">
                   {INTERVAL_HOUR_PRESETS.map((preset) => (
                     <ToggleButton
                       key={preset}
@@ -348,6 +356,7 @@ const TriggerSettingsPanelContent = ({
                   ))}
                 </Box>
                 <Input
+                  {...triggerInputProps}
                   type="number"
                   min={1}
                   max={24}
@@ -382,6 +391,7 @@ const TriggerSettingsPanelContent = ({
                   실행 시간
                 </Text>
                 <Input
+                  {...triggerInputProps}
                   type="time"
                   disabled={!canEdit}
                   value={draft.timeOfDay}
@@ -404,7 +414,7 @@ const TriggerSettingsPanelContent = ({
                 >
                   요일과 시간
                 </Text>
-                <Box display="flex" gap="8px" flexWrap="wrap">
+                <Box display="flex" gap={2} flexWrap="wrap">
                   {WEEKDAY_ORDER.map((weekday) => {
                     const active = draft.weekdays.includes(weekday);
 
@@ -434,6 +444,7 @@ const TriggerSettingsPanelContent = ({
                   })}
                 </Box>
                 <Input
+                  {...triggerInputProps}
                   type="time"
                   disabled={!canEdit}
                   value={draft.timeOfDay}
@@ -456,7 +467,7 @@ const TriggerSettingsPanelContent = ({
               >
                 실행 중일 때 다음 주기 처리
               </Text>
-              <Box display="flex" gap="8px">
+              <Box display="flex" gap={2}>
                 <ToggleButton
                   active={draft.skipIfRunning}
                   disabled={!canEdit}
@@ -504,14 +515,37 @@ const TriggerSettingsPanelContent = ({
           </Text>
         ) : null}
 
-        <Box display="flex" justifyContent="flex-end" gap="8px">
-          <Button type="button" variant="outline" onClick={handleCancel}>
+        <Box display="flex" justifyContent="flex-end" gap={2} pt={1}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleCancel}
+            height="30px"
+            px={3}
+            borderRadius="lg"
+            fontSize="xs"
+            fontWeight="medium"
+          >
             {canEdit ? "취소" : "닫기"}
           </Button>
           <Button
             type="button"
             disabled={!canEdit || Boolean(validationError)}
             onClick={handleApply}
+            height="30px"
+            px={3}
+            bg="neutral.900"
+            color="text.inverse"
+            borderRadius="lg"
+            fontSize="xs"
+            fontWeight="medium"
+            _hover={{ bg: "neutral.800" }}
+            _active={{ bg: "neutral.950" }}
+            _disabled={{
+              opacity: 0.55,
+              cursor: "not-allowed",
+              _hover: { bg: "neutral.900" },
+            }}
           >
             적용
           </Button>
