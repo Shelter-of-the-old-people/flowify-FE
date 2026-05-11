@@ -463,15 +463,15 @@ export const EditorRemoteBar = () => {
         <Box
           display="flex"
           alignItems="center"
-          gap={{ base: 2, xl: 3 }}
-          width="min(920px, calc(100vw - 32px))"
+          gap={{ base: 1.5, xl: 2 }}
+          width="min(840px, calc(100vw - 32px))"
           bg="bg.surface"
           border="1px solid"
           borderColor="border.default"
-          borderRadius="2xl"
+          borderRadius="xl"
           boxShadow="lg"
-          px={{ base: 3, xl: 4 }}
-          py={{ base: 1.5, xl: 2 }}
+          px={{ base: 2, xl: 3 }}
+          py={{ base: 1, xl: 1.5 }}
           overflow="clip"
           fontFamily="'Pretendard Variable', sans-serif"
           onWheel={(event) => event.stopPropagation()}

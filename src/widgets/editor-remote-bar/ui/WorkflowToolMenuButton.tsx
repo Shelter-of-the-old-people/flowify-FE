@@ -60,8 +60,8 @@ export const WorkflowToolMenuButton = ({
         type="button"
         aria-label="도구 메뉴 열기"
         title="도구 메뉴"
-        height="34px"
-        minW="34px"
+        height="30px"
+        minW="30px"
         px={0}
         bg="bg.surface"
         color="text.primary"
@@ -73,7 +73,7 @@ export const WorkflowToolMenuButton = ({
         _active={{ bg: "neutral.200" }}
         _expanded={{ bg: "bg.overlay", borderColor: "border.strong" }}
       >
-        <Icon as={MdMoreHoriz} boxSize={5} />
+        <Icon as={MdMoreHoriz} boxSize={4.5} />
       </Button>
     </Menu.Trigger>
 

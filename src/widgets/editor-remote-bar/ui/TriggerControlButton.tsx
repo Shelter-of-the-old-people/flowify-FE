@@ -24,10 +24,10 @@ export const TriggerControlButton = ({
       aria-label={label}
       title={label}
       onClick={onClick}
-      height="34px"
-      minW="34px"
-      maxW={{ base: "150px", lg: "200px", xl: "240px" }}
-      px={{ base: 2, xl: 3 }}
+      height="30px"
+      minW="30px"
+      maxW={{ base: "32px", xl: "180px", "2xl": "220px" }}
+      px={{ base: 1.5, xl: 2.5 }}
       bg="bg.surface"
       color="text.primary"
       border="1px solid"
@@ -38,7 +38,7 @@ export const TriggerControlButton = ({
       fontSize="xs"
       lineHeight="normal"
       whiteSpace="nowrap"
-      gap={1.5}
+      gap={1.25}
       flexShrink={0}
       _hover={{
         bg: "bg.overlay",
@@ -47,7 +47,13 @@ export const TriggerControlButton = ({
       _active={{ bg: "neutral.200" }}
     >
       {active ? <Icon as={MdSchedule} boxSize={4} flexShrink={0} /> : null}
-      <Text as="span" minW={0} overflow="hidden" textOverflow="ellipsis">
+      <Text
+        as="span"
+        display={{ base: "none", xl: "inline" }}
+        minW={0}
+        overflow="hidden"
+        textOverflow="ellipsis"
+      >
         {label}
       </Text>
       <Icon as={MdKeyboardArrowDown} boxSize={4} flexShrink={0} />

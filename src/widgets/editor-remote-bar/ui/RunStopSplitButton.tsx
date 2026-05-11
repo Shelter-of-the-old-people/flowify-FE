@@ -1,6 +1,14 @@
 import { MdKeyboardArrowDown, MdPlayArrow, MdStop } from "react-icons/md";
 
-import { Box, Button, Icon, Menu, Portal, Spinner } from "@chakra-ui/react";
+import {
+  Box,
+  Button,
+  Icon,
+  Menu,
+  Portal,
+  Spinner,
+  Text,
+} from "@chakra-ui/react";
 
 type RunStopSplitButtonProps = {
   isRunning: boolean;
@@ -36,7 +44,7 @@ export const RunStopSplitButton = ({
   const handleRunSideClick = isRunning ? onStop : onRun;
 
   return (
-    <Box display="flex" height="34px" alignItems="center" flexShrink={0}>
+    <Box display="flex" height="30px" alignItems="center" flexShrink={0}>
       <Button
         type="button"
         aria-label={runSideLabel}
@@ -44,8 +52,8 @@ export const RunStopSplitButton = ({
         onClick={handleRunSideClick}
         disabled={runSideDisabled}
         height="100%"
-        minW="42px"
-        px={0}
+        minW={{ base: "34px", "2xl": "92px" }}
+        px={{ base: 0, "2xl": 3 }}
         bg="neutral.900"
         color="text.inverse"
         borderTopLeftRadius="lg"
@@ -54,6 +62,7 @@ export const RunStopSplitButton = ({
         borderBottomRightRadius={0}
         _hover={{ bg: "neutral.800" }}
         _active={{ bg: "neutral.950" }}
+        gap={1.5}
         _disabled={{
           opacity: 0.5,
           cursor: "not-allowed",
@@ -63,8 +72,11 @@ export const RunStopSplitButton = ({
         {runSideLoading ? (
           <Spinner size="xs" color="currentColor" />
         ) : (
-          <Icon as={runSideIcon} boxSize={5} />
+          <Icon as={runSideIcon} boxSize={4.5} />
         )}
+        <Text as="span" display={{ base: "none", "2xl": "inline" }}>
+          {runSideLabel}
+        </Text>
       </Button>
 
       <Menu.Root lazyMount unmountOnExit positioning={{ placement: "top-end" }}>
@@ -75,7 +87,7 @@ export const RunStopSplitButton = ({
             title="실행 메뉴"
             disabled={!canOpenMenu}
             height="100%"
-            minW="30px"
+            minW="28px"
             px={0}
             bg="neutral.900"
             color="text.inverse"
@@ -94,7 +106,7 @@ export const RunStopSplitButton = ({
               _hover: { bg: "neutral.900" },
             }}
           >
-            <Icon as={MdKeyboardArrowDown} boxSize={5} />
+            <Icon as={MdKeyboardArrowDown} boxSize={4.5} />
           </Button>
         </Menu.Trigger>
 

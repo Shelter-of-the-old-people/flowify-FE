@@ -30,9 +30,9 @@ export const SaveStateButton = ({
       title={title}
       onClick={onSave}
       disabled={!isActionable}
-      height="34px"
-      minW="34px"
-      px={{ base: 2, xl: 3 }}
+      height="30px"
+      minW="30px"
+      px={{ base: 2, "2xl": 3 }}
       bg="bg.surface"
       color={isDirty ? "text.primary" : "text.secondary"}
       border="1px solid"
@@ -42,7 +42,7 @@ export const SaveStateButton = ({
       fontWeight="medium"
       fontSize="sm"
       lineHeight="normal"
-      gap={1.5}
+      gap={1.25}
       flexShrink={0}
       _hover={{ bg: isActionable ? "bg.overlay" : "bg.surface" }}
       _active={{ bg: isActionable ? "neutral.200" : "bg.surface" }}
@@ -61,7 +61,7 @@ export const SaveStateButton = ({
           color={isDirty ? "text.primary" : "status.success"}
         />
       )}
-      <Text as="span" display={{ base: "none", sm: "inline" }}>
+      <Text as="span" display={{ base: "none", "2xl": "inline" }}>
         {label}
       </Text>
     </Button>
