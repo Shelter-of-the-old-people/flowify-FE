@@ -1,4 +1,4 @@
-import { MdKeyboardArrowDown, MdPause, MdPlayArrow } from "react-icons/md";
+import { MdKeyboardArrowDown, MdPlayArrow, MdStop } from "react-icons/md";
 
 import { Box, Button, Icon, Menu, Portal, Spinner } from "@chakra-ui/react";
 
@@ -15,12 +15,6 @@ type RunStopSplitButtonProps = {
   onCheckBeforeRun: () => void;
 };
 
-/**
- * Figma 1878:3330 기준 오른쪽 스플릿 버튼.
- *
- * 왼쪽 파트(실행/중지 토글) + 구분선 + 오른쪽 메뉴 파트.
- * 스펙 §4.2: 실행 중에는 라벨이 "중지"로 토글되고 중지 API를 호출한다.
- */
 export const RunStopSplitButton = ({
   isRunning,
   isRunPending,
@@ -37,31 +31,27 @@ export const RunStopSplitButton = ({
     ? !canStop || isStopPending
     : !canRun || isRunPending;
   const runSideLoading = isRunning ? isStopPending : isRunPending;
-  const runSideLabel = isRunning ? "중지" : "실행하기";
-  const runSideIcon = isRunning ? MdPause : MdPlayArrow;
+  const runSideLabel = isRunning ? "실행 중지" : "실행";
+  const runSideIcon = isRunning ? MdStop : MdPlayArrow;
   const handleRunSideClick = isRunning ? onStop : onRun;
 
   return (
-    <Box display="flex" height="32px" alignItems="center" flexShrink={0}>
+    <Box display="flex" height="34px" alignItems="center" flexShrink={0}>
       <Button
         type="button"
+        aria-label={runSideLabel}
+        title={runSideLabel}
         onClick={handleRunSideClick}
         disabled={runSideDisabled}
         height="100%"
-        minWidth="auto"
-        px={{ base: 2, xl: 3 }}
-        py={0}
+        minW="42px"
+        px={0}
         bg="neutral.900"
         color="text.inverse"
         borderTopLeftRadius="lg"
         borderBottomLeftRadius="lg"
         borderTopRightRadius={0}
         borderBottomRightRadius={0}
-        fontFamily="'Pretendard Variable', sans-serif"
-        fontWeight="medium"
-        fontSize="sm"
-        lineHeight="normal"
-        gap={2}
         _hover={{ bg: "neutral.800" }}
         _active={{ bg: "neutral.950" }}
         _disabled={{
@@ -73,20 +63,20 @@ export const RunStopSplitButton = ({
         {runSideLoading ? (
           <Spinner size="xs" color="currentColor" />
         ) : (
-          <Icon as={runSideIcon} boxSize="16px" />
+          <Icon as={runSideIcon} boxSize={5} />
         )}
-        {runSideLabel}
       </Button>
 
       <Menu.Root lazyMount unmountOnExit positioning={{ placement: "top-end" }}>
         <Menu.Trigger asChild>
           <Button
             type="button"
+            aria-label="실행 메뉴 열기"
+            title="실행 메뉴"
             disabled={!canOpenMenu}
             height="100%"
-            minWidth="auto"
-            px={2}
-            py={1}
+            minW="30px"
+            px={0}
             bg="neutral.900"
             color="text.inverse"
             borderTopRightRadius="lg"
@@ -95,11 +85,6 @@ export const RunStopSplitButton = ({
             borderBottomLeftRadius={0}
             borderLeft="1px solid"
             borderLeftColor="neutral.700"
-            fontFamily="'Pretendard Variable', sans-serif"
-            fontWeight="medium"
-            fontSize="sm"
-            lineHeight="normal"
-            aria-label="실행 메뉴 열기"
             _hover={{ bg: "neutral.800" }}
             _active={{ bg: "neutral.950" }}
             _expanded={{ bg: "neutral.950" }}
@@ -109,7 +94,7 @@ export const RunStopSplitButton = ({
               _hover: { bg: "neutral.900" },
             }}
           >
-            <Icon as={MdKeyboardArrowDown} boxSize="18px" />
+            <Icon as={MdKeyboardArrowDown} boxSize={5} />
           </Button>
         </Menu.Trigger>
 

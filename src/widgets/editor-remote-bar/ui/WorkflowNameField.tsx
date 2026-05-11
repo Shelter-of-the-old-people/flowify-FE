@@ -1,6 +1,7 @@
-import { useRef, useState } from "react";
+import { type KeyboardEvent, useRef, useState } from "react";
+import { MdKeyboardArrowDown } from "react-icons/md";
 
-import { Input, Text } from "@chakra-ui/react";
+import { Button, Icon, Input, Text } from "@chakra-ui/react";
 
 import { useWorkflowStore } from "@/features/workflow-editor";
 
@@ -44,7 +45,7 @@ export const WorkflowNameField = ({
     setIsEditing(false);
   };
 
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Enter") {
       handleConfirm();
     }
@@ -63,9 +64,9 @@ export const WorkflowNameField = ({
         onBlur={handleConfirm}
         onKeyDown={handleKeyDown}
         size="sm"
-        width={{ base: "140px", lg: "180px", xl: "220px" }}
-        height="24px"
-        px={2}
+        width={{ base: "160px", lg: "200px", xl: "240px" }}
+        height="34px"
+        px={3}
         py={0}
         fontFamily="'Pretendard Variable', sans-serif"
         fontWeight="medium"
@@ -73,30 +74,52 @@ export const WorkflowNameField = ({
         color="text.primary"
         bg="bg.surface"
         border="1px solid"
-        borderColor="border.default"
-        borderRadius="md"
+        borderColor="border.selected"
+        borderRadius="lg"
         _focus={{ borderColor: "border.selected", boxShadow: "none" }}
       />
     );
   }
 
   return (
-    <Text
-      as="p"
-      fontFamily="'Pretendard Variable', sans-serif"
-      fontWeight="medium"
-      fontSize="sm"
+    <Button
+      type="button"
+      display="flex"
+      alignItems="center"
+      gap={1.5}
+      height="34px"
+      maxW={{ base: "150px", lg: "200px", xl: "260px" }}
+      px={{ base: 2, xl: 3 }}
+      bg="bg.surface"
       color="text.primary"
-      maxW={{ base: "120px", lg: "160px", xl: "220px" }}
-      overflow="hidden"
-      textOverflow="ellipsis"
-      whiteSpace="nowrap"
+      border="1px solid"
+      borderColor="border.default"
+      borderRadius="lg"
+      fontFamily="'Pretendard Variable', sans-serif"
       cursor={disabled ? "default" : "pointer"}
       opacity={disabled ? 0.6 : 1}
       onClick={handleStartEdit}
-      title={disabled ? disabledReason : "클릭하여 이름 수정"}
+      title={disabled ? disabledReason : "워크플로우 이름 수정"}
+      aria-label={disabled ? disabledReason : "워크플로우 이름 수정"}
+      _hover={
+        disabled
+          ? { bg: "bg.surface" }
+          : { bg: "bg.overlay", borderColor: "border.strong" }
+      }
+      _active={disabled ? { bg: "bg.surface" } : { bg: "neutral.200" }}
     >
-      {displayName}
-    </Text>
+      <Text
+        as="span"
+        fontFamily="'Pretendard Variable', sans-serif"
+        fontWeight="semibold"
+        fontSize="sm"
+        overflow="hidden"
+        textOverflow="ellipsis"
+        whiteSpace="nowrap"
+      >
+        {displayName}
+      </Text>
+      <Icon as={MdKeyboardArrowDown} boxSize={4} color="text.secondary" />
+    </Button>
   );
 };
