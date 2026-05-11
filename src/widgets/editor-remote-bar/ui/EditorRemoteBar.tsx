@@ -31,11 +31,12 @@ import { toaster } from "@/shared/utils/toaster/toaster";
 
 import { DeleteConfirmDialog } from "./DeleteConfirmDialog";
 import { ExecutionStatusBadge } from "./ExecutionStatusBadge";
-import { MiddleSlotButtons } from "./MiddleSlotButtons";
+import { RollbackActionButton } from "./RollbackActionButton";
 import { RunStopSplitButton } from "./RunStopSplitButton";
 import { TriggerControlButton } from "./TriggerControlButton";
 import { TriggerSettingsPanel } from "./TriggerSettingsPanel";
 import { WorkflowNameField } from "./WorkflowNameField";
+import { WorkflowToolMenuButton } from "./WorkflowToolMenuButton";
 
 const getExecutableBlockers = (
   nodeStatuses:
@@ -487,32 +488,19 @@ export const EditorRemoteBar = () => {
             />
           </Box>
 
-          <MiddleSlotButtons
+          <Box flex="1 1 auto" minW={0} />
+
+          {canRollback ? (
+            <RollbackActionButton
+              isPending={isRollbackPending}
+              onClick={() => void handleRollback()}
+            />
+          ) : null}
+
+          <WorkflowToolMenuButton
             isDeletePending={isDeletePending}
-            isRollbackPending={isRollbackPending}
             canDelete={canDelete}
-            canRollback={canRollback}
             onDelete={handleDeleteRequest}
-            onRollback={() => void handleRollback()}
-          />
-
-          <TriggerControlButton
-            summary={triggerSummary}
-            active={triggerControlActive}
-            onClick={handleOpenTriggerSettings}
-          />
-
-          <RunStopSplitButton
-            isRunning={isRunning}
-            isRunPending={isExecutePending || isStarting}
-            isStopPending={isStopPending}
-            canRun={canRun}
-            canStop={canStop}
-            canOpenMenu={canOpenRunMenu}
-            onRun={() => void handleRun()}
-            onStop={() => void handleStop()}
-            onOpenTriggerSettings={handleOpenTriggerSettings}
-            onCheckBeforeRun={handleCheckBeforeRun}
           />
 
           <Button
@@ -550,6 +538,25 @@ export const EditorRemoteBar = () => {
               저장
             </Box>
           </Button>
+
+          <TriggerControlButton
+            summary={triggerSummary}
+            active={triggerControlActive}
+            onClick={handleOpenTriggerSettings}
+          />
+
+          <RunStopSplitButton
+            isRunning={isRunning}
+            isRunPending={isExecutePending || isStarting}
+            isStopPending={isStopPending}
+            canRun={canRun}
+            canStop={canStop}
+            canOpenMenu={canOpenRunMenu}
+            onRun={() => void handleRun()}
+            onStop={() => void handleStop()}
+            onOpenTriggerSettings={handleOpenTriggerSettings}
+            onCheckBeforeRun={handleCheckBeforeRun}
+          />
         </Box>
       </Box>
 
