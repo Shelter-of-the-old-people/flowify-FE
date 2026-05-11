@@ -1,66 +1,84 @@
 # Workflow Google Sheets Node Frontend Design
 
-> **작성일** 2026-05-11
-> **대상 화면** `/workflows/:id`
-> **범위** flowify-FE Google Sheets 노드 UX 설계
-> **관련 저장소** `flowify-BE-spring`, `flowify-BE`
+> 작성일: 2026-05-11
+> 대상 화면: `/workflows/:id`
+> 범위: flowify-FE Google Sheets UX 및 에디터 동작
+> 관련 저장소: `flowify-BE-spring`, `flowify-BE`
 
 ---
 
 ## 1. 목적
 
-이 문서는 Google Sheets를 `시작 노드`, `중간 노드`, `끝 노드`로 모두 사용할 수 있도록 FE에서 필요한 설정 흐름과 데이터 모델을 정의한다.
+이 문서는 Google Sheets를 워크플로우의 정식 서비스로 다루기 위한 프론트엔드 설계를 정리한다.
 
-이번 설계의 목표는 아래와 같다.
+Google Sheets는 아래 세 역할을 모두 지원해야 한다.
 
-- 일반 사용자가 많이 원하는 자동화를 바로 만들 수 있게 한다.
-- `시트 전체 읽기`와 `행 단위 자동화`를 모두 1급 기능으로 취급한다.
-- `스프레드시트 선택 -> 시트 탭 선택` 흐름을 실제 picker UX로 제공한다.
-- 목록에 원하는 대상이 없을 때 `새 스프레드시트`와 `새 시트`를 설정 단계에서 바로 만들 수 있게 한다.
-- 생성은 설정 단계에서 명시적으로 수행하고, 런타임 자동 생성은 이번 범위에 넣지 않는다.
+- 시작 노드
+- 중간 노드
+- 끝 노드
+
+프론트엔드의 목표는 단순히 기능을 노출하는 것이 아니라, 일반 사용자가 설정 흐름을 보고 바로 이해할 수 있게 만드는 것이다.
 
 ---
 
-## 2. 핵심 사용자 시나리오
+## 2. 제품 목표
 
-### 2.1 전체 시트 읽기
+Google Sheets 경험은 아래와 같은 대표 자동화를 자연스럽게 지원해야 한다.
 
-- 시트 전체를 읽어 요약을 만든다.
-- 특정 range를 읽어 보고서를 만든다.
-- 표 전체를 AI에 넘겨 정리 결과를 만든다.
+- 시트 전체를 읽어 요약하거나 정리하기
+- 새 행이 들어오면 후속 자동화 시작하기
+- 특정 행이 수정되면 다시 처리하기
+- 특정 단어가 들어간 행 찾기
+- 기준 컬럼으로 한 행 찾기
+- 결과를 시트에 누적 저장하기
+- 보고서 범위를 덮어쓰기
+- 기준 컬럼으로 기존 행 수정 또는 업서트하기
+- 원하는 스프레드시트 파일이 없으면 바로 만들기
+- 원하는 시트 탭이 없으면 바로 만들기
 
-### 2.2 특정 단어 또는 조건 검색
+---
+
+## 3. 주요 사용자 시나리오
+
+### 3.1 전체 읽기와 정리
+
+- 시트 전체를 읽어 요약한다.
+- 특정 범위만 읽어 보고서를 만든다.
+- 읽은 표 데이터를 다음 노드로 전달한다.
+
+### 3.2 검색과 분류
 
 - 특정 단어가 포함된 행만 찾는다.
-- 특정 컬럼에서 일치하는 값만 찾는다.
-- 검색 결과만 다른 서비스나 다른 시트에 저장한다.
+- 특정 컬럼에서 정확히 일치하는 값을 찾는다.
+- 찾은 결과를 다른 시트에 저장한다.
 
-### 2.3 새 행 감지
+### 3.3 대기열과 상태판
 
-- 새 신청 행이 추가되면 후속 자동화를 시작한다.
-- 새 문의 행이 추가되면 요약과 알림을 보낸다.
+- 새 행이 추가되면 자동화를 시작한다.
+- 특정 행이 수정되면 다시 처리한다.
+- 처리 결과를 상태 컬럼으로 되돌려 적는다.
 
-### 2.4 수정 행 감지
+### 3.4 기준표 조회
 
-- 상태 컬럼이 바뀐 행만 잡아 후속 처리를 한다.
-- 사람이 시트에서 값을 수정하면 자동화를 다시 이어간다.
+- 이메일, 코드, 학생 번호 같은 키로 한 행을 찾는다.
+- 찾은 행을 정책표나 참조 데이터로 사용한다.
 
-### 2.5 기준표 lookup
+### 3.5 결과 저장
 
-- 이메일, 상품 코드, 학생 번호 같은 키로 기준표를 조회한다.
-- 조회 결과를 다음 노드 조건 판단에 사용한다.
+- 기존 데이터 아래에 새 행을 추가한다.
+- 특정 범위를 새 결과로 덮어쓴다.
+- 같은 키를 가진 행이 있으면 수정하고, 없으면 추가한다.
 
-### 2.6 결과 기록
+### 3.6 대상이 없을 때 바로 생성
 
-- 결과를 새 행으로 누적한다.
-- 결과 범위를 통째로 덮어쓴다.
-- 같은 key 행을 update 또는 upsert 한다.
+- 원하는 스프레드시트 파일이 목록에 없으면 즉시 생성한다.
+- 파일을 선택한 뒤 원하는 시트 탭이 없으면 즉시 생성한다.
 
 ---
 
-## 3. 역할별 UX
+## 4. 지원 노드 역할
 
-### 3.1 시작 노드
+### 4.1 시작 노드
 
 지원 모드:
 
@@ -68,15 +86,23 @@
 - `new_row`
 - `row_updated`
 
-필수 설정:
+필수 입력:
 
-- 스프레드시트
+- 스프레드시트 파일
 - 시트 탭
-- 선택적 range
-- `row_updated`일 때 `key_column`
-- `new_row`, `row_updated`일 때 `initial_sync_mode`
+- 선택 범위
+- 헤더 행 번호
+- 데이터 시작 행 번호
 
-### 3.2 중간 노드
+모드별 추가 입력:
+
+- `new_row`
+  - `initial_sync_mode`
+- `row_updated`
+  - `initial_sync_mode`
+  - `key_column`
+
+### 4.2 중간 노드
 
 지원 액션:
 
@@ -84,217 +110,246 @@
 - `search_text`
 - `lookup_row_by_key`
 
-필수 설정:
+필수 입력:
 
-- 스프레드시트
+- 스프레드시트 파일
 - 시트 탭
-- 액션별 검색값 또는 lookup 값
-- `lookup_row_by_key`일 때 `key_column`
+- 선택 범위
 
-### 3.3 끝 노드
+액션별 추가 입력:
 
-지원 쓰기 방식:
-
-- `append_rows`
-- `overwrite_range`
-- `update_row_by_key`
-- `upsert_row_by_key`
-
-필수 설정:
-
-- 스프레드시트
-- 시트 탭
-- 선택적 range
-- `update_row_by_key`, `upsert_row_by_key`일 때 `key_column`
-
----
-
-## 4. Picker 흐름
-
-### 4.1 기본 흐름
-
-Google Sheets picker는 아래 2단계 흐름을 따른다.
-
-1. 스프레드시트 목록 표시
-2. 스프레드시트를 선택하면 시트 탭 목록 표시
-
-### 4.2 생성 흐름
-
-Google Drive 폴더 생성 UX와 같은 결로 아래 흐름을 제공한다.
-
-1. 스프레드시트 목록 단계에서 원하는 파일이 없으면 `새 스프레드시트 만들기`
-2. 생성 성공 시 해당 스프레드시트 경로로 바로 진입
-3. 시트 탭 목록 단계에서 원하는 탭이 없으면 `새 시트 만들기`
-4. 생성 성공 시 해당 시트를 바로 선택
-
-기본 정책:
-
-- 새 스프레드시트는 내 드라이브 루트에 생성한다.
-- 새 시트는 현재 선택한 스프레드시트 안에 생성한다.
-- 같은 스프레드시트 이름은 Drive 특성상 여러 개가 있을 수 있으므로, FE는 제목이 아니라 생성 응답의 `spreadsheet_id`를 기준으로 선택 상태를 유지한다.
-- 같은 시트 이름이 이미 있으면 새로 만드는 대신 기존 시트를 선택하는 방향을 기본 정책으로 둔다.
-- 생성은 설정 단계에서만 제공한다.
-- 런타임에 `없으면 자동 생성`하는 옵션은 이번 범위에서 제외한다.
-
-### 4.3 표시 규칙
-
-- 루트 단계에서는 `새 스프레드시트 만들기`만 보인다.
-- 스프레드시트 내부 단계에서는 `새 시트 만들기`만 보인다.
-- 생성 후 목록을 새로고침하고, 사용자가 다시 찾지 않도록 즉시 경로/선택 상태를 갱신한다.
-
----
-
-## 5. FE 데이터 모델
-
-### 5.1 공통 설정
-
-```ts
-type GoogleSheetsCommonConfig = {
-  service: "google_sheets";
-  spreadsheet_id: string;
-  spreadsheet_id_label?: string | null;
-  sheet_name: string;
-  range_a1?: string | null;
-  header_row?: number | null;
-  data_start_row?: number | null;
-};
-```
-
-### 5.2 시작 노드
-
-```ts
-type GoogleSheetsSourceConfig = GoogleSheetsCommonConfig & {
-  source_mode: "sheet_all" | "new_row" | "row_updated";
-  target?: string | null;
-  target_label?: string | null;
-  target_meta?: Record<string, unknown> | null;
-  key_column?: string | null;
-  initial_sync_mode?: "skip_existing" | "emit_existing";
-};
-```
-
-### 5.3 중간 노드
-
-```ts
-type GoogleSheetsActionConfig = GoogleSheetsCommonConfig & {
-  action: "read_range" | "search_text" | "lookup_row_by_key";
-  key_column?: string | null;
-  search_source?: "value" | "input_field";
-  search_value?: string | null;
-  search_field?: string | null;
-  search_columns?: string | null;
-  match_mode?: "contains" | "exact" | "starts_with";
-  result_limit?: string | null;
-  lookup_source?: "value" | "input_field";
-  lookup_value?: string | null;
-  lookup_field?: string | null;
-};
-```
-
-### 5.4 끝 노드
-
-```ts
-type GoogleSheetsSinkConfig = GoogleSheetsCommonConfig & {
-  write_mode:
-    | "append_rows"
-    | "overwrite_range"
-    | "update_row_by_key"
-    | "upsert_row_by_key";
-  key_column?: string | null;
-};
-```
-
----
-
-## 6. 구현 포인트
-
-### 6.1 Source picker
-
-- `SourceTargetPicker.tsx`
-- `SourceTargetForm.tsx`
-
-해야 할 일:
-
-- `sheet_picker`를 실제 2단계 remote picker로 사용한다.
-- 루트 단계에서 새 스프레드시트 생성 UI를 붙인다.
-- 시트 단계에서 새 시트 생성 UI를 붙인다.
-
-### 6.2 Middle panel
-
-- `SpreadsheetPanel.tsx`
-
-해야 할 일:
-
-- 기존 조회/검색/lookup 설정을 유지한다.
-- 같은 picker 안에서 생성 UX를 지원한다.
-
-### 6.3 Sink panel
-
-- `SinkNodePanel.tsx`
-
-해야 할 일:
-
-- 기존 `sheet_picker` 선택 흐름에 생성 UX를 추가한다.
-- `sheet_name`을 생성/선택 결과와 자동 동기화한다.
-
-### 6.4 Workflow API hooks
-
-추가 API:
-
-- `createGoogleSheetsSpreadsheet`
-- `createGoogleSheet`
-
-추가 mutation:
-
-- `useCreateGoogleSheetsSpreadsheetMutation`
-- `useCreateGoogleSheetMutation`
-
----
-
-## 7. 검증 계획
-
-- 스프레드시트 목록 조회
-- 시트 탭 목록 조회
-- 새 스프레드시트 생성 후 즉시 진입
-- 새 시트 생성 후 즉시 선택
-- 시작 노드에서 생성 후 저장/복원
-- 중간 노드에서 생성 후 저장/복원
-- 끝 노드에서 생성 후 저장/복원
-- 기존 선택 흐름 회귀 확인
-
----
-
-## 8. V1 범위
-
-이번 V1에 포함:
-
-- `sheet_all`
-- `new_row`
-- `row_updated`
-- `read_range`
 - `search_text`
+  - 검색 소스
+  - 검색 값 또는 입력 필드 바인딩
+  - 검색 대상 컬럼
+  - 검색 방식
+  - 대소문자 구분
+  - 결과 제한 수
 - `lookup_row_by_key`
+  - `key_column`
+  - 조회 소스
+  - 조회 값 또는 입력 필드 바인딩
+
+### 4.3 끝 노드
+
+지원 저장 방식:
+
 - `append_rows`
 - `overwrite_range`
 - `update_row_by_key`
 - `upsert_row_by_key`
-- 스프레드시트 -> 시트 탭 2단계 picker
-- 새 스프레드시트 만들기
-- 새 시트 만들기
 
-이번 V1에서 제외:
+필수 입력:
 
-- row deletion 감지
-- regex / fuzzy search
-- 여러 시트 동시 병합
-- 런타임 자동 생성
-- 복잡한 서식/수식 복제
+- 스프레드시트 파일
+- 시트 탭
+
+모드별 추가 입력:
+
+- `overwrite_range`
+  - `range_a1`
+- `update_row_by_key`
+  - `key_column`
+- `upsert_row_by_key`
+  - `key_column`
 
 ---
 
-## 9. 결정 요약
+## 5. 선택 흐름
 
-- Google Sheets는 시작, 중간, 끝 노드로 모두 지원한다.
-- 사용자가 많이 원하는 `전체 읽기`, `검색`, `lookup`, `new_row`, `row_updated`, `upsert`를 중심으로 설계한다.
-- 생성 UX는 Drive 폴더 생성처럼 설정 단계에 붙인다.
-- `스프레드시트 생성 -> 시트 생성 -> 즉시 선택` 흐름을 FE의 기본 picker UX로 삼는다.
+Google Sheets 선택 흐름은 두 단계로 구성한다.
+
+### 5.1 스프레드시트 선택
+
+사용자는 먼저 스프레드시트 파일을 선택한다.
+
+지원 동작:
+
+- 기존 스프레드시트 파일 탐색
+- 스프레드시트 파일 검색
+- 원하는 파일이 없으면 새 스프레드시트 생성
+
+생성 규칙:
+
+- 새 스프레드시트는 picker 안에서 즉시 만든다.
+- 생성 성공 후 방금 만든 파일을 자동 선택 상태로 만든다.
+
+### 5.2 시트 탭 선택
+
+스프레드시트가 선택된 뒤, 그 안의 시트 탭을 고른다.
+
+지원 동작:
+
+- 기존 시트 탭 탐색
+- 원하는 탭이 없으면 새 시트 생성
+
+생성 규칙:
+
+- 같은 이름의 시트가 이미 있으면 기존 탭을 재사용한다.
+- 없으면 새로 만들고 즉시 선택한다.
+
+---
+
+## 6. 선택 ID 규칙
+
+같은 스프레드시트 안에는 여러 시트 탭이 있으므로, 시트 탭 선택 항목의 ID를 단순 `spreadsheetId`로 쓰면 안 된다.
+
+프론트엔드 규칙:
+
+- 스프레드시트 파일의 실 ID는 `spreadsheetId`를 사용한다.
+- 시트 탭 선택 UI는 고유한 선택용 ID를 사용한다.
+
+현재 시트 선택용 ID 형식:
+
+- `spreadsheetId::sheet::sheetName`
+
+중요 규칙:
+
+- 이 값은 UI 선택용이다.
+- 실제 저장값은 계속 아래를 사용한다.
+  - `spreadsheet_id`
+  - `sheet_name`
+
+즉, 프론트엔드는 UI에서 쓰는 고유 ID를 실제 워크플로우 대상 ID로 저장하면 안 된다.
+
+---
+
+## 7. 저장 모델
+
+### 7.1 시작 노드
+
+Google Sheets 시작 노드는 아래 값을 저장해야 한다.
+
+- `target = spreadsheet_id`
+- `target_label = spreadsheet title`
+- `sheet_name`
+- `header_row`
+- `data_start_row`
+- `initial_sync_mode`
+- 필요 시 `key_column`
+
+### 7.2 중간 노드
+
+Google Sheets 중간 노드는 단순 문자열 target이 아니라 구조화된 액션 설정을 저장해야 한다.
+
+### 7.3 끝 노드
+
+Google Sheets 끝 노드는 아래 값을 저장해야 한다.
+
+- `spreadsheet_id`
+- `sheet_name`
+- `write_mode`
+- 필요 시 `range_a1`
+- 필요 시 `key_column`
+
+---
+
+## 8. UX 요구사항
+
+### 8.1 사람이 이해할 수 있는 저장 방식 문구
+
+`append_rows`, `upsert_row_by_key` 같은 내부 이름만으로는 부족하다.
+
+권장 문구:
+
+- `append_rows`
+  - 기존 내용 아래에 새 행 추가
+- `overwrite_range`
+  - 선택한 범위를 새 결과로 덮어쓰기
+- `update_row_by_key`
+  - 같은 기준값을 가진 기존 행만 수정
+- `upsert_row_by_key`
+  - 같은 행이 있으면 수정하고, 없으면 새로 추가
+
+### 8.2 저장 위치 설명
+
+사용자는 아래 세 가지를 명확히 이해해야 한다.
+
+- 어떤 스프레드시트 파일에 저장되는지
+- 어떤 시트 탭에 저장되는지
+- 필요한 경우 어떤 범위를 쓰는지
+
+### 8.3 기준 컬럼 설명
+
+`update`, `upsert`, `row_updated`, `lookup`에서는 `key_column`이 핵심이다.
+
+예시:
+
+- `email`
+- `order_id`
+- `student_id`
+
+### 8.4 첫 실행 설명
+
+`initial_sync_mode`는 내부 이름만 보여주지 말고 의미를 함께 설명해야 한다.
+
+권장 문구:
+
+- `skip_existing`
+  - 현재 행은 무시하고 이후에 들어오는 변경부터 처리
+- `emit_existing`
+  - 첫 실행에서 기존 행도 함께 처리
+
+### 8.5 표 형태 미리 이해시키기
+
+사용자는 어떤 컬럼 구조로 시트에 들어가는지 미리 이해할 수 있어야 한다.
+
+다음 UX 보완 단계에서 고려할 항목:
+
+- 샘플 행 미리보기
+- 출력 컬럼 미리보기
+- 헤더 포함 여부 설명 강화
+
+---
+
+## 9. 현재 프론트엔드 상태
+
+구현됨:
+
+- Google Sheets 시작, 중간, 끝 노드 설정
+- 스프레드시트 picker
+- 시트 탭 picker
+- picker 안에서 새 스프레드시트 생성
+- picker 안에서 새 시트 생성
+- 시트 탭 선택 충돌을 막는 고유 선택 ID 적용
+- 실제 저장값은 `spreadsheet_id`와 `sheet_name`으로 유지
+
+남은 UX 보완점:
+
+- 저장 방식 설명이 아직 기술 용어에 가깝다.
+- 표 형태 미리보기가 약하다.
+- 저장 결과가 시트에 어떻게 들어가는지 설명이 더 필요하다.
+- 기준 컬럼 안내를 더 강하게 줄 필요가 있다.
+
+---
+
+## 10. 검증 기준
+
+프론트엔드 동작이 올바르다고 볼 수 있는 조건:
+
+- `Sheet2`를 선택했을 때 `Sheet1`로 되돌아가지 않는다.
+- 새 스프레드시트를 만들면 즉시 그 파일이 선택된다.
+- 새 시트를 만들면 즉시 그 탭이 선택된다.
+- 저장된 워크플로우에는 UI 선택용 시트 ID가 아니라 실제 `spreadsheet_id`가 저장된다.
+- 새로고침 후 시작 노드가 올바른 파일과 시트 탭을 복원한다.
+- 중간 노드가 검색 및 조회 설정을 복원한다.
+- 끝 노드가 올바른 저장 대상과 저장 방식을 복원한다.
+
+---
+
+## 11. 결정 요약
+
+프론트엔드의 책임은 아래와 같다.
+
+- 사용자가 스프레드시트와 시트를 쉽게 선택하고 만들게 한다.
+- 시트 탭 선택 충돌이 없도록 고유 ID를 유지한다.
+- 실제 저장은 안정적인 구조값으로 저장한다.
+- 일반 사용자가 저장 동작을 이해할 수 있도록 충분히 설명한다.
+
+프론트엔드가 직접 책임지지 않는 영역:
+
+- Google Sheets diff 계산
+- durable state commit
+- 실제 Google Sheets API 읽기/쓰기 실행
+
+이 영역은 `flowify-BE`와 `flowify-BE-spring`이 담당한다.
