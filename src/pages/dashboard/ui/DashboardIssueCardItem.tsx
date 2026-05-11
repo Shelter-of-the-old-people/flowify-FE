@@ -16,7 +16,7 @@ export const DashboardIssueCardItem = ({
   onToggle,
 }: Props) => {
   const { actionKind, actionLabel, isActionPending, handleAction } =
-    useWorkflowExecutionAction(issue.id);
+    useWorkflowExecutionAction(issue.workflowId);
 
   return (
     <DashboardErrorCard

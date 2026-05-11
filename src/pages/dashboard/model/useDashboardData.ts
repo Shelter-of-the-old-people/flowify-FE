@@ -3,28 +3,20 @@ import { useMemo, useState } from "react";
 import {
   isOAuthConnectSupported,
   useConnectOAuthTokenMutation,
+  useDashboardSummaryQuery,
   useDisconnectOAuthTokenMutation,
-  useOAuthTokensQuery,
-} from "@/entities/oauth-token";
-import {
-  getWorkflowListContent,
-  useWorkflowListQuery,
-} from "@/entities/workflow";
+} from "@/entities";
 import { getCurrentRelativeUrl, storeOAuthConnectReturnPath } from "@/shared";
 
 import {
-  DASHBOARD_METRICS,
-  getConnectedServiceCards,
-  getDashboardIssues,
-  getRecommendedServiceCards,
-  sortWorkflowsByUpdatedAtDesc,
+  getConnectedServiceCardsFromSummary,
+  getDashboardIssuesFromSummary,
+  getDashboardMetrics,
+  getRecommendedServiceCardsFromSummary,
 } from "./dashboard";
 
-const DASHBOARD_WORKFLOW_PAGE_SIZE = 20;
-
 export const useDashboardData = () => {
-  const workflowQuery = useWorkflowListQuery(0, DASHBOARD_WORKFLOW_PAGE_SIZE);
-  const oauthTokenQuery = useOAuthTokensQuery();
+  const summaryQuery = useDashboardSummaryQuery();
   const { mutateAsync: connectToken, isPending: isConnectPending } =
     useConnectOAuthTokenMutation();
   const { mutateAsync: disconnectToken, isPending: isDisconnectPending } =
@@ -33,30 +25,32 @@ export const useDashboardData = () => {
     null,
   );
 
-  const workflows = useMemo(
-    () =>
-      sortWorkflowsByUpdatedAtDesc(getWorkflowListContent(workflowQuery.data)),
-    [workflowQuery.data],
+  const metrics = useMemo(
+    () => getDashboardMetrics(summaryQuery.data?.metrics),
+    [summaryQuery.data?.metrics],
   );
 
-  const issues = useMemo(() => getDashboardIssues(workflows), [workflows]);
+  const issues = useMemo(
+    () => getDashboardIssuesFromSummary(summaryQuery.data?.issues),
+    [summaryQuery.data?.issues],
+  );
 
   const connectedServices = useMemo(
-    () => getConnectedServiceCards(oauthTokenQuery.data ?? []),
-    [oauthTokenQuery.data],
+    () => getConnectedServiceCardsFromSummary(summaryQuery.data?.services),
+    [summaryQuery.data?.services],
   );
 
   const recommendedServices = useMemo(
-    () => getRecommendedServiceCards(oauthTokenQuery.data ?? []),
-    [oauthTokenQuery.data],
+    () => getRecommendedServiceCardsFromSummary(summaryQuery.data?.services),
+    [summaryQuery.data?.services],
   );
 
   const handleReloadWorkflows = () => {
-    void workflowQuery.refetch();
+    void summaryQuery.refetch();
   };
 
   const handleReloadServices = () => {
-    void oauthTokenQuery.refetch();
+    void summaryQuery.refetch();
   };
 
   const handleConnectService = async (serviceKey: string) => {
@@ -74,9 +68,9 @@ export const useDashboardData = () => {
         return;
       }
 
-      await oauthTokenQuery.refetch();
+      await summaryQuery.refetch();
     } catch {
-      // 대시보드 카드 상태로 현재 연결 가능 여부를 다시 보여준다.
+      // The dashboard keeps its current cards visible when a service action fails.
     } finally {
       setPendingServiceKey(null);
     }
@@ -87,23 +81,23 @@ export const useDashboardData = () => {
 
     try {
       await disconnectToken(serviceKey);
-      await oauthTokenQuery.refetch();
+      await summaryQuery.refetch();
     } catch {
-      // 대시보드 카드 상태로 현재 연결 가능 여부를 다시 보여준다.
+      // The dashboard keeps its current cards visible when a service action fails.
     } finally {
       setPendingServiceKey(null);
     }
   };
 
   return {
-    metrics: DASHBOARD_METRICS,
+    metrics,
     issues,
     connectedServices,
     recommendedServices,
-    isWorkflowsLoading: workflowQuery.isLoading,
-    isWorkflowsError: workflowQuery.isError,
-    isServicesLoading: oauthTokenQuery.isLoading,
-    isServicesError: oauthTokenQuery.isError,
+    isWorkflowsLoading: summaryQuery.isLoading,
+    isWorkflowsError: summaryQuery.isError,
+    isServicesLoading: summaryQuery.isLoading,
+    isServicesError: summaryQuery.isError,
     isServiceActionPending: isConnectPending || isDisconnectPending,
     pendingServiceKey,
     handleReloadWorkflows,
