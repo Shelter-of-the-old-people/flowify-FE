@@ -466,6 +466,7 @@ export const EditorRemoteBar = () => {
         <TriggerSettingsPanel
           open={triggerSettingsOpen}
           canEdit={canEditTrigger}
+          anchorRef={triggerButtonRef}
           onClose={handleCloseTriggerSettings}
         />
 

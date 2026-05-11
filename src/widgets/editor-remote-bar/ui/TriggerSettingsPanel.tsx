@@ -1,4 +1,10 @@
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import {
+  type ReactNode,
+  type RefObject,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 import { Box, Button, Input, Text } from "@chakra-ui/react";
 
@@ -18,6 +24,7 @@ import { useWorkflowStore } from "@/features/workflow-editor";
 type TriggerSettingsPanelProps = {
   open: boolean;
   canEdit: boolean;
+  anchorRef: RefObject<HTMLButtonElement | null>;
   onClose: () => void;
 };
 
@@ -25,6 +32,7 @@ type TriggerSettingsPanelContentProps = {
   workflowTrigger: TriggerConfig;
   workflowActive: boolean;
   canEdit: boolean;
+  anchorRef: RefObject<HTMLButtonElement | null>;
   onClose: () => void;
 };
 
@@ -73,6 +81,7 @@ const ToggleButton = ({
 export const TriggerSettingsPanel = ({
   open,
   canEdit,
+  anchorRef,
   onClose,
 }: TriggerSettingsPanelProps) => {
   const workflowTrigger = useWorkflowStore((state) => state.workflowTrigger);
@@ -87,6 +96,7 @@ export const TriggerSettingsPanel = ({
       workflowTrigger={workflowTrigger}
       workflowActive={workflowActive}
       canEdit={canEdit}
+      anchorRef={anchorRef}
       onClose={onClose}
     />
   );
@@ -96,6 +106,7 @@ const TriggerSettingsPanelContent = ({
   workflowTrigger,
   workflowActive,
   canEdit,
+  anchorRef,
   onClose,
 }: TriggerSettingsPanelContentProps) => {
   const setWorkflowTriggerState = useWorkflowStore(
@@ -115,17 +126,25 @@ const TriggerSettingsPanelContent = ({
 
   useEffect(() => {
     const handlePointerDown = (event: MouseEvent) => {
-      if (!panelRef.current?.contains(event.target as Node)) {
-        if (canEdit && hasDraftChanges) {
-          return;
-        }
-        onClose();
+      const target = event.target;
+
+      if (!(target instanceof Node)) {
+        return;
       }
+
+      const isInsidePanel = panelRef.current?.contains(target) ?? false;
+      const isInsideAnchor = anchorRef.current?.contains(target) ?? false;
+
+      if (isInsidePanel || isInsideAnchor) {
+        return;
+      }
+
+      onClose();
     };
 
     document.addEventListener("mousedown", handlePointerDown);
     return () => document.removeEventListener("mousedown", handlePointerDown);
-  }, [canEdit, hasDraftChanges, onClose]);
+  }, [anchorRef, onClose]);
 
   const handleApply = () => {
     if (validationError || !canEdit) {
