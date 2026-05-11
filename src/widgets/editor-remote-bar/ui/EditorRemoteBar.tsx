@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { MdSave } from "react-icons/md";
 import { useNavigate } from "react-router";
 
-import { Box, Button, Icon, Spinner } from "@chakra-ui/react";
+import { Box } from "@chakra-ui/react";
 
 import {
   executionPollInterval,
@@ -33,6 +32,7 @@ import { DeleteConfirmDialog } from "./DeleteConfirmDialog";
 import { ExecutionStatusBadge } from "./ExecutionStatusBadge";
 import { RollbackActionButton } from "./RollbackActionButton";
 import { RunStopSplitButton } from "./RunStopSplitButton";
+import { SaveStateButton } from "./SaveStateButton";
 import { TriggerControlButton } from "./TriggerControlButton";
 import { TriggerSettingsPanel } from "./TriggerSettingsPanel";
 import { WorkflowNameField } from "./WorkflowNameField";
@@ -503,41 +503,12 @@ export const EditorRemoteBar = () => {
             onDelete={handleDeleteRequest}
           />
 
-          <Button
-            type="button"
-            onClick={() => void handleSave()}
-            disabled={!canSave || isSavePending}
-            height="32px"
-            minW="32px"
-            px={{ base: 2, xl: 3 }}
-            py={1}
-            bg="bg.surface"
-            color="text.primary"
-            border="1px solid"
-            borderColor="border.default"
-            borderRadius="lg"
-            fontFamily="'Pretendard Variable', sans-serif"
-            fontWeight="medium"
-            fontSize="sm"
-            lineHeight="normal"
-            gap={1.5}
-            _hover={{ bg: "bg.overlay" }}
-            _active={{ bg: "neutral.200" }}
-            _disabled={{
-              opacity: 0.5,
-              cursor: "not-allowed",
-              _hover: { bg: "bg.surface" },
-            }}
-          >
-            {isSavePending ? (
-              <Spinner size="xs" color="currentColor" />
-            ) : (
-              <Icon as={MdSave} boxSize={4} />
-            )}
-            <Box as="span" display={{ base: "none", xl: "inline" }}>
-              저장
-            </Box>
-          </Button>
+          <SaveStateButton
+            isDirty={isDirty}
+            isSaving={isSavePending}
+            canSave={canSave}
+            onSave={() => void handleSave()}
+          />
 
           <TriggerControlButton
             summary={triggerSummary}
