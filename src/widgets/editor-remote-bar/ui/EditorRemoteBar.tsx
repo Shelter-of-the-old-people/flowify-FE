@@ -33,8 +33,8 @@ import { DeleteConfirmDialog } from "./DeleteConfirmDialog";
 import { ExecutionStatusBadge } from "./ExecutionStatusBadge";
 import { MiddleSlotButtons } from "./MiddleSlotButtons";
 import { RunStopSplitButton } from "./RunStopSplitButton";
+import { TriggerControlButton } from "./TriggerControlButton";
 import { TriggerSettingsPanel } from "./TriggerSettingsPanel";
-import { TriggerSummaryChip } from "./TriggerSummaryChip";
 import { WorkflowNameField } from "./WorkflowNameField";
 
 const getExecutableBlockers = (
@@ -147,6 +147,8 @@ export const EditorRemoteBar = () => {
     () => getWorkflowTriggerSummary(workflowTrigger, workflowActive),
     [workflowActive, workflowTrigger],
   );
+  const triggerControlActive =
+    workflowActive && workflowTrigger.type !== "manual";
   const hasExecutableBlock = !isDirty && executableBlockers.length > 0;
   const executionStatusLabel =
     effectiveRunPhase === "auto-saving"
@@ -494,8 +496,9 @@ export const EditorRemoteBar = () => {
             onRollback={() => void handleRollback()}
           />
 
-          <TriggerSummaryChip
+          <TriggerControlButton
             summary={triggerSummary}
+            active={triggerControlActive}
             onClick={handleOpenTriggerSettings}
           />
 
