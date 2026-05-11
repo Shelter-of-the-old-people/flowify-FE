@@ -63,19 +63,19 @@ export const WorkflowNameField = ({
         onBlur={handleConfirm}
         onKeyDown={handleKeyDown}
         size="sm"
-        width="200px"
+        width={{ base: "140px", lg: "180px", xl: "220px" }}
         height="24px"
         px={2}
         py={0}
         fontFamily="'Pretendard Variable', sans-serif"
-        fontWeight="normal"
-        fontSize="14px"
-        color="black"
-        bg="white"
+        fontWeight="medium"
+        fontSize="sm"
+        color="text.primary"
+        bg="bg.surface"
         border="1px solid"
-        borderColor="#d4d4d4"
-        borderRadius="6px"
-        _focus={{ borderColor: "#272727", boxShadow: "none" }}
+        borderColor="border.default"
+        borderRadius="md"
+        _focus={{ borderColor: "border.selected", boxShadow: "none" }}
       />
     );
   }
@@ -84,9 +84,12 @@ export const WorkflowNameField = ({
     <Text
       as="p"
       fontFamily="'Pretendard Variable', sans-serif"
-      fontWeight="normal"
-      fontSize="14px"
-      color="black"
+      fontWeight="medium"
+      fontSize="sm"
+      color="text.primary"
+      maxW={{ base: "120px", lg: "160px", xl: "220px" }}
+      overflow="hidden"
+      textOverflow="ellipsis"
       whiteSpace="nowrap"
       cursor={disabled ? "default" : "pointer"}
       opacity={disabled ? 0.6 : 1}

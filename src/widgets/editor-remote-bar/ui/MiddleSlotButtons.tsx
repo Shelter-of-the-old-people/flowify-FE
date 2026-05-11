@@ -1,4 +1,20 @@
-import { Box, Button } from "@chakra-ui/react";
+import { type ElementType } from "react";
+import {
+  MdAutoFixHigh,
+  MdDeleteOutline,
+  MdHistory,
+  MdUndo,
+  MdZoomOutMap,
+} from "react-icons/md";
+
+import {
+  Box,
+  Button,
+  type ButtonProps,
+  Icon,
+  Spinner,
+  Text,
+} from "@chakra-ui/react";
 
 type MiddleSlotButtonsProps = {
   isDeletePending: boolean;
@@ -12,57 +28,67 @@ type MiddleSlotButtonsProps = {
 type SlotButtonProps = {
   label: string;
   disabled: boolean;
+  icon: ElementType;
   loading?: boolean;
+  tone?: "default" | "danger";
+  display?: ButtonProps["display"];
   title?: string;
   onClick?: () => void;
 };
 
-/**
- * Figma 1882:3344 기준 가운데 슬롯 공통 버튼 스타일.
- * 임시 텍스트 라벨. 디자이너 아이콘 확정 후 교체 예정.
- */
 const SlotButton = ({
   label,
   disabled,
+  icon,
   loading = false,
+  tone = "default",
+  display,
   title,
   onClick,
-}: SlotButtonProps) => (
-  <Button
-    type="button"
-    onClick={onClick}
-    disabled={disabled || loading}
-    title={title}
-    height="32px"
-    minWidth="auto"
-    px="8px"
-    py="4px"
-    bg="#272727"
-    color="#efefef"
-    borderRadius="10px"
-    fontFamily="'Pretendard Variable', sans-serif"
-    fontWeight="normal"
-    fontSize="14px"
-    lineHeight="normal"
-    _hover={{ bg: "#3a3a3a" }}
-    _active={{ bg: "#1f1f1f" }}
-    _disabled={{
-      opacity: 0.5,
-      cursor: "not-allowed",
-      _hover: { bg: "#272727" },
-    }}
-  >
-    {loading ? "…" : label}
-  </Button>
-);
+}: SlotButtonProps) => {
+  const isDanger = tone === "danger";
 
-/**
- * 가운데 슬롯에 렌더되는 5개 임시 버튼.
- *
- * 순서(스펙 §3.5): 삭제 / 롤백 / 자동정렬 / 줌리셋 / 히스토리
- * - 삭제, 롤백: 실제 동작 연결됨. 부모에서 조건 전달.
- * - 자동정렬, 줌리셋, 히스토리: 현 단계에서 기능 미구현 → disabled 고정.
- */
+  return (
+    <Button
+      type="button"
+      onClick={onClick}
+      disabled={disabled || loading}
+      display={display}
+      title={title}
+      height="32px"
+      minW="32px"
+      px={{ base: 2, xl: 3 }}
+      py={1}
+      bg="bg.surface"
+      color={isDanger ? "status.error" : "text.primary"}
+      border="1px solid"
+      borderColor="border.default"
+      borderRadius="lg"
+      fontFamily="'Pretendard Variable', sans-serif"
+      fontWeight="medium"
+      fontSize="sm"
+      lineHeight="normal"
+      gap={1.5}
+      _hover={{ bg: isDanger ? "error.50" : "bg.overlay" }}
+      _active={{ bg: isDanger ? "error.50" : "neutral.200" }}
+      _disabled={{
+        opacity: 0.45,
+        cursor: "not-allowed",
+        _hover: { bg: "bg.surface" },
+      }}
+    >
+      {loading ? (
+        <Spinner size="xs" color="currentColor" />
+      ) : (
+        <Icon as={icon} boxSize={4} />
+      )}
+      <Text as="span" display={{ base: "none", xl: "inline" }}>
+        {label}
+      </Text>
+    </Button>
+  );
+};
+
 export const MiddleSlotButtons = ({
   isDeletePending,
   isRollbackPending,
@@ -73,9 +99,9 @@ export const MiddleSlotButtons = ({
 }: MiddleSlotButtonsProps) => (
   <Box
     display="flex"
-    flex="1 0 0"
+    flex="1 1 auto"
     minW={0}
-    gap="10px"
+    gap={{ base: 1.5, xl: 2 }}
     alignItems="center"
     justifyContent="center"
     overflow="clip"
@@ -83,13 +109,16 @@ export const MiddleSlotButtons = ({
     <SlotButton
       label="삭제"
       disabled={!canDelete}
+      icon={MdDeleteOutline}
       loading={isDeletePending}
+      tone="danger"
       title={canDelete ? "워크플로우 삭제" : "실행 중에는 삭제할 수 없습니다"}
       onClick={onDelete}
     />
     <SlotButton
       label="롤백"
       disabled={!canRollback}
+      icon={MdUndo}
       loading={isRollbackPending}
       title={
         canRollback
@@ -98,8 +127,26 @@ export const MiddleSlotButtons = ({
       }
       onClick={onRollback}
     />
-    <SlotButton label="자동정렬" disabled title="추후 지원 예정" />
-    <SlotButton label="줌리셋" disabled title="추후 지원 예정" />
-    <SlotButton label="히스토리" disabled title="추후 지원 예정" />
+    <SlotButton
+      label="자동정렬"
+      disabled
+      icon={MdAutoFixHigh}
+      display={{ base: "none", "2xl": "inline-flex" }}
+      title="추후 지원 예정"
+    />
+    <SlotButton
+      label="줌리셋"
+      disabled
+      icon={MdZoomOutMap}
+      display={{ base: "none", "2xl": "inline-flex" }}
+      title="추후 지원 예정"
+    />
+    <SlotButton
+      label="히스토리"
+      disabled
+      icon={MdHistory}
+      display={{ base: "none", "2xl": "inline-flex" }}
+      title="추후 지원 예정"
+    />
   </Box>
 );

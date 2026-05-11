@@ -49,29 +49,29 @@ export const RunStopSplitButton = ({
         disabled={runSideDisabled}
         height="100%"
         minWidth="auto"
-        px="8px"
+        px={{ base: 2, xl: 3 }}
         py={0}
-        bg="#272727"
-        color="#efefef"
-        borderTopLeftRadius="10px"
-        borderBottomLeftRadius="10px"
+        bg="neutral.900"
+        color="text.inverse"
+        borderTopLeftRadius="lg"
+        borderBottomLeftRadius="lg"
         borderTopRightRadius={0}
         borderBottomRightRadius={0}
         fontFamily="'Pretendard Variable', sans-serif"
-        fontWeight="normal"
-        fontSize="14px"
+        fontWeight="medium"
+        fontSize="sm"
         lineHeight="normal"
-        gap="8px"
-        _hover={{ bg: "#3a3a3a" }}
-        _active={{ bg: "#1f1f1f" }}
+        gap={2}
+        _hover={{ bg: "neutral.800" }}
+        _active={{ bg: "neutral.950" }}
         _disabled={{
           opacity: 0.5,
           cursor: "not-allowed",
-          _hover: { bg: "#272727" },
+          _hover: { bg: "neutral.900" },
         }}
       >
         {runSideLoading ? (
-          <Spinner size="xs" color="#efefef" />
+          <Spinner size="xs" color="currentColor" />
         ) : (
           <Icon as={runSideIcon} boxSize="16px" />
         )}
@@ -85,27 +85,28 @@ export const RunStopSplitButton = ({
             disabled={!canOpenMenu}
             height="100%"
             minWidth="auto"
-            px="8px"
-            py="4px"
-            bg="#272727"
-            color="#efefef"
-            borderTopRightRadius="10px"
-            borderBottomRightRadius="10px"
+            px={2}
+            py={1}
+            bg="neutral.900"
+            color="text.inverse"
+            borderTopRightRadius="lg"
+            borderBottomRightRadius="lg"
             borderTopLeftRadius={0}
             borderBottomLeftRadius={0}
-            borderLeft="1px solid #f6f6f6"
+            borderLeft="1px solid"
+            borderLeftColor="neutral.700"
             fontFamily="'Pretendard Variable', sans-serif"
-            fontWeight="normal"
-            fontSize="14px"
+            fontWeight="medium"
+            fontSize="sm"
             lineHeight="normal"
             aria-label="실행 메뉴 열기"
-            _hover={{ bg: "#3a3a3a" }}
-            _active={{ bg: "#1f1f1f" }}
-            _expanded={{ bg: "#1f1f1f" }}
+            _hover={{ bg: "neutral.800" }}
+            _active={{ bg: "neutral.950" }}
+            _expanded={{ bg: "neutral.950" }}
             _disabled={{
               opacity: 0.5,
               cursor: "not-allowed",
-              _hover: { bg: "#272727" },
+              _hover: { bg: "neutral.900" },
             }}
           >
             <Icon as={MdKeyboardArrowDown} boxSize="18px" />
@@ -117,9 +118,9 @@ export const RunStopSplitButton = ({
             <Menu.Content
               minW="168px"
               p={1.5}
-              borderRadius="12px"
-              borderColor="gray.200"
-              boxShadow="0 10px 30px rgba(15, 23, 42, 0.12)"
+              borderRadius="xl"
+              borderColor="border.default"
+              boxShadow="lg"
             >
               <Menu.Item
                 value="trigger-settings"

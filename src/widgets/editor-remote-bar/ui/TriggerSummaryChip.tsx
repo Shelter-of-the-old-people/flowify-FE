@@ -1,4 +1,6 @@
-import { Button } from "@chakra-ui/react";
+import { MdKeyboardArrowDown, MdSchedule } from "react-icons/md";
+
+import { Button, Icon, Text } from "@chakra-ui/react";
 
 type TriggerSummaryChipProps = {
   summary: string;
@@ -13,21 +15,28 @@ export const TriggerSummaryChip = ({
     type="button"
     onClick={onClick}
     height="32px"
-    minWidth="auto"
-    px="12px"
-    py="4px"
-    bg="#fefefe"
-    color="#272727"
-    border="1px solid #d8d8d8"
-    borderRadius="999px"
+    minW="32px"
+    maxW={{ base: "140px", lg: "180px", xl: "220px" }}
+    px={{ base: 2, xl: 3 }}
+    py={1}
+    bg="bg.surface"
+    color="text.primary"
+    border="1px solid"
+    borderColor="border.default"
+    borderRadius="full"
     fontFamily="'Pretendard Variable', sans-serif"
     fontWeight="medium"
-    fontSize="13px"
+    fontSize="xs"
     lineHeight="normal"
     whiteSpace="nowrap"
-    _hover={{ bg: "#f7f7f7" }}
-    _active={{ bg: "#efefef" }}
+    gap={1.5}
+    _hover={{ bg: "bg.overlay" }}
+    _active={{ bg: "neutral.200" }}
   >
-    {summary}
+    <Icon as={MdSchedule} boxSize={4} flexShrink={0} />
+    <Text as="span" minW={0} overflow="hidden" textOverflow="ellipsis">
+      {summary}
+    </Text>
+    <Icon as={MdKeyboardArrowDown} boxSize={4} flexShrink={0} />
   </Button>
 );

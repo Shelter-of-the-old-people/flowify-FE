@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
+import { MdSave } from "react-icons/md";
 import { useNavigate } from "react-router";
 
-import { Box, Button, Spinner } from "@chakra-ui/react";
+import { Box, Button, Icon, Spinner } from "@chakra-ui/react";
 
 import {
   executionPollInterval,
@@ -441,11 +442,12 @@ export const EditorRemoteBar = () => {
   return (
     <Box
       position="absolute"
-      bottom="24px"
+      bottom={{ base: "16px", xl: "24px" }}
       left="50%"
       transform="translateX(-50%)"
       pointerEvents="none"
       zIndex={4}
+      maxW="calc(100vw - 32px)"
     >
       <Box position="relative" pointerEvents="auto">
         <ExecutionStatusBadge label={executionStatusLabel} />
@@ -458,20 +460,21 @@ export const EditorRemoteBar = () => {
         <Box
           display="flex"
           alignItems="center"
-          gap="16px"
-          width="900px"
-          bg="#fefefe"
-          border="1px solid #f2f2f2"
-          borderRadius="20px"
-          boxShadow="0px 4px 4px rgba(0, 0, 0, 0.25)"
-          px="24px"
-          py="8px"
+          gap={{ base: 2, xl: 3 }}
+          width="min(920px, calc(100vw - 32px))"
+          bg="bg.surface"
+          border="1px solid"
+          borderColor="border.default"
+          borderRadius="2xl"
+          boxShadow="lg"
+          px={{ base: 3, xl: 4 }}
+          py={{ base: 1.5, xl: 2 }}
           overflow="clip"
           fontFamily="'Pretendard Variable', sans-serif"
           onWheel={(event) => event.stopPropagation()}
           onPointerDown={(event) => event.stopPropagation()}
         >
-          <Box display="flex" alignItems="center" flexShrink={0}>
+          <Box display="flex" alignItems="center" flexShrink={0} minW={0}>
             <WorkflowNameField
               disabled={isRunning || !canSaveWorkflow}
               disabledReason={
@@ -514,25 +517,35 @@ export const EditorRemoteBar = () => {
             onClick={() => void handleSave()}
             disabled={!canSave || isSavePending}
             height="32px"
-            minWidth="auto"
-            px="8px"
-            py="4px"
-            bg="#272727"
-            color="#efefef"
-            borderRadius="10px"
+            minW="32px"
+            px={{ base: 2, xl: 3 }}
+            py={1}
+            bg="bg.surface"
+            color="text.primary"
+            border="1px solid"
+            borderColor="border.default"
+            borderRadius="lg"
             fontFamily="'Pretendard Variable', sans-serif"
-            fontWeight="normal"
-            fontSize="14px"
+            fontWeight="medium"
+            fontSize="sm"
             lineHeight="normal"
-            _hover={{ bg: "#3a3a3a" }}
-            _active={{ bg: "#1f1f1f" }}
+            gap={1.5}
+            _hover={{ bg: "bg.overlay" }}
+            _active={{ bg: "neutral.200" }}
             _disabled={{
               opacity: 0.5,
               cursor: "not-allowed",
-              _hover: { bg: "#272727" },
+              _hover: { bg: "bg.surface" },
             }}
           >
-            {isSavePending ? <Spinner size="xs" color="#efefef" /> : "저장"}
+            {isSavePending ? (
+              <Spinner size="xs" color="currentColor" />
+            ) : (
+              <Icon as={MdSave} boxSize={4} />
+            )}
+            <Box as="span" display={{ base: "none", xl: "inline" }}>
+              저장
+            </Box>
           </Button>
         </Box>
       </Box>

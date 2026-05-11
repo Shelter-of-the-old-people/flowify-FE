@@ -47,22 +47,23 @@ const ToggleButton = ({
     disabled={disabled}
     height="28px"
     minWidth="auto"
-    px="10px"
-    py="4px"
-    bg={active ? "#272727" : "#f3f3f3"}
-    color={active ? "#efefef" : "#272727"}
-    borderRadius="999px"
+    px={2.5}
+    py={1}
+    bg={active ? "neutral.900" : "bg.overlay"}
+    color={active ? "text.inverse" : "text.primary"}
+    borderRadius="full"
     fontFamily="'Pretendard Variable', sans-serif"
-    fontWeight="normal"
-    fontSize="12px"
+    fontWeight="medium"
+    fontSize="xs"
     lineHeight="normal"
-    border={active ? "none" : "1px solid #d8d8d8"}
-    _hover={{ bg: active ? "#3a3a3a" : "#ececec" }}
-    _active={{ bg: active ? "#1f1f1f" : "#e4e4e4" }}
+    border="1px solid"
+    borderColor={active ? "neutral.900" : "border.default"}
+    _hover={{ bg: active ? "neutral.800" : "neutral.200" }}
+    _active={{ bg: active ? "neutral.950" : "neutral.300" }}
     _disabled={{
       opacity: 0.55,
       cursor: "not-allowed",
-      _hover: { bg: active ? "#272727" : "#f3f3f3" },
+      _hover: { bg: active ? "neutral.900" : "bg.overlay" },
     }}
   >
     {children}
@@ -146,14 +147,17 @@ const TriggerSettingsPanelContent = ({
       ref={panelRef}
       position="absolute"
       right="0"
-      bottom="72px"
-      width="360px"
-      bg="#fefefe"
-      border="1px solid #e3e3e3"
-      borderRadius="20px"
-      boxShadow="0 18px 40px rgba(0, 0, 0, 0.18)"
-      px="18px"
-      py="16px"
+      bottom={{ base: "56px", xl: "72px" }}
+      width="min(360px, calc(100vw - 32px))"
+      maxH="calc(100vh - 120px)"
+      overflowY="auto"
+      bg="bg.surface"
+      border="1px solid"
+      borderColor="border.default"
+      borderRadius="2xl"
+      boxShadow="lg"
+      px={{ base: 4, xl: 5 }}
+      py={4}
     >
       <Box display="flex" flexDirection="column" gap="14px">
         <Box>
@@ -258,9 +262,10 @@ const TriggerSettingsPanelContent = ({
               <Box
                 px="12px"
                 py="9px"
-                border="1px solid #e0e0e0"
-                borderRadius="12px"
-                bg="#f8f8f8"
+                border="1px solid"
+                borderColor="border.default"
+                borderRadius="xl"
+                bg="bg.overlay"
               >
                 <Text fontSize="13px">{DEFAULT_WORKFLOW_TIMEZONE}</Text>
               </Box>
@@ -305,7 +310,7 @@ const TriggerSettingsPanelContent = ({
                     }))
                   }
                 />
-                <Text color="#666" fontSize="11px">
+                <Text color="text.secondary" fontSize="xs">
                   1~2시간은 빠른 확인, 4시간은 일반 권장, 6~12시간은 여유 있는
                   확인에 적합합니다. 하루 한 번이면 daily를 더 권장합니다.
                 </Text>
@@ -414,19 +419,19 @@ const TriggerSettingsPanelContent = ({
         ) : null}
 
         {!canEdit ? (
-          <Text color="#666" fontSize="11px">
+          <Text color="text.secondary" fontSize="xs">
             공유된 워크플로우에서는 자동 실행 설정을 수정할 수 없습니다.
           </Text>
         ) : null}
 
         {validationError ? (
-          <Text color="#d64545" fontSize="11px">
+          <Text color="status.error" fontSize="xs">
             {validationError}
           </Text>
         ) : null}
 
         {canEdit && hasDraftChanges ? (
-          <Text color="#666" fontSize="11px">
+          <Text color="text.secondary" fontSize="xs">
             변경 사항은 적용해야 저장됩니다.
           </Text>
         ) : null}
