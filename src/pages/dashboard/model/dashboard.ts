@@ -1,4 +1,9 @@
 import {
+  type DashboardIssueResponse,
+  type DashboardMetricsResponse,
+  type DashboardServiceResponse,
+} from "@/entities/dashboard";
+import {
   type OAuthTokenSummary,
   isOAuthConnectSupported,
 } from "@/entities/oauth-token";
@@ -225,6 +230,7 @@ export const getDashboardIssues = (workflows: WorkflowResponse[]) =>
 
       return {
         id: workflow.id,
+        workflowId: workflow.id,
         name: workflow.name,
         isActive: workflow.active,
         startBadgeKey: getWorkflowServiceBadgeKey(startNode),
@@ -277,3 +283,100 @@ export const getRecommendedServiceCards = (tokens: OAuthTokenSummary[]) => {
     actionLabel: "연결 시작",
   }));
 };
+
+export const formatDashboardDuration = (durationMs: number) => {
+  const totalSeconds = Math.max(0, Math.floor(durationMs / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  const pad = (value: number) => String(value).padStart(2, "0");
+
+  return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+};
+
+export const getDashboardMetrics = (
+  metrics: DashboardMetricsResponse | null | undefined,
+): DashboardMetric[] => {
+  const labelsById = new Map(
+    DASHBOARD_METRICS.map((metric) => [metric.id, metric.label]),
+  );
+
+  return [
+    {
+      id: "today-processed",
+      label: labelsById.get("today-processed") ?? "Today processed",
+      value: String(metrics?.todayProcessedCount ?? 0),
+    },
+    {
+      id: "total-processed",
+      label: labelsById.get("total-processed") ?? "Total processed",
+      value: String(metrics?.totalProcessedCount ?? 0),
+    },
+    {
+      id: "total-duration",
+      label: labelsById.get("total-duration") ?? "Total duration",
+      value: formatDashboardDuration(metrics?.totalDurationMs ?? 0),
+    },
+  ];
+};
+
+export const getDashboardIssuesFromSummary = (
+  issues: DashboardIssueResponse[] | null | undefined,
+): DashboardIssue[] =>
+  (issues ?? []).map((issue) => {
+    const fallbackMessage = issue.message?.trim() || issue.type;
+    const items = issue.items ?? [];
+
+    return {
+      id: issue.id,
+      workflowId: issue.workflowId,
+      name: issue.workflowName?.trim() || fallbackMessage || "Workflow",
+      isActive: issue.isActive,
+      startBadgeKey: getServiceBadgeKeyFromService(issue.startService),
+      endBadgeKey: getServiceBadgeKeyFromService(issue.endService),
+      relativeUpdateLabel: getRelativeTimeLabel(issue.occurredAt ?? "", {
+        suffix: "발생",
+      }),
+      buildProgressLabel: fallbackMessage || "Issue",
+      items:
+        items.length > 0
+          ? items.map<DashboardIssueItem>((item) => ({
+              id: item.id,
+              badgeKey: getServiceBadgeKeyFromService(item.service),
+              message: item.message?.trim() || fallbackMessage || "Issue",
+            }))
+          : [
+              {
+                id: `${issue.id}-message`,
+                badgeKey: "unknown",
+                message: fallbackMessage || "Issue",
+              },
+            ],
+    };
+  });
+
+const toOAuthTokenSummaries = (
+  services: DashboardServiceResponse[] | null | undefined,
+): OAuthTokenSummary[] =>
+  (services ?? [])
+    .filter(
+      (service): service is DashboardServiceResponse & { service: string } =>
+        typeof service.service === "string" && service.service.length > 0,
+    )
+    .map((service) => ({
+      service: service.service,
+      connected: service.connected,
+      accountEmail: service.accountEmail,
+      expiresAt: service.expiresAt,
+      aliasOf: service.aliasOf,
+      disconnectable: service.disconnectable,
+      reason: service.reason,
+    }));
+
+export const getConnectedServiceCardsFromSummary = (
+  services: DashboardServiceResponse[] | null | undefined,
+) => getConnectedServiceCards(toOAuthTokenSummaries(services));
+
+export const getRecommendedServiceCardsFromSummary = (
+  services: DashboardServiceResponse[] | null | undefined,
+) => getRecommendedServiceCards(toOAuthTokenSummaries(services));

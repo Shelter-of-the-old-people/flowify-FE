@@ -19,6 +19,7 @@ export type DashboardIssueItem = {
 
 export type DashboardIssue = {
   id: string;
+  workflowId: string;
   name: string;
   isActive: boolean;
   startBadgeKey: ServiceBadgeKey;
