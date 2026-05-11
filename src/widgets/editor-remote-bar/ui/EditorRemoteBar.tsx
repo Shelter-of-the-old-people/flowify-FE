@@ -464,7 +464,8 @@ export const EditorRemoteBar = () => {
           display="flex"
           alignItems="center"
           gap={{ base: 1.5, xl: 2 }}
-          width="min(840px, calc(100vw - 32px))"
+          width="fit-content"
+          maxW="calc(100vw - 32px)"
           bg="bg.surface"
           border="1px solid"
           borderColor="border.default"
@@ -488,7 +489,7 @@ export const EditorRemoteBar = () => {
             />
           </Box>
 
-          <Box flex="1 1 auto" minW={0} />
+          <Box flexShrink={0} width={{ base: 1, xl: 2 }} />
 
           {canRollback ? (
             <RollbackActionButton
