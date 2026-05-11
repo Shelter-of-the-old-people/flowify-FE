@@ -9,7 +9,10 @@ import {
   useOAuthTokensQuery,
 } from "@/entities/oauth-token";
 import {
+  getPrimarySourceModeLabel,
+  getSourceModeTargetScopeKey,
   getTriggerKindLabel,
+  isSeBoardNewPostsSourceMode,
   useSourceCatalogQuery,
 } from "@/entities/workflow";
 import { useWorkflowStore } from "@/features/workflow-editor";
@@ -52,6 +55,7 @@ const getStringConfigValue = (
 const createInitialSourceTargetValue = (
   config: FlowNodeData["config"],
 ): SourceTargetSetupValue => ({
+  keyword: getStringConfigValue(config, "keyword") ?? "",
   option: null,
   value: getStringConfigValue(config, "target") ?? "",
 });
@@ -96,7 +100,10 @@ export const SourceNodePanel = ({
   const sourceMode =
     sourceService?.source_modes.find((mode) => mode.key === sourceModeKey) ??
     null;
-  const sourceTargetScope = `${nodeId}:${sourceMode?.key ?? ""}`;
+  const sourceTargetScope = `${nodeId}:${getSourceModeTargetScopeKey(
+    serviceKey,
+    sourceMode?.key ?? null,
+  )}`;
   const initialSourceTargetValue = createInitialSourceTargetValue(data.config);
   const sourceTargetValue =
     sourceTargetDraft.scope === sourceTargetScope
@@ -127,9 +134,21 @@ export const SourceNodePanel = ({
           targetValue: sourceTargetValue,
         })
       : null;
-  const isSourceComplete =
+  const sourceNextConfigWithMode =
     sourceNextConfig && sourceMode
-      ? isSourceNodeSetupComplete(sourceNextConfig, sourceMode.target_schema)
+      ? ({
+          ...sourceNextConfig,
+          canonical_input_type: sourceMode.canonical_input_type,
+          source_mode: sourceMode.key,
+          trigger_kind: sourceMode.trigger_kind,
+        } as FlowNodeData["config"])
+      : null;
+  const isSourceComplete =
+    sourceNextConfigWithMode && sourceMode
+      ? isSourceNodeSetupComplete(
+          sourceNextConfigWithMode,
+          sourceMode.target_schema,
+        )
       : false;
   const sourceTargetValidationMessage = sourceMode
     ? getSourceTargetSchemaValidationMessage(
@@ -138,6 +157,12 @@ export const SourceNodePanel = ({
       )
     : null;
   const existingTargetLabel = getStringConfigValue(data.config, "target_label");
+  const existingKeyword = getStringConfigValue(data.config, "keyword");
+  const shouldShowKeywordSummary =
+    sourceService &&
+    sourceMode &&
+    isSeBoardNewPostsSourceMode(sourceService.key, sourceMode.key) &&
+    existingKeyword;
 
   const handleConnectService = (targetServiceKey: string) => {
     void (async () => {
@@ -165,18 +190,15 @@ export const SourceNodePanel = ({
   };
 
   const handleApplySourceSetup = () => {
-    if (!sourceMode || sourceTargetValidationMessage) {
+    if (
+      !sourceNextConfigWithMode ||
+      !sourceMode ||
+      sourceTargetValidationMessage
+    ) {
       return;
     }
 
-    updateNodeConfig(
-      nodeId,
-      buildSourceNodeConfigDraft({
-        currentConfig: data.config,
-        targetSchema: sourceMode.target_schema,
-        targetValue: sourceTargetValue,
-      }),
-    );
+    updateNodeConfig(nodeId, sourceNextConfigWithMode);
     onComplete?.();
   };
 
@@ -213,12 +235,22 @@ export const SourceNodePanel = ({
                 가져오는 방식
               </Text>
               <Text fontSize="sm" fontWeight="semibold" mt={1}>
-                {sourceMode.label}
+                {getPrimarySourceModeLabel(sourceService.key, sourceMode)}
               </Text>
               <Text color="text.secondary" fontSize="xs" mt={1}>
                 {getTriggerKindLabel(sourceMode.trigger_kind)}
               </Text>
             </Box>
+            {shouldShowKeywordSummary ? (
+              <Box bg="gray.50" borderRadius="2xl" px={4} py={3}>
+                <Text color="text.secondary" fontSize="xs">
+                  포함할 단어
+                </Text>
+                <Text fontSize="sm" fontWeight="semibold" mt={1}>
+                  {existingKeyword}
+                </Text>
+              </Box>
+            ) : null}
           </Box>
 
           {authState ? (

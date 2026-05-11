@@ -41,8 +41,11 @@ import {
   findAddedNodeId,
   getCanonicalInputTypeLabel,
   getDataTypeDisplayLabel,
+  getPrimarySourceModeLabel,
   getTriggerKindLabel,
   getVisualNodeTypeFromServiceKey,
+  isSeBoardNewPostsSourceMode,
+  shouldHideSourceModeFromPrimaryList,
   toBackendDataType,
   toFrontendDataType,
   toNodeAddRequest,
@@ -144,8 +147,11 @@ const buildSourceTargetConfig = ({
   hasTarget: boolean;
   targetValue: SourceTargetPickerValue;
 }) => {
+  const keyword = targetValue.keyword.trim();
+  const keywordConfig = keyword ? { keyword } : {};
+
   if (!hasTarget) {
-    return { target: EMPTY_TARGET_SENTINEL };
+    return { target: EMPTY_TARGET_SENTINEL, ...keywordConfig };
   }
 
   if (targetValue.option) {
@@ -153,10 +159,11 @@ const buildSourceTargetConfig = ({
       target: targetValue.option.id,
       target_label: targetValue.option.label,
       target_meta: targetValue.option.metadata,
+      ...keywordConfig,
     };
   }
 
-  return { target: targetValue.value.trim() };
+  return { target: targetValue.value.trim(), ...keywordConfig };
 };
 
 const toCanonicalInputType = (canonicalInputType: string): DataType =>
@@ -356,27 +363,30 @@ const SourceModeList = ({
     </Text>
 
     <Box display="flex" flexDirection="column" gap={3}>
-      {service.source_modes.map((mode) => (
-        <Box
-          key={mode.key}
-          borderRadius="3xl"
-          cursor="pointer"
-          px={6}
-          py={5}
-          transition="background 150ms ease"
-          _hover={{ bg: "gray.50" }}
-          onClick={() => onSelect(mode)}
-        >
-          <Text fontSize="md" fontWeight="bold" mb={1}>
-            {mode.label}
-          </Text>
-          <Text color="text.secondary" fontSize="sm">
-            {getCanonicalInputTypeLabel(mode.canonical_input_type) ?? "데이터"}
-            {" · "}
-            {getTriggerKindLabel(mode.trigger_kind) ?? "실행 방식"}
-          </Text>
-        </Box>
-      ))}
+      {service.source_modes.map((mode) =>
+        shouldHideSourceModeFromPrimaryList(service.key, mode.key) ? null : (
+          <Box
+            key={mode.key}
+            borderRadius="3xl"
+            cursor="pointer"
+            px={6}
+            py={5}
+            transition="background 150ms ease"
+            _hover={{ bg: "gray.50" }}
+            onClick={() => onSelect(mode)}
+          >
+            <Text fontSize="md" fontWeight="bold" mb={1}>
+              {getPrimarySourceModeLabel(service.key, mode)}
+            </Text>
+            <Text color="text.secondary" fontSize="sm">
+              {getCanonicalInputTypeLabel(mode.canonical_input_type) ??
+                "데이터"}
+              {" · "}
+              {getTriggerKindLabel(mode.trigger_kind) ?? "실행 방식"}
+            </Text>
+          </Box>
+        ),
+      )}
     </Box>
   </WizardCard>
 );
@@ -403,6 +413,31 @@ const SourceTargetForm = ({
     mode.target_schema,
     value.value,
   );
+  const shouldShowKeywordInput = isSeBoardNewPostsSourceMode(
+    serviceKey,
+    mode.key,
+  );
+  const handleTargetChange = (nextValue: SourceTargetPickerValue) => {
+    onChange({ ...nextValue, keyword: value.keyword });
+  };
+  const handleKeywordChange = (keyword: string) => {
+    onChange({ ...value, keyword });
+  };
+  const keywordInput = shouldShowKeywordInput ? (
+    <Box mt={4}>
+      <Text fontSize="sm" fontWeight="semibold" mb={2}>
+        포함할 단어
+      </Text>
+      <Input
+        placeholder="예: 장학, 수강신청"
+        value={value.keyword}
+        onChange={(event) => handleKeywordChange(event.target.value)}
+      />
+      <Text color="text.secondary" fontSize="xs" mt={2}>
+        비워두면 선택한 게시판의 새 글을 모두 가져옵니다.
+      </Text>
+    </Box>
+  ) : null;
 
   return (
     <WizardCard minWidth="520px" maxWidth="640px">
@@ -437,7 +472,7 @@ const SourceTargetForm = ({
           mode={mode}
           serviceKey={serviceKey}
           value={value}
-          onChange={onChange}
+          onChange={handleTargetChange}
         />
       ) : schemaType === "day_picker" ? (
         <Box display="flex" flexDirection="column" gap={3}>
@@ -446,7 +481,9 @@ const SourceTargetForm = ({
               key={option.value}
               justifyContent="flex-start"
               variant={value.value === option.value ? "solid" : "outline"}
-              onClick={() => onChange({ option: null, value: option.value })}
+              onClick={() =>
+                onChange({ ...value, option: null, value: option.value })
+              }
             >
               {option.label}
             </Button>
@@ -458,10 +495,11 @@ const SourceTargetForm = ({
           type={schemaType === "time_picker" ? "time" : "text"}
           value={value.value}
           onChange={(event) =>
-            onChange({ option: null, value: event.target.value })
+            onChange({ ...value, option: null, value: event.target.value })
           }
         />
       )}
+      {keywordInput}
       {validationMessage ? (
         <Text color="orange.500" fontSize="xs" mt={2}>
           {validationMessage}
@@ -485,12 +523,14 @@ const StartNodeConfirm = ({
   onBack,
   onConfirm,
   service,
+  keyword,
   targetValue,
 }: {
   mode: SourceModeResponse;
   onBack: () => void;
   onConfirm: () => void;
   service: SourceServiceResponse;
+  keyword: string;
   targetValue: string;
 }) => (
   <WizardCard minWidth="520px" maxWidth="640px">
@@ -529,9 +569,19 @@ const StartNodeConfirm = ({
           가져오는 방식
         </Text>
         <Text fontSize="md" fontWeight="semibold">
-          {mode.label}
+          {getPrimarySourceModeLabel(service.key, mode)}
         </Text>
       </Box>
+      {keyword ? (
+        <Box bg="gray.50" borderRadius="2xl" px={5} py={4}>
+          <Text color="text.secondary" fontSize="sm">
+            포함할 단어
+          </Text>
+          <Text fontSize="md" fontWeight="semibold">
+            {keyword}
+          </Text>
+        </Box>
+      ) : null}
       <Box bg="gray.50" borderRadius="2xl" px={5} py={4}>
         <Text color="text.secondary" fontSize="sm">
           가져오는 데이터
@@ -1194,6 +1244,7 @@ export const ServiceSelectionPanel = () => {
               selectedSourceMode &&
               selectedSourceService ? (
                 <StartNodeConfirm
+                  keyword={selectedTargetValue.keyword.trim()}
                   mode={selectedSourceMode}
                   service={selectedSourceService}
                   targetValue={

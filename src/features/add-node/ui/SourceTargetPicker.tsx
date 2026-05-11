@@ -168,7 +168,7 @@ export const SourceTargetPicker = ({
         searchQuery: "",
       };
     });
-    onChange({ option: null, value: "" });
+    onChange({ ...value, option: null, value: "" });
   };
 
   const handleSelectOption = (option: RemoteOptionPickerItem) => {
@@ -177,12 +177,12 @@ export const SourceTargetPicker = ({
       return;
     }
 
-    onChange({ option: sourceOption, value: sourceOption.id });
+    onChange({ ...value, option: sourceOption, value: sourceOption.id });
   };
 
   const handleResetPath = () => {
     setPickerState(createPickerState(pickerScope));
-    onChange({ option: null, value: "" });
+    onChange({ ...value, option: null, value: "" });
   };
 
   const handlePathSelect = (index: number) => {
@@ -198,7 +198,7 @@ export const SourceTargetPicker = ({
         searchQuery: "",
       };
     });
-    onChange({ option: null, value: "" });
+    onChange({ ...value, option: null, value: "" });
   };
 
   if (schemaType === "day_picker") {
@@ -209,7 +209,9 @@ export const SourceTargetPicker = ({
             key={option.value}
             justifyContent="flex-start"
             variant={value.value === option.value ? "solid" : "outline"}
-            onClick={() => onChange({ option: null, value: option.value })}
+            onClick={() =>
+              onChange({ ...value, option: null, value: option.value })
+            }
           >
             {option.label}
           </Button>
@@ -225,7 +227,7 @@ export const SourceTargetPicker = ({
         type={schemaType === "time_picker" ? "time" : "text"}
         value={value.value}
         onChange={(event) =>
-          onChange({ option: null, value: event.target.value })
+          onChange({ ...value, option: null, value: event.target.value })
         }
       />
     );

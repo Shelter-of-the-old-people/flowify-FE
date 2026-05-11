@@ -1,12 +1,14 @@
 import { type SourceTargetOptionItemResponse } from "@/entities/workflow";
 
 export type SourceTargetPickerValue = {
+  keyword: string;
   option: SourceTargetOptionItemResponse | null;
   value: string;
 };
 
 export const createEmptySourceTargetPickerValue =
   (): SourceTargetPickerValue => ({
+    keyword: "",
     option: null,
     value: "",
   });

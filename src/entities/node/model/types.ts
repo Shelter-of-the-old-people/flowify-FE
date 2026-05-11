@@ -48,6 +48,8 @@ interface BaseNodeConfig {
   canonical_input_type?: string | null;
   /** start node trigger type */
   trigger_kind?: string | null;
+  /** start node keyword filter */
+  keyword?: string | null;
   /** 중간 노드 위자드에서 선택한 액션 ID */
   choiceActionId?: string | null;
   /** choice wizard runtime semantic node type */

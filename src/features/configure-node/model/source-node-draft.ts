@@ -3,6 +3,7 @@ import { type FlowNodeData } from "@/entities/node";
 import { type SourceNodeConfigDraftParameters } from "./setup-types";
 
 export const createEmptySourceTargetSetupValue = () => ({
+  keyword: "",
   option: null,
   value: "",
 });
@@ -60,7 +61,14 @@ export const buildSourceNodeConfigDraft = ({
     target,
     target_label: targetValue.option?.label ?? (target || null),
     target_meta: targetValue.option?.metadata ?? null,
-  } as FlowNodeData["config"];
+  } as FlowNodeData["config"] & Record<string, unknown>;
+  const keyword = targetValue.keyword.trim();
+
+  if (keyword) {
+    nextConfig.keyword = keyword;
+  } else {
+    delete nextConfig.keyword;
+  }
 
   return {
     ...nextConfig,

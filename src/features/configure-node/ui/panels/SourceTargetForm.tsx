@@ -14,6 +14,7 @@ import {
   type SourceModeResponse,
   type SourceTargetOptionItemResponse,
   getWorkflowMetadataSummary,
+  isSeBoardNewPostsSourceMode,
   useInfiniteSourceTargetOptionsQuery,
 } from "@/entities/workflow";
 import {
@@ -103,6 +104,10 @@ export const SourceTargetForm = ({
     mode.target_schema,
     value.value,
   );
+  const shouldShowKeywordInput = isSeBoardNewPostsSourceMode(
+    serviceKey,
+    mode.key,
+  );
   const pickerScope = `${serviceKey}:${mode.key}:${schemaType}`;
   const [pickerState, setPickerState] = useState<PickerState>(() =>
     createPickerState(pickerScope),
@@ -177,7 +182,7 @@ export const SourceTargetForm = ({
         searchQuery: "",
       };
     });
-    onChange({ option: null, value: "" });
+    onChange({ ...value, option: null, value: "" });
   };
 
   const handleSelectOption = (option: RemoteOptionPickerItem) => {
@@ -186,12 +191,12 @@ export const SourceTargetForm = ({
       return;
     }
 
-    onChange({ option: sourceOption, value: sourceOption.id });
+    onChange({ ...value, option: sourceOption, value: sourceOption.id });
   };
 
   const handleResetPath = () => {
     setPickerState(createPickerState(pickerScope));
-    onChange({ option: null, value: "" });
+    onChange({ ...value, option: null, value: "" });
   };
 
   const handlePathSelect = (index: number) => {
@@ -207,8 +212,29 @@ export const SourceTargetForm = ({
         searchQuery: "",
       };
     });
-    onChange({ option: null, value: "" });
+    onChange({ ...value, option: null, value: "" });
   };
+
+  const handleKeywordChange = (keyword: string) => {
+    onChange({ ...value, keyword });
+  };
+
+  const keywordInput = shouldShowKeywordInput ? (
+    <Box mt={4}>
+      <Text fontSize="sm" fontWeight="semibold" mb={2}>
+        포함할 단어
+      </Text>
+      <Input
+        disabled={disabled}
+        placeholder="예: 장학, 수강신청"
+        value={value.keyword}
+        onChange={(event) => handleKeywordChange(event.target.value)}
+      />
+      <Text color="text.secondary" fontSize="xs" mt={2}>
+        비워두면 선택한 게시판의 새 글을 모두 가져옵니다.
+      </Text>
+    </Box>
+  ) : null;
 
   if (schemaType === "day_picker") {
     return (
@@ -219,7 +245,9 @@ export const SourceTargetForm = ({
             disabled={disabled}
             justifyContent="flex-start"
             variant={value.value === option.value ? "solid" : "outline"}
-            onClick={() => onChange({ option: null, value: option.value })}
+            onClick={() =>
+              onChange({ ...value, option: null, value: option.value })
+            }
           >
             {option.label}
           </Button>
@@ -242,7 +270,7 @@ export const SourceTargetForm = ({
           type={schemaType === "time_picker" ? "time" : "text"}
           value={value.value}
           onChange={(event) =>
-            onChange({ option: null, value: event.target.value })
+            onChange({ ...value, option: null, value: event.target.value })
           }
         />
         {validationMessage ? (
@@ -255,30 +283,38 @@ export const SourceTargetForm = ({
   }
 
   return (
-    <RemoteOptionPicker
-      canBrowseItem={(option) => isFolderPicker && option.type === "folder"}
-      disabled={disabled}
-      emptyMessage={`선택할 수 있는 ${getSourceTargetSchemaLabel(mode.target_schema)}이 없습니다.`}
-      errorMessage={isError ? getApiErrorMessage(error) : null}
-      getBrowseLabel={(option) => `${option.label} 내부 폴더 보기`}
-      getItemIcon={getOptionIcon}
-      hasMore={Boolean(hasNextPage)}
-      isLoading={isLoading}
-      isLoadingMore={isFetchingNextPage}
-      items={items}
-      path={isFolderPicker ? pickerPath : undefined}
-      renderItemMetadata={renderOptionMetadata}
-      rootLabel={getPickerRootLabel(serviceKey, schemaType)}
-      searchPlaceholder={`${getSourceTargetSchemaLabel(mode.target_schema)} 검색`}
-      searchValue={searchQuery}
-      selectedId={value.value}
-      onBrowse={isFolderPicker ? handleBrowseOption : undefined}
-      onLoadMore={() => void fetchNextPage()}
-      onPathSelect={isFolderPicker ? handlePathSelect : undefined}
-      onResetPath={isFolderPicker ? handleResetPath : undefined}
-      onRetry={() => void refetch()}
-      onSearchChange={setScopedSearchQuery}
-      onSelect={handleSelectOption}
-    />
+    <Box>
+      {helperText ? (
+        <Text color="text.secondary" fontSize="sm" mb={2}>
+          {helperText}
+        </Text>
+      ) : null}
+      <RemoteOptionPicker
+        canBrowseItem={(option) => isFolderPicker && option.type === "folder"}
+        disabled={disabled}
+        emptyMessage={`선택할 수 있는 ${getSourceTargetSchemaLabel(mode.target_schema)}이 없습니다.`}
+        errorMessage={isError ? getApiErrorMessage(error) : null}
+        getBrowseLabel={(option) => `${option.label} 내부 폴더 보기`}
+        getItemIcon={getOptionIcon}
+        hasMore={Boolean(hasNextPage)}
+        isLoading={isLoading}
+        isLoadingMore={isFetchingNextPage}
+        items={items}
+        path={isFolderPicker ? pickerPath : undefined}
+        renderItemMetadata={renderOptionMetadata}
+        rootLabel={getPickerRootLabel(serviceKey, schemaType)}
+        searchPlaceholder={`${getSourceTargetSchemaLabel(mode.target_schema)} 검색`}
+        searchValue={searchQuery}
+        selectedId={value.value}
+        onBrowse={isFolderPicker ? handleBrowseOption : undefined}
+        onLoadMore={() => void fetchNextPage()}
+        onPathSelect={isFolderPicker ? handlePathSelect : undefined}
+        onResetPath={isFolderPicker ? handleResetPath : undefined}
+        onRetry={() => void refetch()}
+        onSearchChange={setScopedSearchQuery}
+        onSelect={handleSelectOption}
+      />
+      {keywordInput}
+    </Box>
   );
 };

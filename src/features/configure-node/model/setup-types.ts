@@ -5,6 +5,7 @@ import {
 } from "@/entities/workflow";
 
 export type SourceTargetSetupValue = {
+  keyword: string;
   option: SourceTargetOptionItemResponse | null;
   value: string;
 };
