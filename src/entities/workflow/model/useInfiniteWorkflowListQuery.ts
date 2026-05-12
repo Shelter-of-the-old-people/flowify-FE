@@ -6,22 +6,27 @@ import {
   toQueryMeta,
 } from "@/shared/api";
 
-import { type WorkflowListResponse, workflowApi } from "../api";
+import {
+  type WorkflowListResponse,
+  type WorkflowListStatusFilter,
+  workflowApi,
+} from "../api";
 
 import { normalizeWorkflowListResponse } from "./normalize-workflow-list-response";
 import { workflowKeys } from "./query-keys";
 
 export const useInfiniteWorkflowListQuery = (
   size = 20,
+  status: WorkflowListStatusFilter = "all",
   enabledOrOptions?: boolean | InfiniteQueryPolicyOptions<WorkflowListResponse>,
 ) => {
   const options = resolveInfiniteQueryPolicyOptions(enabledOrOptions);
 
   return useInfiniteQuery({
-    queryKey: workflowKeys.infiniteList(size),
+    queryKey: workflowKeys.infiniteList(size, status),
     queryFn: async ({ pageParam }) =>
       normalizeWorkflowListResponse(
-        await workflowApi.getList(pageParam, size),
+        await workflowApi.getList(pageParam, size, status),
         pageParam,
         size,
       ),

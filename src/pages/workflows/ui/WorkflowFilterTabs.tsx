@@ -3,14 +3,14 @@ import { Button, HStack } from "@chakra-ui/react";
 import { WORKFLOW_FILTERS, type WorkflowFilterKey } from "../model";
 
 type Props = {
-  activeFilter: WorkflowFilterKey;
+  statusFilter: WorkflowFilterKey;
   onChange: (filter: WorkflowFilterKey) => void;
 };
 
-export const WorkflowFilterTabs = ({ activeFilter, onChange }: Props) => (
+export const WorkflowFilterTabs = ({ statusFilter, onChange }: Props) => (
   <HStack gap={6} px={2} py={3}>
     {WORKFLOW_FILTERS.map((filter) => {
-      const isActive = filter.key === activeFilter;
+      const isActive = filter.key === statusFilter;
 
       return (
         <Button

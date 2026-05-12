@@ -2,6 +2,7 @@ import {
   type ChoiceQueryContext,
   type SinkTargetOptionsParameters,
   type SourceTargetOptionsParameters,
+  type WorkflowListStatusFilter,
 } from "../api";
 
 const normalizeChoiceQueryContext = (context?: ChoiceQueryContext) => {
@@ -61,10 +62,14 @@ export const workflowKeys = {
   mappingRules: () =>
     [...workflowKeys.editorCatalog(), "mapping-rules"] as const,
   lists: () => [...workflowKeys.all(), "list"] as const,
-  list: (params: { page: number; size: number }) =>
-    [...workflowKeys.lists(), params.page, params.size] as const,
-  infiniteList: (size: number) =>
-    [...workflowKeys.lists(), "infinite", size] as const,
+  list: (params: {
+    page: number;
+    size: number;
+    status: WorkflowListStatusFilter;
+  }) =>
+    [...workflowKeys.lists(), params.page, params.size, params.status] as const,
+  infiniteList: (size: number, status: WorkflowListStatusFilter) =>
+    [...workflowKeys.lists(), "infinite", size, status] as const,
   details: () => [...workflowKeys.all(), "detail"] as const,
   detail: (id: string) => [...workflowKeys.details(), id] as const,
   schemaPreview: (workflowId: string) =>

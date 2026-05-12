@@ -2,10 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { type WorkflowResponse } from "@/entities/workflow";
 
-import {
-  filterWorkflowsByStatus,
-  getWorkflowAutoRunState,
-} from "./workflow-list";
+import { getWorkflowAutoRunState } from "./workflow-list";
 
 const createWorkflow = (
   overrides: Partial<WorkflowResponse>,
@@ -83,53 +80,5 @@ describe("workflow list helpers", () => {
       canToggle: false,
       nextActive: true,
     });
-  });
-
-  it("filters active and inactive tabs by the workflow active flag", () => {
-    const manualWorkflow = createWorkflow({
-      id: "manual",
-      trigger: { type: "manual", config: {} },
-      active: true,
-    });
-    const enabledSchedule = createWorkflow({
-      id: "enabled",
-      trigger: {
-        type: "schedule",
-        config: {
-          schedule_mode: "interval",
-          cron: "0 0 */4 * * *",
-          timezone: "Asia/Seoul",
-          interval_hours: 4,
-        },
-      },
-      active: true,
-    });
-    const disabledSchedule = createWorkflow({
-      id: "disabled",
-      trigger: {
-        type: "schedule",
-        config: {
-          schedule_mode: "daily",
-          cron: "0 0 9 * * *",
-          timezone: "Asia/Seoul",
-          time_of_day: "09:00",
-        },
-      },
-      active: false,
-    });
-
-    expect(
-      filterWorkflowsByStatus(
-        [manualWorkflow, enabledSchedule, disabledSchedule],
-        "active",
-      ).map((workflow) => workflow.id),
-    ).toEqual(["manual", "enabled"]);
-
-    expect(
-      filterWorkflowsByStatus(
-        [manualWorkflow, enabledSchedule, disabledSchedule],
-        "inactive",
-      ).map((workflow) => workflow.id),
-    ).toEqual(["disabled"]);
   });
 });

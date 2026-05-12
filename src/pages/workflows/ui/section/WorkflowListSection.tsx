@@ -14,10 +14,9 @@ import { WorkflowRowItem } from "../WorkflowRowItem";
 
 export const WorkflowListSection = () => {
   const {
-    activeFilter,
-    setActiveFilter,
+    statusFilter,
+    setStatusFilter,
     filteredWorkflows,
-    hasWorkflows,
     isLoading,
     isError,
     hasNextPage,
@@ -42,8 +41,8 @@ export const WorkflowListSection = () => {
 
       <Box>
         <WorkflowFilterTabs
-          activeFilter={activeFilter}
-          onChange={setActiveFilter}
+          statusFilter={statusFilter}
+          onChange={setStatusFilter}
         />
 
         {isLoading ? <WorkflowListLoadingState /> : null}
@@ -71,7 +70,7 @@ export const WorkflowListSection = () => {
 
             {filteredWorkflows.length === 0 ? (
               <WorkflowListEmptyState
-                hasWorkflows={hasWorkflows}
+                filter={statusFilter}
                 isCreatePending={isCreatePending}
                 onCreate={handleCreateWorkflow}
               />

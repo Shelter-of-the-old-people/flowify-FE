@@ -1,4 +1,5 @@
 import {
+  invalidateWorkflowLists,
   isExecutionInFlight,
   useExecuteWorkflowMutation,
   useLatestWorkflowExecutionQuery,
@@ -66,6 +67,7 @@ export const useWorkflowExecutionAction = (
           executionId: latestExecution.id,
         });
         await latestExecutionQuery.refetch();
+        await invalidateWorkflowLists();
       } catch (error) {
         toaster.create({
           title: "중지 실패",
@@ -80,6 +82,7 @@ export const useWorkflowExecutionAction = (
     try {
       await executeWorkflow(workflowId);
       await latestExecutionQuery.refetch();
+      await invalidateWorkflowLists();
     } catch (error) {
       toaster.create({
         title: "실행 실패",
