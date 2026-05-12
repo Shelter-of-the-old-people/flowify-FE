@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 
 import { Box } from "@chakra-ui/react";
@@ -17,6 +17,7 @@ import {
 import {
   type WorkflowNodeStatusResponse,
   type WorkflowResponse,
+  getWorkflowTriggerSummary,
   useDeleteWorkflowMutation,
 } from "@/entities/workflow";
 import {
@@ -29,10 +30,12 @@ import { toaster } from "@/shared/utils/toaster/toaster";
 
 import { DeleteConfirmDialog } from "./DeleteConfirmDialog";
 import { ExecutionStatusBadge } from "./ExecutionStatusBadge";
-import { MiddleSlotButtons } from "./MiddleSlotButtons";
+import { RollbackActionButton } from "./RollbackActionButton";
 import { RunStopSplitButton } from "./RunStopSplitButton";
-import { TriggerSettingsButton } from "./TriggerSettingsButton";
-import { WorkflowNameField } from "./WorkflowNameField";
+import { SaveStateButton } from "./SaveStateButton";
+import { TriggerControlButton } from "./TriggerControlButton";
+import { TriggerSettingsPanel } from "./TriggerSettingsPanel";
+import { WorkflowHeaderControls } from "./WorkflowHeaderControls";
 
 const getExecutableBlockers = (
   nodeStatuses:
@@ -52,8 +55,8 @@ const getExecutionBlockerMessage = (blockerCount: number) =>
  * 참고: docs/EDITOR_REMOTE_BAR_DESIGN.md
  * Figma: https://www.figma.com/design/liTdK7QHV5tufaQW8DwV6U/Untitled?node-id=1882-3344
  *
- * 기존 EditorToolbar의 모든 기능을 이전하고, 추가로 삭제 버튼과
- * 임시 3종 버튼(자동정렬/줌리셋/히스토리 — disabled)을 가운데 슬롯에 배치한다.
+ * 워크플로우 제목/관리 메뉴는 상단 헤더에 두고, 하단 바는 실행 관련
+ * 컨트롤만 유지한다.
  */
 export const EditorRemoteBar = () => {
   const navigate = useNavigate();
@@ -97,6 +100,8 @@ export const EditorRemoteBar = () => {
     null,
   );
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [triggerSettingsOpen, setTriggerSettingsOpen] = useState(false);
+  const triggerButtonRef = useRef<HTMLButtonElement | null>(null);
   const { data: executions, refetch: refetchExecutions } =
     useWorkflowExecutionsQuery(workflowId || undefined, {
       enabled: Boolean(workflowId),
@@ -139,6 +144,12 @@ export const EditorRemoteBar = () => {
     () => getExecutableBlockers(Object.values(nodeStatuses)),
     [nodeStatuses],
   );
+  const triggerSummary = useMemo(
+    () => getWorkflowTriggerSummary(workflowTrigger, workflowActive),
+    [workflowActive, workflowTrigger],
+  );
+  const triggerControlActive =
+    workflowActive && workflowTrigger.type !== "manual";
   const hasExecutableBlock = !isDirty && executableBlockers.length > 0;
   const executionStatusLabel =
     effectiveRunPhase === "auto-saving"
@@ -185,6 +196,7 @@ export const EditorRemoteBar = () => {
     effectiveRunPhase === "idle" &&
     !isRemoteExecutionInFlight &&
     !isDeletePending;
+  const canOpenRunMenu = Boolean(workflowId) && !isDeletePending && !isRunning;
   const canRollback =
     Boolean(workflowId) &&
     canRunWorkflow &&
@@ -325,6 +337,77 @@ export const EditorRemoteBar = () => {
       });
     }
   };
+
+  const handleOpenTriggerSettings = () => {
+    if (!workflowId) {
+      return;
+    }
+
+    setTriggerSettingsOpen(true);
+  };
+
+  const handleToggleTriggerSettings = () => {
+    if (!workflowId) {
+      return;
+    }
+
+    setTriggerSettingsOpen((open) => !open);
+  };
+
+  const handleCloseTriggerSettings = () => {
+    setTriggerSettingsOpen(false);
+  };
+
+  const handleCheckBeforeRun = () => {
+    if (!workflowId) {
+      toaster.create({
+        title: "워크플로우 정보 없음",
+        description: "워크플로우 정보를 불러온 후 다시 확인해 주세요.",
+        type: "error",
+      });
+      return;
+    }
+
+    if (!canRunWorkflow) {
+      toaster.create({
+        title: "실행 권한 없음",
+        description: "이 워크플로우를 실행할 권한이 없습니다.",
+        type: "error",
+      });
+      return;
+    }
+
+    if (isRunning) {
+      toaster.create({
+        title: "실행 중입니다",
+        description: "실행이 끝난 뒤 현재 설정을 확인할 수 있습니다.",
+      });
+      return;
+    }
+
+    if (isDirty) {
+      toaster.create({
+        title: "저장 필요",
+        description:
+          "저장되지 않은 변경사항이 있습니다. 저장 후 최신 설정 상태를 확인해 주세요.",
+      });
+      return;
+    }
+
+    if (executableBlockers.length > 0) {
+      toaster.create({
+        title: "설정 확인 필요",
+        description: getExecutionBlockerMessage(executableBlockers.length),
+        type: "error",
+      });
+      return;
+    }
+
+    toaster.create({
+      title: "실행 준비 완료",
+      description: "현재 저장된 설정으로 워크플로우를 실행할 수 있습니다.",
+    });
+  };
   const handleRollback = async () => {
     if (!workflowId || !activeExecution || !canRollback) {
       return;
@@ -376,66 +459,87 @@ export const EditorRemoteBar = () => {
   };
 
   return (
-    <Box
-      position="absolute"
-      bottom="24px"
-      left="50%"
-      transform="translateX(-50%)"
-      pointerEvents="none"
-      zIndex={4}
-    >
-      <Box position="relative" pointerEvents="auto">
-        <ExecutionStatusBadge label={executionStatusLabel} />
-        <TriggerSettingsButton canEdit={canEditTrigger} />
+    <>
+      <WorkflowHeaderControls
+        isRunning={isRunning}
+        canSaveWorkflow={canSaveWorkflow}
+        canDelete={canDelete}
+        isDeletePending={isDeletePending}
+        onOpenMenu={handleCloseTriggerSettings}
+        onDelete={handleDeleteRequest}
+      />
 
-        <Box
-          display="flex"
-          alignItems="center"
-          gap="16px"
-          width="900px"
-          bg="#fefefe"
-          border="1px solid #f2f2f2"
-          borderRadius="20px"
-          boxShadow="0px 4px 4px rgba(0, 0, 0, 0.25)"
-          px="24px"
-          py="8px"
-          overflow="clip"
-          fontFamily="'Pretendard Variable', sans-serif"
-          onWheel={(event) => event.stopPropagation()}
-          onPointerDown={(event) => event.stopPropagation()}
-        >
-          <Box display="flex" alignItems="center" flexShrink={0}>
-            <WorkflowNameField
-              disabled={isRunning || !canSaveWorkflow}
-              disabledReason={
-                canSaveWorkflow
-                  ? "실행 중에는 편집할 수 없습니다"
-                  : "공유된 워크플로우는 이름을 수정할 수 없습니다"
-              }
+      <Box
+        position="absolute"
+        bottom={{ base: "16px", xl: "24px" }}
+        left="50%"
+        transform="translateX(-50%)"
+        pointerEvents="none"
+        zIndex={4}
+        maxW="calc(100vw - 32px)"
+      >
+        <Box position="relative" pointerEvents="auto">
+          <ExecutionStatusBadge label={executionStatusLabel} />
+          <TriggerSettingsPanel
+            open={triggerSettingsOpen}
+            canEdit={canEditTrigger}
+            anchorRef={triggerButtonRef}
+            onClose={handleCloseTriggerSettings}
+          />
+
+          <Box
+            display="flex"
+            alignItems="center"
+            gap={{ base: 1.5, xl: 2 }}
+            width="fit-content"
+            maxW="calc(100vw - 32px)"
+            bg="bg.surface"
+            border="1px solid"
+            borderColor="border.default"
+            borderRadius="xl"
+            boxShadow="lg"
+            px={{ base: 2, xl: 3 }}
+            py={{ base: 1, xl: 1.5 }}
+            overflow="clip"
+            fontFamily="'Pretendard Variable', sans-serif"
+            onWheel={(event) => event.stopPropagation()}
+            onPointerDown={(event) => event.stopPropagation()}
+          >
+            {canRollback ? (
+              <RollbackActionButton
+                isPending={isRollbackPending}
+                onClick={() => void handleRollback()}
+              />
+            ) : null}
+
+            <SaveStateButton
+              isDirty={isDirty}
+              isSaving={isSavePending}
+              canSave={canSave}
+              onSave={() => void handleSave()}
+            />
+
+            <TriggerControlButton
+              ref={triggerButtonRef}
+              summary={triggerSummary}
+              active={triggerControlActive}
+              onClick={handleToggleTriggerSettings}
+            />
+
+            <RunStopSplitButton
+              isRunning={isRunning}
+              isRunPending={isExecutePending || isStarting}
+              isStopPending={isStopPending}
+              canRun={canRun}
+              canStop={canStop}
+              canOpenMenu={canOpenRunMenu}
+              onRun={() => void handleRun()}
+              onStop={() => void handleStop()}
+              onOpenMenu={handleCloseTriggerSettings}
+              onOpenTriggerSettings={handleOpenTriggerSettings}
+              onCheckBeforeRun={handleCheckBeforeRun}
             />
           </Box>
-
-          <MiddleSlotButtons
-            isDeletePending={isDeletePending}
-            isRollbackPending={isRollbackPending}
-            canDelete={canDelete}
-            canRollback={canRollback}
-            onDelete={handleDeleteRequest}
-            onRollback={() => void handleRollback()}
-          />
-
-          <RunStopSplitButton
-            isRunning={isRunning}
-            isRunPending={isExecutePending || isStarting}
-            isStopPending={isStopPending}
-            isSavePending={isSavePending}
-            canRun={canRun}
-            canStop={canStop}
-            canSave={canSave}
-            onRun={() => void handleRun()}
-            onStop={() => void handleStop()}
-            onSave={() => void handleSave()}
-          />
         </Box>
       </Box>
 
@@ -446,6 +550,6 @@ export const EditorRemoteBar = () => {
         onCancel={handleDeleteCancel}
         onConfirm={() => void handleDeleteConfirm()}
       />
-    </Box>
+    </>
   );
 };

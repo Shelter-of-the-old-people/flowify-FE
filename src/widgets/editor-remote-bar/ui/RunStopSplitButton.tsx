@@ -1,113 +1,149 @@
-import { MdPause, MdPlayArrow } from "react-icons/md";
+import { MdKeyboardArrowDown, MdPlayArrow, MdStop } from "react-icons/md";
 
-import { Box, Button, Icon, Spinner } from "@chakra-ui/react";
+import {
+  Box,
+  Button,
+  Icon,
+  Menu,
+  Portal,
+  Spinner,
+  Text,
+} from "@chakra-ui/react";
 
 type RunStopSplitButtonProps = {
   isRunning: boolean;
   isRunPending: boolean;
   isStopPending: boolean;
-  isSavePending: boolean;
   canRun: boolean;
   canStop: boolean;
-  canSave: boolean;
+  canOpenMenu: boolean;
   onRun: () => void;
   onStop: () => void;
-  onSave: () => void;
+  onOpenMenu?: () => void;
+  onOpenTriggerSettings: () => void;
+  onCheckBeforeRun: () => void;
 };
 
-/**
- * Figma 1878:3330 기준 오른쪽 스플릿 버튼.
- *
- * 왼쪽 파트(실행/중지 토글) + 구분선 + 오른쪽 파트(저장).
- * 스펙 §4.2: 실행 중에는 라벨이 "중지"로 토글되고 중지 API를 호출한다.
- * 스펙 §4.3: 실행 중에는 저장 파트가 disabled된다.
- */
 export const RunStopSplitButton = ({
   isRunning,
   isRunPending,
   isStopPending,
-  isSavePending,
   canRun,
   canStop,
-  canSave,
+  canOpenMenu,
   onRun,
   onStop,
-  onSave,
+  onOpenMenu,
+  onOpenTriggerSettings,
+  onCheckBeforeRun,
 }: RunStopSplitButtonProps) => {
   const runSideDisabled = isRunning
     ? !canStop || isStopPending
     : !canRun || isRunPending;
   const runSideLoading = isRunning ? isStopPending : isRunPending;
-  const runSideLabel = isRunning ? "중지" : "실행하기";
-  const runSideIcon = isRunning ? MdPause : MdPlayArrow;
+  const runSideLabel = isRunning ? "실행 중지" : "실행";
+  const runSideIcon = isRunning ? MdStop : MdPlayArrow;
   const handleRunSideClick = isRunning ? onStop : onRun;
 
   return (
-    <Box display="flex" height="32px" alignItems="center" flexShrink={0}>
+    <Box display="flex" height="30px" alignItems="center" flexShrink={0}>
       <Button
         type="button"
+        aria-label={runSideLabel}
+        title={runSideLabel}
         onClick={handleRunSideClick}
         disabled={runSideDisabled}
         height="100%"
-        minWidth="auto"
-        px="8px"
-        py={0}
-        bg="#272727"
-        color="#efefef"
-        borderTopLeftRadius="10px"
-        borderBottomLeftRadius="10px"
+        px={{ base: 0, "2xl": 2 }}
+        bg="neutral.900"
+        color="text.inverse"
+        borderTopLeftRadius="lg"
+        borderBottomLeftRadius="lg"
         borderTopRightRadius={0}
         borderBottomRightRadius={0}
-        fontFamily="'Pretendard Variable', sans-serif"
-        fontWeight="normal"
-        fontSize="14px"
-        lineHeight="normal"
-        gap="8px"
-        _hover={{ bg: "#3a3a3a" }}
-        _active={{ bg: "#1f1f1f" }}
+        _hover={{ bg: "neutral.800" }}
+        _active={{ bg: "neutral.950" }}
+        gap={1}
         _disabled={{
           opacity: 0.5,
           cursor: "not-allowed",
-          _hover: { bg: "#272727" },
+          _hover: { bg: "neutral.900" },
         }}
       >
         {runSideLoading ? (
-          <Spinner size="xs" color="#efefef" />
+          <Spinner size="xs" color="currentColor" />
         ) : (
-          <Icon as={runSideIcon} boxSize="16px" />
+          <Icon as={runSideIcon} boxSize={4.5} />
         )}
-        {runSideLabel}
+        <Text as="span" display={{ base: "none", "2xl": "inline" }}>
+          {runSideLabel}
+        </Text>
       </Button>
 
-      <Button
-        type="button"
-        onClick={onSave}
-        disabled={!canSave || isSavePending}
-        height="100%"
-        minWidth="auto"
-        px="8px"
-        py="4px"
-        bg="#272727"
-        color="#efefef"
-        borderTopRightRadius="10px"
-        borderBottomRightRadius="10px"
-        borderTopLeftRadius={0}
-        borderBottomLeftRadius={0}
-        borderLeft="1px solid #f6f6f6"
-        fontFamily="'Pretendard Variable', sans-serif"
-        fontWeight="normal"
-        fontSize="14px"
-        lineHeight="normal"
-        _hover={{ bg: "#3a3a3a" }}
-        _active={{ bg: "#1f1f1f" }}
-        _disabled={{
-          opacity: 0.5,
-          cursor: "not-allowed",
-          _hover: { bg: "#272727" },
+      <Menu.Root
+        lazyMount
+        unmountOnExit
+        positioning={{ placement: "top-end" }}
+        onOpenChange={(details) => {
+          if (details.open) {
+            onOpenMenu?.();
+          }
         }}
       >
-        {isSavePending ? <Spinner size="xs" color="#efefef" /> : "저장"}
-      </Button>
+        <Menu.Trigger asChild>
+          <Button
+            type="button"
+            aria-label="실행 메뉴 열기"
+            title="실행 메뉴"
+            disabled={!canOpenMenu}
+            height="100%"
+            minW="28px"
+            px={0}
+            bg="neutral.900"
+            color="text.inverse"
+            borderTopRightRadius="lg"
+            borderBottomRightRadius="lg"
+            borderTopLeftRadius={0}
+            borderBottomLeftRadius={0}
+            borderLeft="1px solid"
+            borderLeftColor="neutral.700"
+            _hover={{ bg: "neutral.800" }}
+            _active={{ bg: "neutral.950" }}
+            _expanded={{ bg: "neutral.950" }}
+            _disabled={{
+              opacity: 0.5,
+              cursor: "not-allowed",
+              _hover: { bg: "neutral.900" },
+            }}
+          >
+            <Icon as={MdKeyboardArrowDown} boxSize={4.5} />
+          </Button>
+        </Menu.Trigger>
+
+        <Portal>
+          <Menu.Positioner zIndex={20}>
+            <Menu.Content
+              minW="168px"
+              p={1.5}
+              bg="bg.surface"
+              border="1px solid"
+              borderRadius="xl"
+              borderColor="border.default"
+              boxShadow="lg"
+            >
+              <Menu.Item
+                value="trigger-settings"
+                onSelect={onOpenTriggerSettings}
+              >
+                자동 실행 설정
+              </Menu.Item>
+              <Menu.Item value="preflight-check" onSelect={onCheckBeforeRun}>
+                현재 설정 확인
+              </Menu.Item>
+            </Menu.Content>
+          </Menu.Positioner>
+        </Portal>
+      </Menu.Root>
     </Box>
   );
 };

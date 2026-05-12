@@ -40,18 +40,18 @@ export const DeleteConfirmDialog = ({
       <Dialog.Positioner>
         <Dialog.Content
           maxWidth="420px"
-          bg="white"
-          borderRadius="16px"
+          bg="bg.surface"
+          borderRadius="2xl"
           fontFamily="'Pretendard Variable', sans-serif"
         >
           <Dialog.Header pb={2}>
-            <Dialog.Title fontSize="16px" fontWeight="semibold">
+            <Dialog.Title fontSize="md" fontWeight="semibold">
               워크플로우를 삭제하시겠어요?
             </Dialog.Title>
           </Dialog.Header>
           <Dialog.Body pb={4}>
-            <Text fontSize="14px" color="gray.600">
-              <Text as="span" fontWeight="semibold" color="black">
+            <Text fontSize="sm" color="text.secondary">
+              <Text as="span" fontWeight="semibold" color="text.primary">
                 {workflowName || "새 워크플로우"}
               </Text>
               {
@@ -72,10 +72,10 @@ export const DeleteConfirmDialog = ({
             <Button
               type="button"
               size="sm"
-              bg="#d94141"
-              color="#efefef"
-              _hover={{ bg: "#c13535" }}
-              _active={{ bg: "#a62c2c" }}
+              bg="status.error"
+              color="text.inverse"
+              _hover={{ bg: "error.600" }}
+              _active={{ bg: "error.600" }}
               onClick={onConfirm}
               loading={isPending}
               loadingText="삭제 중…"

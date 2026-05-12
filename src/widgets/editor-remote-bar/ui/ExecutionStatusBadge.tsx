@@ -26,19 +26,19 @@ export const ExecutionStatusBadge = ({
       left="50%"
       transform="translateX(-50%)"
       mb="8px"
-      px="12px"
-      py="4px"
-      bg="#272727"
-      color="#efefef"
-      borderRadius="999px"
-      boxShadow="0px 4px 4px rgba(0, 0, 0, 0.15)"
+      px={3}
+      py={1}
+      bg="neutral.900"
+      color="text.inverse"
+      borderRadius="full"
+      boxShadow="md"
       pointerEvents="none"
       whiteSpace="nowrap"
     >
       <Text
         fontFamily="'Pretendard Variable', sans-serif"
-        fontWeight="normal"
-        fontSize="12px"
+        fontWeight="medium"
+        fontSize="xs"
       >
         {label}
       </Text>

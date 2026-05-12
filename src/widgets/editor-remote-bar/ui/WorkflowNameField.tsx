@@ -1,6 +1,6 @@
-import { useRef, useState } from "react";
+import { type KeyboardEvent, useRef, useState } from "react";
 
-import { Input, Text } from "@chakra-ui/react";
+import { Button, Input, Text } from "@chakra-ui/react";
 
 import { useWorkflowStore } from "@/features/workflow-editor";
 
@@ -33,7 +33,7 @@ export const WorkflowNameField = ({
   const handleConfirm = () => {
     const trimmed = inputValue.trim();
 
-    if (trimmed) {
+    if (trimmed && trimmed !== workflowName) {
       setWorkflowName(trimmed);
     }
 
@@ -44,7 +44,7 @@ export const WorkflowNameField = ({
     setIsEditing(false);
   };
 
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Enter") {
       handleConfirm();
     }
@@ -63,37 +63,56 @@ export const WorkflowNameField = ({
         onBlur={handleConfirm}
         onKeyDown={handleKeyDown}
         size="sm"
-        width="200px"
-        height="24px"
-        px={2}
+        width={{ base: "150px", lg: "190px", xl: "220px" }}
+        height="30px"
+        px={2.5}
         py={0}
         fontFamily="'Pretendard Variable', sans-serif"
-        fontWeight="normal"
-        fontSize="14px"
-        color="black"
-        bg="white"
+        fontWeight="medium"
+        fontSize="sm"
+        color="text.primary"
+        bg="bg.surface"
         border="1px solid"
-        borderColor="#d4d4d4"
-        borderRadius="6px"
-        _focus={{ borderColor: "#272727", boxShadow: "none" }}
+        borderColor="border.selected"
+        borderRadius="lg"
+        _focus={{ borderColor: "border.selected", boxShadow: "none" }}
       />
     );
   }
 
   return (
-    <Text
-      as="p"
+    <Button
+      type="button"
+      display="flex"
+      alignItems="center"
+      gap={1.25}
+      height="30px"
+      maxW={{ base: "140px", lg: "180px", xl: "220px" }}
+      px={{ base: 0.5, xl: 1 }}
+      bg="transparent"
+      color="text.primary"
+      border="0"
+      borderRadius="lg"
       fontFamily="'Pretendard Variable', sans-serif"
-      fontWeight="normal"
-      fontSize="14px"
-      color="black"
-      whiteSpace="nowrap"
       cursor={disabled ? "default" : "pointer"}
       opacity={disabled ? 0.6 : 1}
       onClick={handleStartEdit}
-      title={disabled ? disabledReason : "클릭하여 이름 수정"}
+      title={disabled ? disabledReason : "워크플로우 이름 수정"}
+      aria-label={disabled ? disabledReason : "워크플로우 이름 수정"}
+      _hover={{ bg: "transparent" }}
+      _active={{ bg: "transparent" }}
     >
-      {displayName}
-    </Text>
+      <Text
+        as="span"
+        fontFamily="'Pretendard Variable', sans-serif"
+        fontWeight="semibold"
+        fontSize="sm"
+        overflow="hidden"
+        textOverflow="ellipsis"
+        whiteSpace="nowrap"
+      >
+        {displayName}
+      </Text>
+    </Button>
   );
 };
