@@ -88,11 +88,10 @@ export const WorkflowNameField = ({
       gap={1.25}
       height="30px"
       maxW={{ base: "140px", lg: "180px", xl: "220px" }}
-      px={{ base: 2, xl: 2.5 }}
-      bg="bg.surface"
+      px={{ base: 0.5, xl: 1 }}
+      bg="transparent"
       color="text.primary"
-      border="1px solid"
-      borderColor="border.default"
+      border="0"
       borderRadius="lg"
       fontFamily="'Pretendard Variable', sans-serif"
       cursor={disabled ? "default" : "pointer"}
@@ -100,12 +99,8 @@ export const WorkflowNameField = ({
       onClick={handleStartEdit}
       title={disabled ? disabledReason : "워크플로우 이름 수정"}
       aria-label={disabled ? disabledReason : "워크플로우 이름 수정"}
-      _hover={
-        disabled
-          ? { bg: "bg.surface" }
-          : { bg: "bg.overlay", borderColor: "border.strong" }
-      }
-      _active={disabled ? { bg: "bg.surface" } : { bg: "neutral.200" }}
+      _hover={{ bg: "transparent" }}
+      _active={{ bg: "transparent" }}
     >
       <Text
         as="span"

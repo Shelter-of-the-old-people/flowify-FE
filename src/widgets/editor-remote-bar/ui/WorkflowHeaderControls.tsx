@@ -37,13 +37,8 @@ export const WorkflowHeaderControls = ({
         gap={{ base: 1, xl: 1.5 }}
         width="fit-content"
         maxW="full"
-        bg="bg.surface"
-        border="1px solid"
-        borderColor="border.default"
-        borderRadius="xl"
-        boxShadow="lg"
-        px={{ base: 1.5, xl: 2 }}
-        py={1}
+        px={{ base: 0.5, xl: 1 }}
+        py={0}
         pointerEvents="auto"
         onWheel={(event) => event.stopPropagation()}
         onPointerDown={(event) => event.stopPropagation()}
