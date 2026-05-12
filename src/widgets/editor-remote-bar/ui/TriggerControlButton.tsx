@@ -17,6 +17,9 @@ export const TriggerControlButton = forwardRef<
   TriggerControlButtonProps
 >(({ summary, active, onClick }, ref) => {
   const label = getTriggerButtonLabel(summary, active);
+  const maxWidth = active
+    ? { base: "32px", xl: "180px", "2xl": "220px" }
+    : { base: "48px", xl: "180px", "2xl": "220px" };
 
   return (
     <Button
@@ -27,7 +30,7 @@ export const TriggerControlButton = forwardRef<
       onClick={onClick}
       height="30px"
       minW="30px"
-      maxW={{ base: "32px", xl: "180px", "2xl": "220px" }}
+      maxW={maxWidth}
       px={{ base: 1.5, xl: 2.5 }}
       bg="bg.surface"
       color="text.primary"
@@ -48,6 +51,11 @@ export const TriggerControlButton = forwardRef<
       _active={{ bg: "neutral.200" }}
     >
       {active ? <Icon as={MdSchedule} boxSize={4} flexShrink={0} /> : null}
+      {!active ? (
+        <Text as="span" display={{ base: "inline", xl: "none" }} minW={0}>
+          꺼짐
+        </Text>
+      ) : null}
       <Text
         as="span"
         display={{ base: "none", xl: "inline" }}

@@ -196,7 +196,7 @@ export const EditorRemoteBar = () => {
     effectiveRunPhase === "idle" &&
     !isRemoteExecutionInFlight &&
     !isDeletePending;
-  const canOpenRunMenu = Boolean(workflowId) && !isDeletePending;
+  const canOpenRunMenu = Boolean(workflowId) && !isDeletePending && !isRunning;
   const canRollback =
     Boolean(workflowId) &&
     canRunWorkflow &&
@@ -373,6 +373,14 @@ export const EditorRemoteBar = () => {
         title: "실행 권한 없음",
         description: "이 워크플로우를 실행할 권한이 없습니다.",
         type: "error",
+      });
+      return;
+    }
+
+    if (isRunning) {
+      toaster.create({
+        title: "실행 중입니다",
+        description: "실행이 끝난 뒤 현재 설정을 확인할 수 있습니다.",
       });
       return;
     }
