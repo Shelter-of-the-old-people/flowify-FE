@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { type MouseEvent } from "react";
-import { MdAutoGraph } from "react-icons/md";
 
 import {
   Background,
@@ -10,6 +9,8 @@ import {
   MiniMap,
   ReactFlow,
   useReactFlow,
+  useStore,
+  useStoreApi,
 } from "@xyflow/react";
 import {
   type DefaultEdgeOptions,
@@ -216,6 +217,42 @@ const defaultEdgeOptions: DefaultEdgeOptions = {
   },
 };
 
+const AutoLayoutIcon = () => (
+  <svg
+    aria-hidden="true"
+    fill="none"
+    height="21"
+    viewBox="0 0 21 21"
+    width="21"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      d="M19.7195 0.228966C19.7887 0.157333 19.8714 0.100197 19.9629 0.0608902C20.0544 0.0215834 20.1529 0.00089368 20.2524 2.83175e-05C20.352 -0.000837045 20.4508 0.0181393 20.543 0.0558499C20.6351 0.0935606 20.7189 0.14925 20.7893 0.21967C20.8597 0.290089 20.9154 0.373828 20.9531 0.466001C20.9908 0.558173 21.0098 0.656933 21.0089 0.756517C21.0081 0.856102 20.9874 0.954517 20.9481 1.04602C20.9088 1.13752 20.8516 1.22028 20.78 1.28947L13.775 8.29447C14.5864 9.35625 14.9836 10.677 14.8925 12.0102C14.8014 13.3434 14.2283 14.5979 13.28 15.5395L12.6852 16.1342L4.89275 8.34172L5.4785 7.79422C7.45325 5.82922 10.535 5.58022 12.7137 7.23472L19.7195 0.228966ZM3.5795 9.14947L0.439247 10.5767C0.329006 10.6269 0.23256 10.703 0.158159 10.7986C0.0837574 10.8942 0.0336142 11.0064 0.0120175 11.1256C-0.00957922 11.2448 -0.00198692 11.3674 0.0341454 11.483C0.0702776 11.5986 0.133875 11.7038 0.219497 11.7895L9.2195 20.7895C9.30518 20.8751 9.41032 20.9387 9.52593 20.9748C9.64155 21.011 9.76419 21.0185 9.88338 20.9969C10.0026 20.9754 10.1147 20.9252 10.2103 20.8508C10.3059 20.7764 10.3821 20.68 10.4322 20.5697L11.8595 17.4295L3.5795 9.14947Z"
+      fill="currentColor"
+    />
+  </svg>
+);
+
+const LockControlIcon = () => (
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 25 32"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path d="M21.333 10.667H19.81V7.619C19.81 3.429 16.38 0 12.19 0 8 0 4.571 3.429 4.571 7.619v3.048H3.048A3.056 3.056 0 000 13.714v15.238A3.056 3.056 0 003.048 32h18.285a3.056 3.056 0 003.048-3.048V13.714a3.056 3.056 0 00-3.048-3.047zM12.19 24.533a3.056 3.056 0 01-3.047-3.047 3.056 3.056 0 013.047-3.048 3.056 3.056 0 013.048 3.048 3.056 3.056 0 01-3.048 3.047zm4.724-13.866H7.467V7.619c0-2.59 2.133-4.724 4.723-4.724 2.591 0 4.724 2.133 4.724 4.724v3.048z" />
+  </svg>
+);
+
+const UnlockControlIcon = () => (
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 25 32"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path d="M21.333 10.667H19.81V7.619C19.81 3.429 16.38 0 12.19 0c-4.114 1.828-1.37 2.133.305 2.438 1.676.305 4.42 2.59 4.42 5.181v3.048H3.047A3.056 3.056 0 000 13.714v15.238A3.056 3.056 0 003.048 32h18.285a3.056 3.056 0 003.048-3.048V13.714a3.056 3.056 0 00-3.048-3.047zM12.19 24.533a3.056 3.056 0 01-3.047-3.047 3.056 3.056 0 013.047-3.048 3.056 3.056 0 013.048 3.048 3.056 3.056 0 01-3.048 3.047z" />
+  </svg>
+);
+
 export const Canvas = () => {
   const nodes = useWorkflowStore((state) => state.nodes);
   const edges = useWorkflowStore((state) => state.edges);
@@ -328,6 +365,13 @@ export const Canvas = () => {
   );
 
   const { fitView, getZoom, setCenter } = useReactFlow();
+  const reactFlowStore = useStoreApi();
+  const isInteractive = useStore(
+    (state) =>
+      state.nodesDraggable ||
+      state.nodesConnectable ||
+      state.elementsSelectable,
+  );
 
   const handleCreateMiddleNode = useCallback(
     async ({
@@ -606,6 +650,14 @@ export const Canvas = () => {
     nodes,
     setActivePlaceholder,
   ]);
+
+  const handleToggleInteractivity = useCallback(() => {
+    reactFlowStore.setState({
+      elementsSelectable: !isInteractive,
+      nodesConnectable: !isInteractive,
+      nodesDraggable: !isInteractive,
+    });
+  }, [isInteractive, reactFlowStore]);
 
   const branchPlaceholderSpecs = useMemo(
     () =>
@@ -1019,14 +1071,22 @@ export const Canvas = () => {
         fitView
       >
         <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
-        <Controls>
+        <Controls showInteractive={false}>
           <ControlButton
             aria-label="자동 정렬"
             disabled={isAutoLayoutDisabled}
             onClick={handleAutoLayout}
             title="자동 정렬"
           >
-            <MdAutoGraph />
+            <AutoLayoutIcon />
+          </ControlButton>
+          <ControlButton
+            aria-label={isInteractive ? "화면 잠금" : "화면 잠금 해제"}
+            className="react-flow__controls-interactive"
+            onClick={handleToggleInteractivity}
+            title={isInteractive ? "화면 잠금" : "화면 잠금 해제"}
+          >
+            {isInteractive ? <UnlockControlIcon /> : <LockControlIcon />}
           </ControlButton>
         </Controls>
         <MiniMap />
