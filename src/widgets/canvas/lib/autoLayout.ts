@@ -172,14 +172,12 @@ const collectBranchLaneNodeIds = ({
 
 const applyFileTypeBranchLaneLayout = ({
   edges,
-  graphNodeById,
   nodes,
   positionedNodeById,
   branchGapY,
 }: {
   branchGapY: number;
   edges: Edge[];
-  graphNodeById: Map<string, Node<FlowNodeData>>;
   nodes: Node<FlowNodeData>[];
   positionedNodeById: Map<string, PositionedNode>;
 }) => {
@@ -252,19 +250,13 @@ const applyFileTypeBranchLaneLayout = ({
 
       laneNodeIds.forEach((nodeId) => {
         const node = positionedNodeById.get(nodeId);
-        const graphNode = graphNodeById.get(nodeId);
-        if (!node || !graphNode) {
+        if (!node) {
           return;
         }
 
         node.position = {
           x: node.position.x,
           y: node.position.y + deltaY,
-        };
-
-        graphNode.position = {
-          x: graphNode.position.x,
-          y: graphNode.position.y + deltaY,
         };
 
         usedNodeIds.add(nodeId);
@@ -365,12 +357,9 @@ export const getAutoLayoutPositions = ({
     }),
   );
 
-  const positionNodeById = new Map(graphNodeById);
-
   applyFileTypeBranchLaneLayout({
     branchGapY,
     edges: filteredEdges,
-    graphNodeById: positionNodeById,
     nodes: sortedNodes,
     positionedNodeById: graphNodeById,
   });

@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { type MouseEvent } from "react";
+import { MdAutoGraph } from "react-icons/md";
 
 import {
   Background,
   BackgroundVariant,
+  ControlButton,
   Controls,
   MiniMap,
   ReactFlow,
@@ -57,6 +59,8 @@ import {
 } from "@/features/workflow-editor";
 import { getLeafNodeIds } from "@/shared";
 import { toaster } from "@/shared/utils/toaster/toaster";
+
+import { getAutoLayoutPositions } from "../lib/autoLayout";
 
 const NODE_GAP_X = 96;
 const DEFAULT_ROW_CENTER_Y = 320;
@@ -237,11 +241,15 @@ export const Canvas = () => {
   const syncWorkflowGraph = useWorkflowStore(
     (state) => state.syncWorkflowGraph,
   );
+  const applyLayoutPositions = useWorkflowStore(
+    (state) => state.applyLayoutPositions,
+  );
   const openPanel = useWorkflowStore((state) => state.openPanel);
   const closePanel = useWorkflowStore((state) => state.closePanel);
   const [activeNextStep, setActiveNextStep] = useState<ActiveNextStep | null>(
     null,
   );
+  const [pendingAutoLayoutFit, setPendingAutoLayoutFit] = useState(false);
   const { mutateAsync: addWorkflowNode, isPending: isAddNodePending } =
     useAddWorkflowNodeMutation();
   const { mutateAsync: deleteWorkflowNode, isPending: isDeleteNodePending } =
@@ -319,7 +327,7 @@ export const Canvas = () => {
     [onNodesChange],
   );
 
-  const { getZoom, setCenter } = useReactFlow();
+  const { fitView, getZoom, setCenter } = useReactFlow();
 
   const handleCreateMiddleNode = useCallback(
     async ({
@@ -555,6 +563,49 @@ export const Canvas = () => {
       duration: 300,
     });
   }, [activeNextStep, closePanel, setActivePlaceholder, setCenter]);
+
+  const isAutoLayoutDisabled =
+    !canEditNodes ||
+    nodes.length === 0 ||
+    isAddNodePending ||
+    isDeleteNodePending ||
+    activePlaceholder !== null ||
+    activeNextStep !== null;
+
+  const handleAutoLayout = useCallback(() => {
+    if (isAutoLayoutDisabled) {
+      return;
+    }
+
+    closePanel();
+    setActivePlaceholder(null);
+    setActiveNextStep(null);
+
+    const updates = getAutoLayoutPositions({
+      edges,
+      nodes,
+      options: {
+        branchGapY: 220,
+        fallbackNodeHeight: DEFAULT_FLOW_NODE_HEIGHT,
+        fallbackNodeWidth: DEFAULT_FLOW_NODE_WIDTH,
+        nodeGapX: NODE_GAP_X,
+      },
+    });
+
+    if (updates.length === 0) {
+      return;
+    }
+
+    applyLayoutPositions(updates);
+    setPendingAutoLayoutFit(true);
+  }, [
+    applyLayoutPositions,
+    closePanel,
+    edges,
+    isAutoLayoutDisabled,
+    nodes,
+    setActivePlaceholder,
+  ]);
 
   const branchPlaceholderSpecs = useMemo(
     () =>
@@ -919,6 +970,30 @@ export const Canvas = () => {
     });
   }, [activePanelNodeId, getChainNodes, getZoom, setCenter]);
 
+  useEffect(() => {
+    if (!pendingAutoLayoutFit) {
+      return;
+    }
+
+    if (activePanelNodeId || activePlaceholder || activeNextStep) {
+      return;
+    }
+
+    const frameId = requestAnimationFrame(() => {
+      void fitView({ duration: 300, padding: 0.2 });
+      setPendingAutoLayoutFit(false);
+    });
+
+    return () => cancelAnimationFrame(frameId);
+  }, [
+    activeNextStep,
+    activePanelNodeId,
+    activePlaceholder,
+    fitView,
+    pendingAutoLayoutFit,
+    visibleNodes,
+  ]);
+
   const isCanvasLocked = activePlaceholder !== null;
 
   return (
@@ -944,7 +1019,16 @@ export const Canvas = () => {
         fitView
       >
         <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
-        <Controls />
+        <Controls>
+          <ControlButton
+            aria-label="자동 정렬"
+            disabled={isAutoLayoutDisabled}
+            onClick={handleAutoLayout}
+            title="자동 정렬"
+          >
+            <MdAutoGraph />
+          </ControlButton>
+        </Controls>
         <MiniMap />
       </ReactFlow>
     </NodeEditorProvider>
