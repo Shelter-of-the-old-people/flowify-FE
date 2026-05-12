@@ -11,7 +11,7 @@ import {
   getServiceBadgeKeyFromService,
 } from "@/shared";
 
-import { type ServiceBadgeKey, type WorkflowFilterKey } from "./types";
+import { type ServiceBadgeKey } from "./types";
 
 export const getWorkflowListPageContent = (page: {
   content?: WorkflowListResponse["content"];
@@ -23,21 +23,6 @@ export const sortWorkflowsByUpdatedAtDesc = (workflows: WorkflowResponse[]) =>
       getDateTimestamp(rightWorkflow.updatedAt) -
       getDateTimestamp(leftWorkflow.updatedAt),
   );
-
-export const filterWorkflowsByStatus = (
-  workflows: WorkflowResponse[],
-  activeFilter: WorkflowFilterKey,
-) => {
-  switch (activeFilter) {
-    case "running":
-      return workflows.filter((workflow) => workflow.active);
-    case "stopped":
-      return workflows.filter((workflow) => !workflow.active);
-    case "all":
-    default:
-      return workflows;
-  }
-};
 
 export type WorkflowAutoRunState =
   | {
