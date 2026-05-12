@@ -85,7 +85,7 @@ describe("workflow list helpers", () => {
     });
   });
 
-  it("filters active and inactive tabs by the workflow active flag", () => {
+  it("filters running and stopped tabs by the workflow active flag", () => {
     const manualWorkflow = createWorkflow({
       id: "manual",
       trigger: { type: "manual", config: {} },
@@ -121,14 +121,14 @@ describe("workflow list helpers", () => {
     expect(
       filterWorkflowsByStatus(
         [manualWorkflow, enabledSchedule, disabledSchedule],
-        "active",
+        "running",
       ).map((workflow) => workflow.id),
     ).toEqual(["manual", "enabled"]);
 
     expect(
       filterWorkflowsByStatus(
         [manualWorkflow, enabledSchedule, disabledSchedule],
-        "inactive",
+        "stopped",
       ).map((workflow) => workflow.id),
     ).toEqual(["disabled"]);
   });

@@ -29,9 +29,9 @@ export const filterWorkflowsByStatus = (
   activeFilter: WorkflowFilterKey,
 ) => {
   switch (activeFilter) {
-    case "active":
+    case "running":
       return workflows.filter((workflow) => workflow.active);
-    case "inactive":
+    case "stopped":
       return workflows.filter((workflow) => !workflow.active);
     case "all":
     default:
