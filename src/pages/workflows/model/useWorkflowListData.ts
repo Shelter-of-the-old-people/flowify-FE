@@ -35,8 +35,8 @@ export const useWorkflowListData = () => {
   };
 
   return {
-    activeFilter: statusFilter,
-    setActiveFilter: setStatusFilter,
+    statusFilter,
+    setStatusFilter,
     filteredWorkflows,
     isLoading,
     isError,
