@@ -33,7 +33,7 @@ export const WorkflowNameField = ({
   const handleConfirm = () => {
     const trimmed = inputValue.trim();
 
-    if (trimmed) {
+    if (trimmed && trimmed !== workflowName) {
       setWorkflowName(trimmed);
     }
 
