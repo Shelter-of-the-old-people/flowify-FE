@@ -5,18 +5,20 @@ import {
   useConnectOAuthTokenMutation,
   useDashboardSummaryQuery,
   useDisconnectOAuthTokenMutation,
+  useOAuthTokensQuery,
 } from "@/entities";
 import { getCurrentRelativeUrl, storeOAuthConnectReturnPath } from "@/shared";
 
 import {
-  getConnectedServiceCardsFromSummary,
+  getConnectedServiceCards,
   getDashboardIssuesFromSummary,
   getDashboardMetrics,
-  getRecommendedServiceCardsFromSummary,
+  getRecommendedServiceCards,
 } from "./dashboard";
 
 export const useDashboardData = () => {
   const summaryQuery = useDashboardSummaryQuery();
+  const oauthTokensQuery = useOAuthTokensQuery();
   const { mutateAsync: connectToken, isPending: isConnectPending } =
     useConnectOAuthTokenMutation();
   const { mutateAsync: disconnectToken, isPending: isDisconnectPending } =
@@ -36,13 +38,13 @@ export const useDashboardData = () => {
   );
 
   const connectedServices = useMemo(
-    () => getConnectedServiceCardsFromSummary(summaryQuery.data?.services),
-    [summaryQuery.data?.services],
+    () => getConnectedServiceCards(oauthTokensQuery.data),
+    [oauthTokensQuery.data],
   );
 
   const recommendedServices = useMemo(
-    () => getRecommendedServiceCardsFromSummary(summaryQuery.data?.services),
-    [summaryQuery.data?.services],
+    () => getRecommendedServiceCards(oauthTokensQuery.data),
+    [oauthTokensQuery.data],
   );
 
   const handleReloadWorkflows = () => {
@@ -50,7 +52,7 @@ export const useDashboardData = () => {
   };
 
   const handleReloadServices = () => {
-    void summaryQuery.refetch();
+    void oauthTokensQuery.refetch();
   };
 
   const handleConnectService = async (serviceKey: string) => {
@@ -68,7 +70,8 @@ export const useDashboardData = () => {
         return;
       }
 
-      await summaryQuery.refetch();
+      await oauthTokensQuery.refetch();
+      void summaryQuery.refetch();
     } catch {
       // The dashboard keeps its current cards visible when a service action fails.
     } finally {
@@ -81,7 +84,8 @@ export const useDashboardData = () => {
 
     try {
       await disconnectToken(serviceKey);
-      await summaryQuery.refetch();
+      await oauthTokensQuery.refetch();
+      void summaryQuery.refetch();
     } catch {
       // The dashboard keeps its current cards visible when a service action fails.
     } finally {
@@ -96,8 +100,8 @@ export const useDashboardData = () => {
     recommendedServices,
     isWorkflowsLoading: summaryQuery.isLoading,
     isWorkflowsError: summaryQuery.isError,
-    isServicesLoading: summaryQuery.isLoading,
-    isServicesError: summaryQuery.isError,
+    isServicesLoading: oauthTokensQuery.isLoading,
+    isServicesError: oauthTokensQuery.isError,
     isServiceActionPending: isConnectPending || isDisconnectPending,
     pendingServiceKey,
     handleReloadWorkflows,

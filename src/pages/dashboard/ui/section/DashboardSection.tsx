@@ -219,7 +219,7 @@ export const DashboardSection = () => {
           <LoadingPanel message="추천 서비스 목록을 준비하는 중입니다." />
         ) : null}
 
-        {!isServicesLoading ? (
+        {!isServicesLoading && !isServicesError ? (
           recommendedServices.length > 0 ? (
             <Flex wrap="wrap" gap={6}>
               {recommendedServices.map((service) => (
