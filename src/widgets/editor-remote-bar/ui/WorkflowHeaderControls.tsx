@@ -56,7 +56,6 @@ export const WorkflowHeaderControls = ({
           <WorkflowToolMenuButton
             isDeletePending={isDeletePending}
             canDelete={canDelete}
-            placement="bottom-start"
             onOpenMenu={onOpenMenu}
             onDelete={onDelete}
           />
