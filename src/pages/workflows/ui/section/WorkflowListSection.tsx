@@ -17,7 +17,6 @@ export const WorkflowListSection = () => {
     activeFilter,
     setActiveFilter,
     filteredWorkflows,
-    hasWorkflows,
     isLoading,
     isError,
     hasNextPage,
@@ -71,7 +70,7 @@ export const WorkflowListSection = () => {
 
             {filteredWorkflows.length === 0 ? (
               <WorkflowListEmptyState
-                hasWorkflows={hasWorkflows}
+                filter={activeFilter}
                 isCreatePending={isCreatePending}
                 onCreate={handleCreateWorkflow}
               />

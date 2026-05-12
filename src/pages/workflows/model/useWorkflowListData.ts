@@ -30,7 +30,6 @@ export const useWorkflowListData = () => {
   );
 
   const filteredWorkflows = workflows;
-  const hasWorkflows = statusFilter === "all" ? workflows.length > 0 : true;
   const handleReload = () => {
     void refetch();
   };
@@ -38,7 +37,6 @@ export const useWorkflowListData = () => {
   return {
     activeFilter: statusFilter,
     setActiveFilter: setStatusFilter,
-    hasWorkflows,
     filteredWorkflows,
     isLoading,
     isError,
