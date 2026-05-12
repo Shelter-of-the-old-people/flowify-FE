@@ -1,11 +1,4 @@
-import { type ElementType } from "react";
-import {
-  MdAutoFixHigh,
-  MdDeleteOutline,
-  MdHistory,
-  MdMoreHoriz,
-  MdZoomOutMap,
-} from "react-icons/md";
+import { MdDeleteOutline, MdMoreHoriz } from "react-icons/md";
 
 import { Button, Icon, Menu, Portal, Text } from "@chakra-ui/react";
 
@@ -14,40 +7,6 @@ type WorkflowToolMenuButtonProps = {
   canDelete: boolean;
   onOpenMenu?: () => void;
   onDelete: () => void;
-};
-
-type ToolMenuItemProps = {
-  value: string;
-  label: string;
-  icon: ElementType;
-  disabled?: boolean;
-  tone?: "default" | "danger";
-  onSelect?: () => void;
-};
-
-const ToolMenuItem = ({
-  value,
-  label,
-  icon,
-  disabled = false,
-  tone = "default",
-  onSelect,
-}: ToolMenuItemProps) => {
-  const isDanger = tone === "danger";
-
-  return (
-    <Menu.Item
-      value={value}
-      disabled={disabled}
-      color={isDanger ? "status.error" : "text.primary"}
-      onSelect={onSelect}
-    >
-      <Icon as={icon} boxSize={4} />
-      <Text as="span" fontSize="sm">
-        {label}
-      </Text>
-    </Menu.Item>
-  );
 };
 
 export const WorkflowToolMenuButton = ({
@@ -91,7 +50,7 @@ export const WorkflowToolMenuButton = ({
     <Portal>
       <Menu.Positioner zIndex={20}>
         <Menu.Content
-          minW="168px"
+          minW="128px"
           p={1.5}
           bg="bg.surface"
           border="1px solid"
@@ -99,33 +58,17 @@ export const WorkflowToolMenuButton = ({
           borderColor="border.default"
           boxShadow="lg"
         >
-          <ToolMenuItem
-            value="history"
-            label="히스토리"
-            icon={MdHistory}
-            disabled
-          />
-          <ToolMenuItem
-            value="auto-layout"
-            label="자동 정렬"
-            icon={MdAutoFixHigh}
-            disabled
-          />
-          <ToolMenuItem
-            value="zoom-reset"
-            label="화면 맞춤"
-            icon={MdZoomOutMap}
-            disabled
-          />
-          <Menu.Separator />
-          <ToolMenuItem
+          <Menu.Item
             value="delete"
-            label={isDeletePending ? "삭제 중..." : "삭제"}
-            icon={MdDeleteOutline}
             disabled={!canDelete || isDeletePending}
-            tone="danger"
             onSelect={onDelete}
-          />
+            color="status.error"
+          >
+            <Icon as={MdDeleteOutline} boxSize={4} />
+            <Text as="span" fontSize="sm">
+              {isDeletePending ? "삭제 중..." : "삭제"}
+            </Text>
+          </Menu.Item>
         </Menu.Content>
       </Menu.Positioner>
     </Portal>

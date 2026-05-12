@@ -1,5 +1,5 @@
 import { forwardRef } from "react";
-import { MdKeyboardArrowDown, MdSchedule } from "react-icons/md";
+import { MdSchedule } from "react-icons/md";
 
 import { Button, Icon, Text } from "@chakra-ui/react";
 
@@ -57,7 +57,6 @@ export const TriggerControlButton = forwardRef<
       >
         {label}
       </Text>
-      <Icon as={MdKeyboardArrowDown} boxSize={4} flexShrink={0} />
     </Button>
   );
 });

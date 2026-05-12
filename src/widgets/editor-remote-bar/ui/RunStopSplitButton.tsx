@@ -54,8 +54,7 @@ export const RunStopSplitButton = ({
         onClick={handleRunSideClick}
         disabled={runSideDisabled}
         height="100%"
-        minW={{ base: "34px", "2xl": "92px" }}
-        px={{ base: 0, "2xl": 3 }}
+        px={{ base: 0, "2xl": 2 }}
         bg="neutral.900"
         color="text.inverse"
         borderTopLeftRadius="lg"
@@ -64,7 +63,7 @@ export const RunStopSplitButton = ({
         borderBottomRightRadius={0}
         _hover={{ bg: "neutral.800" }}
         _active={{ bg: "neutral.950" }}
-        gap={1.5}
+        gap={1}
         _disabled={{
           opacity: 0.5,
           cursor: "not-allowed",
