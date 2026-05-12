@@ -54,6 +54,7 @@ import { toaster } from "@/shared/utils";
 
 import {
   type NodePanelProps,
+  getGoogleSheetsWriteModePresentation,
   getSinkFieldPresentation,
   shouldShowSinkSchemaPreview,
 } from "../../model";
@@ -552,6 +553,7 @@ type SinkRemotePickerFieldProps = {
   readOnly: boolean;
   selectedId: string;
   selectedLabel?: string | null;
+  selectedMetadata?: Record<string, unknown> | null;
   serviceKey: string;
 };
 
@@ -563,6 +565,7 @@ const SinkRemotePickerField = ({
   readOnly,
   selectedId,
   selectedLabel,
+  selectedMetadata,
   serviceKey,
 }: SinkRemotePickerFieldProps) => {
   const pickerScope = `${serviceKey}:${fieldKey}:${optionType}`;
@@ -745,33 +748,71 @@ const SinkRemotePickerField = ({
     <Box display="flex" flexDirection="column" gap={3}>
       {selectedId ? (
         <Box
-          alignItems="center"
           bg="gray.50"
           borderRadius="xl"
           display="flex"
+          flexDirection="column"
           gap={3}
-          justifyContent="space-between"
           px={4}
           py={3}
         >
-          <Box minW={0}>
-            <Text color="text.secondary" fontSize="xs">
-              선택된 대상
-            </Text>
-            <Text fontSize="sm" fontWeight="semibold" truncate>
-              {selectedLabel || selectedId}
-            </Text>
-          </Box>
-          <IconButton
-            aria-label="Clear selected target"
-            disabled={readOnly}
-            flexShrink={0}
-            size="xs"
-            variant="ghost"
-            onClick={onClear}
+          <Box
+            alignItems="flex-start"
+            display="flex"
+            gap={3}
+            justifyContent="space-between"
           >
-            <Icon as={MdClose} boxSize={4} />
-          </IconButton>
+            <Box minW={0}>
+              <Text color="text.secondary" fontSize="xs">
+                선택된 대상
+              </Text>
+              <Text fontSize="sm" fontWeight="semibold" truncate>
+                {selectedLabel || selectedId}
+              </Text>
+            </Box>
+            <IconButton
+              aria-label="Clear selected target"
+              disabled={readOnly}
+              flexShrink={0}
+              size="xs"
+              variant="ghost"
+              onClick={onClear}
+            >
+              <Icon as={MdClose} boxSize={4} />
+            </IconButton>
+          </Box>
+
+          {isGoogleSheetsPicker ? (
+            <Box
+              display="grid"
+              gap={3}
+              gridTemplateColumns="repeat(2, 1fr)"
+              w="full"
+            >
+              <Box minW={0}>
+                <Text color="text.secondary" fontSize="xs">
+                  저장할 스프레드시트
+                </Text>
+                <Text fontSize="sm" fontWeight="semibold" truncate>
+                  {typeof selectedMetadata?.spreadsheetTitle === "string" &&
+                  selectedMetadata.spreadsheetTitle.trim().length > 0
+                    ? selectedMetadata.spreadsheetTitle
+                    : selectedId}
+                </Text>
+              </Box>
+              <Box minW={0}>
+                <Text color="text.secondary" fontSize="xs">
+                  저장할 시트 탭
+                </Text>
+                <Text fontSize="sm" fontWeight="semibold" truncate>
+                  {typeof selectedMetadata?.sheetName === "string" &&
+                  selectedMetadata.sheetName.trim().length > 0
+                    ? selectedMetadata.sheetName
+                    : "아직 선택되지 않았습니다."}
+                </Text>
+              </Box>
+            </Box>
+          ) : null}
         </Box>
       ) : null}
 
@@ -1039,7 +1080,44 @@ const SinkSchemaEditor = ({
                 {field.required ? " *" : ""}
               </Text>
 
-              {field.type === "select" && field.options ? (
+              {field.type === "select" &&
+              field.options &&
+              serviceKey === "google_sheets" &&
+              field.key === "write_mode" ? (
+                <Box display="flex" flexDirection="column" gap={2}>
+                  {field.options.map((option) => {
+                    const presentation =
+                      getGoogleSheetsWriteModePresentation(option);
+
+                    return (
+                      <Box
+                        key={option}
+                        bg={stringValue === option ? "blue.50" : "gray.50"}
+                        border="1px solid"
+                        borderColor={
+                          stringValue === option ? "blue.200" : "gray.100"
+                        }
+                        borderRadius="xl"
+                        cursor={readOnly ? "default" : "pointer"}
+                        px={4}
+                        py={3}
+                        onClick={() => {
+                          if (!readOnly) {
+                            handleFieldChange(field.key, option);
+                          }
+                        }}
+                      >
+                        <Text fontSize="sm" fontWeight="semibold">
+                          {presentation.label}
+                        </Text>
+                        <Text color="text.secondary" fontSize="xs" mt={1}>
+                          {presentation.description}
+                        </Text>
+                      </Box>
+                    );
+                  })}
+                </Box>
+              ) : field.type === "select" && field.options ? (
                 <Box display="flex" flexWrap="wrap" gap={2}>
                   {field.options.map((option) => (
                     <Button
@@ -1097,6 +1175,15 @@ const SinkSchemaEditor = ({
                       ? (auxiliaryDraftValues[
                           getAuxiliaryLabelKey(field.key)
                         ] as string)
+                      : null
+                  }
+                  selectedMetadata={
+                    typeof auxiliaryDraftValues[
+                      getAuxiliaryMetaKey(field.key)
+                    ] === "object"
+                      ? (auxiliaryDraftValues[
+                          getAuxiliaryMetaKey(field.key)
+                        ] as Record<string, unknown>)
                       : null
                   }
                   serviceKey={serviceKey}

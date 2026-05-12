@@ -28,6 +28,10 @@ export const getGoogleSheetsSheetName = (
   option: GoogleSheetsOptionLike,
 ): string | null => getMetadataString(option.metadata, "sheetName");
 
+export const getGoogleSheetsSpreadsheetTitle = (
+  option: GoogleSheetsOptionLike,
+): string | null => getMetadataString(option.metadata, "spreadsheetTitle");
+
 export const getGoogleSheetsSelectedSheetOptionId = ({
   spreadsheetId,
   sheetName,

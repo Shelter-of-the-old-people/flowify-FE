@@ -282,6 +282,8 @@ export const OutputPanel = ({ wizardController }: Props) => {
     canEditNodes &&
     !shouldShowChoiceStepLoading &&
     !shouldShowChoiceStepUnavailable;
+  const shouldShowChoiceFallbackNotice =
+    wizardController.isUsingChoiceFallback && wizardController.isChoicesError;
 
   return (
     <Box
@@ -412,7 +414,7 @@ export const OutputPanel = ({ wizardController }: Props) => {
             </Box>
           ) : null}
 
-          {wizardController.isUsingChoiceFallback ? (
+          {shouldShowChoiceFallbackNotice ? (
             <Text px={6} fontSize="sm" color="orange.500">
               서버 선택지를 가져오지 못해 로컬 규칙으로 이어갑니다.
             </Text>

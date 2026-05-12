@@ -182,6 +182,25 @@ export const MAPPING_RULES: MappingRules = {
           },
         },
         {
+          id: "filter_metadata_table",
+          label: "파일 정보를 표로 정리",
+          node_type: "DATA_FILTER",
+          output_data_type: "SPREADSHEET_DATA",
+          priority: 9,
+          description:
+            "파일 정보를 표 컬럼으로 정리해 Google Sheets 같은 시트형 저장소에 바로 넣기 좋게 만듭니다.",
+          follow_up: {
+            question: "어떤 정보를 표 컬럼으로 사용할까요?",
+            options: [
+              { id: "filename", label: "파일명" },
+              { id: "link", label: "링크" },
+              { id: "upload_time", label: "업로드 시간" },
+              { id: "file_size", label: "파일 크기" },
+            ],
+            multi_select: true,
+          },
+        },
+        {
           id: "passthrough",
           label: "그대로 전달",
           node_type: "PASSTHROUGH",
@@ -324,6 +343,30 @@ export const MAPPING_RULES: MappingRules = {
           },
         },
         {
+          id: "filter_fields_table",
+          label: "표로 정리해서 저장",
+          node_type: "DATA_FILTER",
+          output_data_type: "SPREADSHEET_DATA",
+          priority: 10,
+          description:
+            "메일의 주요 정보를 표 컬럼으로 정리해 Google Sheets 같은 시트형 저장소에 바로 넣기 좋게 만듭니다.",
+          follow_up: {
+            question: "어떤 항목을 표 컬럼으로 사용할까요?",
+            options: [
+              { id: "message_id", label: "메일 ID" },
+              { id: "thread_id", label: "대화 스레드 ID" },
+              { id: "subject", label: "제목" },
+              { id: "sender", label: "발신자" },
+              { id: "recipient_list", label: "받는 사람 목록" },
+              { id: "date", label: "수신 날짜" },
+              { id: "body_preview", label: "본문 미리보기" },
+              { id: "label_list", label: "라벨 목록" },
+              { id: "attachment_names", label: "첨부파일 이름 목록" },
+            ],
+            multi_select: true,
+          },
+        },
+        {
           id: "passthrough",
           label: "그대로 전달",
           node_type: "PASSTHROUGH",
@@ -422,6 +465,20 @@ export const MAPPING_RULES: MappingRules = {
           priority: 5,
           follow_up: {
             question: "어떤 항목을 사용할까요?",
+            options_source: "fields_from_data",
+            multi_select: true,
+          },
+        },
+        {
+          id: "filter_fields_table",
+          label: "표 컬럼으로 정리",
+          node_type: "DATA_FILTER",
+          output_data_type: "SPREADSHEET_DATA",
+          priority: 6,
+          description:
+            "선택한 컬럼만 남겨 시트에 바로 저장하기 좋은 표 형태로 정리합니다.",
+          follow_up: {
+            question: "어떤 항목을 표 컬럼으로 사용할까요?",
             options_source: "fields_from_data",
             multi_select: true,
           },

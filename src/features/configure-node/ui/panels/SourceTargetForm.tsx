@@ -287,7 +287,7 @@ export const SourceTargetForm = ({
       });
       setNewSpreadsheetName("");
       setNewSheetName("");
-      onChange({ option: null, value: "" });
+      onChange({ ...value, option: null, value: "" });
       toaster.create({
         type: "success",
         description: "새 스프레드시트를 만들고 바로 이동했습니다.",
@@ -309,7 +309,7 @@ export const SourceTargetForm = ({
         sheetName: trimmedSheetName,
       });
       setNewSheetName("");
-      onChange({ option: createdSheet, value: createdSheet.id });
+      onChange({ ...value, option: createdSheet, value: createdSheet.id });
       toaster.create({
         type: "success",
         description: "시트를 준비하고 바로 선택했습니다.",
@@ -507,7 +507,9 @@ export const SourceTargetForm = ({
                     }}
                   />
                   <Button
-                    disabled={disabled || newSpreadsheetName.trim().length === 0}
+                    disabled={
+                      disabled || newSpreadsheetName.trim().length === 0
+                    }
                     flexShrink={0}
                     loading={createSpreadsheetMutation.isPending}
                     onClick={() => void handleCreateSpreadsheet()}

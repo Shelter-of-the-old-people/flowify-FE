@@ -19,6 +19,7 @@ import {
   getGoogleSheetsSelectedSheetOptionId,
   getGoogleSheetsSheetName,
   getGoogleSheetsSpreadsheetId,
+  getGoogleSheetsSpreadsheetTitle,
 } from "@/entities/workflow/lib/google-sheets-target-option";
 import { useWorkflowStore } from "@/features/workflow-editor";
 import {
@@ -29,6 +30,7 @@ import {
 import { toaster } from "@/shared/utils";
 
 import { type NodePanelProps } from "../../model";
+import { getGoogleSheetsActionDescription } from "../../model";
 
 import { NodePanelShell } from "./NodePanelShell";
 
@@ -336,7 +338,10 @@ export const SpreadsheetPanel = ({
     }
 
     updateDraft("spreadsheetId", getGoogleSheetsSpreadsheetId(sourceOption));
-    updateDraft("spreadsheetLabel", sourceOption.label);
+    updateDraft(
+      "spreadsheetLabel",
+      getGoogleSheetsSpreadsheetTitle(sourceOption) ?? sourceOption.label,
+    );
     const sheetName = getGoogleSheetsSheetName(sourceOption);
     if (sheetName) {
       updateDraft("sheetName", sheetName);
@@ -392,7 +397,10 @@ export const SpreadsheetPanel = ({
       });
       setNewSheetName("");
       updateDraft("spreadsheetId", getGoogleSheetsSpreadsheetId(createdSheet));
-      updateDraft("spreadsheetLabel", createdSheet.label);
+      updateDraft(
+        "spreadsheetLabel",
+        getGoogleSheetsSpreadsheetTitle(createdSheet) ?? createdSheet.label,
+      );
       const sheetName = getGoogleSheetsSheetName(createdSheet);
       if (sheetName) {
         updateDraft("sheetName", sheetName);
@@ -450,8 +458,10 @@ export const SpreadsheetPanel = ({
               </Box>
             ))}
           </Box>
+          <Text color="text.secondary" fontSize="xs">
+            {getGoogleSheetsActionDescription(values.action)}
+          </Text>
         </Box>
-
         <Box display="flex" flexDirection="column" gap={3}>
           <Text fontSize="sm" fontWeight="semibold">
             시트 선택
@@ -459,36 +469,56 @@ export const SpreadsheetPanel = ({
 
           {values.spreadsheetId ? (
             <Box
-              alignItems="center"
               bg="gray.50"
               borderRadius="xl"
               display="flex"
+              flexDirection="column"
               gap={3}
-              justifyContent="space-between"
               px={4}
               py={3}
             >
-              <Box minW={0}>
+              <Box
+                alignItems="flex-start"
+                display="flex"
+                gap={3}
+                justifyContent="space-between"
+              >
+                <Box minW={0}>
+                  <Text color="text.secondary" fontSize="xs">
+                    선택된 스프레드시트
+                  </Text>
+                  <Text fontSize="sm" fontWeight="semibold" truncate>
+                    {values.spreadsheetLabel || values.spreadsheetId}
+                  </Text>
+                </Box>
+                <IconButton
+                  aria-label="Clear selected sheet"
+                  disabled={readOnly}
+                  size="xs"
+                  variant="ghost"
+                  onClick={() => {
+                    updateDraft("spreadsheetId", "");
+                    updateDraft("spreadsheetLabel", "");
+                    updateDraft("sheetName", "");
+                  }}
+                >
+                  <Icon as={MdClose} boxSize={4} />
+                </IconButton>
+              </Box>
+
+              <Box>
                 <Text color="text.secondary" fontSize="xs">
-                  선택된 시트
+                  선택된 시트 탭
                 </Text>
-                <Text fontSize="sm" fontWeight="semibold" truncate>
-                  {values.spreadsheetLabel || values.spreadsheetId}
+                <Text fontSize="sm" fontWeight="semibold">
+                  {values.sheetName || "아직 선택되지 않았습니다."}
                 </Text>
               </Box>
-              <IconButton
-                aria-label="Clear selected sheet"
-                disabled={readOnly}
-                size="xs"
-                variant="ghost"
-                onClick={() => {
-                  updateDraft("spreadsheetId", "");
-                  updateDraft("spreadsheetLabel", "");
-                  updateDraft("sheetName", "");
-                }}
-              >
-                <Icon as={MdClose} boxSize={4} />
-              </IconButton>
+
+              <Text color="text.secondary" fontSize="xs">
+                이후 검색이나 조회는 이 스프레드시트와 시트 탭을 기준으로
+                진행됩니다.
+              </Text>
             </Box>
           ) : null}
 
@@ -610,6 +640,10 @@ export const SpreadsheetPanel = ({
                   updateDraft("sheetName", event.target.value)
                 }
               />
+              <Text color="text.secondary" fontSize="xs" mt={2}>
+                저장하거나 읽을 실제 시트 탭 이름입니다. picker에서 고른 값이
+                자동으로 들어옵니다.
+              </Text>
             </Box>
             <Box>
               <Text fontSize="sm" fontWeight="medium" mb={2}>
@@ -621,6 +655,14 @@ export const SpreadsheetPanel = ({
                 value={values.rangeA1}
                 onChange={(event) => updateDraft("rangeA1", event.target.value)}
               />
+              <Text color="text.secondary" fontSize="xs" mt={2}>
+                비워두면 선택한 시트 전체를 기준으로 읽습니다. 특정 영역만 다룰
+                때만 입력합니다.
+              </Text>
+              <Text color="text.secondary" fontSize="xs" mt={1}>
+                검색과 조회에서는 이 범위의 첫 줄을 헤더로 해석합니다. 헤더가
+                5행이면 `A5:F200`처럼 헤더 줄부터 포함해 입력하세요.
+              </Text>
             </Box>
           </Box>
         </Box>
@@ -629,6 +671,10 @@ export const SpreadsheetPanel = ({
           <Box display="flex" flexDirection="column" gap={3}>
             <Text fontSize="sm" fontWeight="semibold">
               검색 설정
+            </Text>
+            <Text color="text.secondary" fontSize="xs">
+              예: 제목이나 본문에 `문서`가 들어간 행만 찾고 싶다면 여기에서
+              검색어와 검색 컬럼을 설정합니다.
             </Text>
             <Box display="flex" gap={2}>
               {[
@@ -671,6 +717,10 @@ export const SpreadsheetPanel = ({
                   : updateDraft("searchValue", event.target.value)
               }
             />
+            <Text color="text.secondary" fontSize="xs">
+              직접 입력은 고정 키워드를 찾을 때, 이전 노드 필드는 앞 단계 결과를
+              검색값으로 쓸 때 사용합니다.
+            </Text>
             <Input
               disabled={readOnly}
               placeholder="검색할 컬럼들 (쉼표로 구분, 비우면 전체)"
@@ -716,12 +766,20 @@ export const SpreadsheetPanel = ({
             <Text fontSize="sm" fontWeight="semibold">
               조회 설정
             </Text>
+            <Text color="text.secondary" fontSize="xs">
+              예: `sender`가 같은 한 행만 찾고 싶다면 기준 컬럼과 조회할 값을
+              여기에서 넣습니다.
+            </Text>
             <Input
               disabled={readOnly}
               placeholder="기준 컬럼명"
               value={values.keyColumn}
               onChange={(event) => updateDraft("keyColumn", event.target.value)}
             />
+            <Text color="text.secondary" fontSize="xs">
+              같은 행을 찾는 기준 컬럼입니다. 보통 `email`, `id`, `order_id`처럼
+              중복되지 않는 값을 사용합니다.
+            </Text>
             <Box display="flex" gap={2}>
               {[
                 { key: "value", label: "직접 입력" },
@@ -763,6 +821,9 @@ export const SpreadsheetPanel = ({
                   : updateDraft("lookupValue", event.target.value)
               }
             />
+            <Text color="text.secondary" fontSize="xs">
+              조회 결과는 기준 컬럼이 같은 첫 행을 찾아 다음 단계로 전달합니다.
+            </Text>
           </Box>
         ) : null}
 

@@ -28,6 +28,8 @@ import {
   type SourceTargetSetupValue,
   buildSourceNodeConfigDraft,
   createEmptySourceTargetSetupValue,
+  getGoogleSheetsInitialSyncPresentation,
+  getGoogleSheetsSourceModeDescription,
   getSourceTargetSchemaValidationMessage,
   hasTargetSchema,
   isSourceNodeSetupComplete,
@@ -408,6 +410,21 @@ export const SourceNodePanel = ({
                 Google Sheets 상세 설정
               </Text>
 
+              <Box
+                bg="blue.50"
+                border="1px solid"
+                borderColor="blue.100"
+                borderRadius="xl"
+                px={4}
+                py={3}
+              >
+                <Text fontSize="sm" fontWeight="semibold">
+                  이 설정으로 무엇을 가져오나요?
+                </Text>
+                <Text color="text.secondary" fontSize="xs" mt={1}>
+                  {getGoogleSheetsSourceModeDescription(sourceMode.key)}
+                </Text>
+              </Box>
               <Box display="grid" gap={3} gridTemplateColumns="repeat(2, 1fr)">
                 <Box>
                   <Text fontSize="sm" fontWeight="medium" mb={2}>
@@ -424,6 +441,10 @@ export const SourceNodePanel = ({
                       )
                     }
                   />
+                  <Text color="text.secondary" fontSize="xs" mt={2}>
+                    컬럼 이름이 들어 있는 행 번호입니다. 보통 첫 줄이면
+                    `1`입니다.
+                  </Text>
                 </Box>
                 <Box>
                   <Text fontSize="sm" fontWeight="medium" mb={2}>
@@ -440,6 +461,10 @@ export const SourceNodePanel = ({
                       )
                     }
                   />
+                  <Text color="text.secondary" fontSize="xs" mt={2}>
+                    실제 데이터가 시작되는 첫 행 번호입니다. 헤더 다음 줄이면
+                    보통 `2`입니다.
+                  </Text>
                 </Box>
               </Box>
 
@@ -455,6 +480,10 @@ export const SourceNodePanel = ({
                     handleGoogleSheetsDraftChange("rangeA1", event.target.value)
                   }
                 />
+                <Text color="text.secondary" fontSize="xs" mt={2}>
+                  비워두면 선택한 시트 전체를 읽습니다. 특정 영역만 쓸 때만
+                  `A1:F200`처럼 입력합니다.
+                </Text>
               </Box>
 
               {(sourceMode.key === "new_row" ||
@@ -463,31 +492,49 @@ export const SourceNodePanel = ({
                   <Text fontSize="sm" fontWeight="medium">
                     첫 실행 기준
                   </Text>
-                  <Box display="flex" gap={2} flexWrap="wrap">
-                    {[
-                      { label: "기존 행 건너뛰기", value: "skip_existing" },
-                      { label: "기존 행도 처리", value: "emit_existing" },
-                    ].map((option) => (
-                      <Button
-                        key={option.value}
-                        disabled={!canEditSetup}
-                        size="sm"
-                        variant={
-                          googleSheetsDraftValues.initialSyncMode ===
-                          option.value
-                            ? "solid"
-                            : "outline"
-                        }
-                        onClick={() =>
-                          handleGoogleSheetsDraftChange(
-                            "initialSyncMode",
-                            option.value,
-                          )
-                        }
-                      >
-                        {option.label}
-                      </Button>
-                    ))}
+                  <Box display="flex" flexDirection="column" gap={2}>
+                    {["skip_existing", "emit_existing"].map((value) => {
+                      const option =
+                        getGoogleSheetsInitialSyncPresentation(value);
+
+                      return (
+                        <Box
+                          key={option.value}
+                          bg={
+                            googleSheetsDraftValues.initialSyncMode ===
+                            option.value
+                              ? "blue.50"
+                              : "gray.50"
+                          }
+                          border="1px solid"
+                          borderColor={
+                            googleSheetsDraftValues.initialSyncMode ===
+                            option.value
+                              ? "blue.200"
+                              : "gray.100"
+                          }
+                          borderRadius="xl"
+                          cursor={canEditSetup ? "pointer" : "default"}
+                          px={4}
+                          py={3}
+                          onClick={() => {
+                            if (canEditSetup) {
+                              handleGoogleSheetsDraftChange(
+                                "initialSyncMode",
+                                option.value,
+                              );
+                            }
+                          }}
+                        >
+                          <Text fontSize="sm" fontWeight="semibold">
+                            {option.label}
+                          </Text>
+                          <Text color="text.secondary" fontSize="xs" mt={1}>
+                            {option.description}
+                          </Text>
+                        </Box>
+                      );
+                    })}
                   </Box>
                 </Box>
               )}
@@ -509,10 +556,25 @@ export const SourceNodePanel = ({
                     }
                   />
                   <Text color="text.secondary" fontSize="xs" mt={2}>
-                    수정 감지는 기준 컬럼 값으로 같은 행을 찾은 뒤 비교합니다.
+                    수정 감지는 기준 컬럼 값이 같은 행끼리 비교해서 판단합니다.
+                    변경이력 기준으로 자주 쓰는 값은 `email`, `id`, `order_id`
+                    같은 중복되지 않는 컬럼입니다.
                   </Text>
                 </Box>
               ) : null}
+
+              {(sourceMode.key === "new_row" ||
+                sourceMode.key === "row_updated") && (
+                <Box bg="gray.50" borderRadius="xl" px={4} py={3}>
+                  <Text fontSize="sm" fontWeight="semibold">
+                    실행 결과 이해하기
+                  </Text>
+                  <Text color="text.secondary" fontSize="xs" mt={1}>
+                    이 모드는 시트 전체를 매번 다시 넘기지 않고, 설정한 기준에
+                    따라 새로 추가되거나 수정된 행만 다음 단계로 전달합니다.
+                  </Text>
+                </Box>
+              )}
             </Box>
           ) : null}
 
