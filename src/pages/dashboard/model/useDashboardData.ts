@@ -84,7 +84,6 @@ export const useDashboardData = () => {
 
     try {
       await disconnectToken(serviceKey);
-      await oauthTokensQuery.refetch();
       void summaryQuery.refetch();
     } catch {
       // The dashboard keeps its current cards visible when a service action fails.
