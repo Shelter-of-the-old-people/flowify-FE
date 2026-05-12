@@ -5,6 +5,7 @@ import { Button, Icon, Menu, Portal, Text } from "@chakra-ui/react";
 type WorkflowToolMenuButtonProps = {
   isDeletePending: boolean;
   canDelete: boolean;
+  placement?: "bottom-start" | "top-end";
   onOpenMenu?: () => void;
   onDelete: () => void;
 };
@@ -12,13 +13,14 @@ type WorkflowToolMenuButtonProps = {
 export const WorkflowToolMenuButton = ({
   isDeletePending,
   canDelete,
+  placement = "bottom-start",
   onOpenMenu,
   onDelete,
 }: WorkflowToolMenuButtonProps) => (
   <Menu.Root
     lazyMount
     unmountOnExit
-    positioning={{ placement: "top-end" }}
+    positioning={{ placement }}
     onOpenChange={(details) => {
       if (details.open) {
         onOpenMenu?.();

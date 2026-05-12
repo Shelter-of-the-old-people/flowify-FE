@@ -35,8 +35,7 @@ import { RunStopSplitButton } from "./RunStopSplitButton";
 import { SaveStateButton } from "./SaveStateButton";
 import { TriggerControlButton } from "./TriggerControlButton";
 import { TriggerSettingsPanel } from "./TriggerSettingsPanel";
-import { WorkflowNameField } from "./WorkflowNameField";
-import { WorkflowToolMenuButton } from "./WorkflowToolMenuButton";
+import { WorkflowHeaderControls } from "./WorkflowHeaderControls";
 
 const getExecutableBlockers = (
   nodeStatuses:
@@ -56,8 +55,8 @@ const getExecutionBlockerMessage = (blockerCount: number) =>
  * 참고: docs/EDITOR_REMOTE_BAR_DESIGN.md
  * Figma: https://www.figma.com/design/liTdK7QHV5tufaQW8DwV6U/Untitled?node-id=1882-3344
  *
- * 기존 EditorToolbar의 모든 기능을 이전하고, 추가로 삭제 버튼과
- * 임시 3종 버튼(자동정렬/줌리셋/히스토리 — disabled)을 가운데 슬롯에 배치한다.
+ * 워크플로우 제목/관리 메뉴는 상단 헤더에 두고, 하단 바는 실행 관련
+ * 컨트롤만 유지한다.
  */
 export const EditorRemoteBar = () => {
   const navigate = useNavigate();
@@ -452,96 +451,87 @@ export const EditorRemoteBar = () => {
   };
 
   return (
-    <Box
-      position="absolute"
-      bottom={{ base: "16px", xl: "24px" }}
-      left="50%"
-      transform="translateX(-50%)"
-      pointerEvents="none"
-      zIndex={4}
-      maxW="calc(100vw - 32px)"
-    >
-      <Box position="relative" pointerEvents="auto">
-        <ExecutionStatusBadge label={executionStatusLabel} />
-        <TriggerSettingsPanel
-          open={triggerSettingsOpen}
-          canEdit={canEditTrigger}
-          anchorRef={triggerButtonRef}
-          onClose={handleCloseTriggerSettings}
-        />
+    <>
+      <WorkflowHeaderControls
+        isRunning={isRunning}
+        canSaveWorkflow={canSaveWorkflow}
+        canDelete={canDelete}
+        isDeletePending={isDeletePending}
+        onOpenMenu={handleCloseTriggerSettings}
+        onDelete={handleDeleteRequest}
+      />
 
-        <Box
-          display="flex"
-          alignItems="center"
-          gap={{ base: 1.5, xl: 2 }}
-          width="fit-content"
-          maxW="calc(100vw - 32px)"
-          bg="bg.surface"
-          border="1px solid"
-          borderColor="border.default"
-          borderRadius="xl"
-          boxShadow="lg"
-          px={{ base: 2, xl: 3 }}
-          py={{ base: 1, xl: 1.5 }}
-          overflow="clip"
-          fontFamily="'Pretendard Variable', sans-serif"
-          onWheel={(event) => event.stopPropagation()}
-          onPointerDown={(event) => event.stopPropagation()}
-        >
-          <Box display="flex" alignItems="center" flexShrink={0} minW={0}>
-            <WorkflowNameField
-              disabled={isRunning || !canSaveWorkflow}
-              disabledReason={
-                canSaveWorkflow
-                  ? "실행 중에는 편집할 수 없습니다"
-                  : "공유된 워크플로우는 이름을 수정할 수 없습니다"
-              }
+      <Box
+        position="absolute"
+        bottom={{ base: "16px", xl: "24px" }}
+        left="50%"
+        transform="translateX(-50%)"
+        pointerEvents="none"
+        zIndex={4}
+        maxW="calc(100vw - 32px)"
+      >
+        <Box position="relative" pointerEvents="auto">
+          <ExecutionStatusBadge label={executionStatusLabel} />
+          <TriggerSettingsPanel
+            open={triggerSettingsOpen}
+            canEdit={canEditTrigger}
+            anchorRef={triggerButtonRef}
+            onClose={handleCloseTriggerSettings}
+          />
+
+          <Box
+            display="flex"
+            alignItems="center"
+            gap={{ base: 1.5, xl: 2 }}
+            width="fit-content"
+            maxW="calc(100vw - 32px)"
+            bg="bg.surface"
+            border="1px solid"
+            borderColor="border.default"
+            borderRadius="xl"
+            boxShadow="lg"
+            px={{ base: 2, xl: 3 }}
+            py={{ base: 1, xl: 1.5 }}
+            overflow="clip"
+            fontFamily="'Pretendard Variable', sans-serif"
+            onWheel={(event) => event.stopPropagation()}
+            onPointerDown={(event) => event.stopPropagation()}
+          >
+            {canRollback ? (
+              <RollbackActionButton
+                isPending={isRollbackPending}
+                onClick={() => void handleRollback()}
+              />
+            ) : null}
+
+            <SaveStateButton
+              isDirty={isDirty}
+              isSaving={isSavePending}
+              canSave={canSave}
+              onSave={() => void handleSave()}
+            />
+
+            <TriggerControlButton
+              ref={triggerButtonRef}
+              summary={triggerSummary}
+              active={triggerControlActive}
+              onClick={handleToggleTriggerSettings}
+            />
+
+            <RunStopSplitButton
+              isRunning={isRunning}
+              isRunPending={isExecutePending || isStarting}
+              isStopPending={isStopPending}
+              canRun={canRun}
+              canStop={canStop}
+              canOpenMenu={canOpenRunMenu}
+              onRun={() => void handleRun()}
+              onStop={() => void handleStop()}
+              onOpenMenu={handleCloseTriggerSettings}
+              onOpenTriggerSettings={handleOpenTriggerSettings}
+              onCheckBeforeRun={handleCheckBeforeRun}
             />
           </Box>
-
-          <Box flexShrink={0} width={{ base: 1, xl: 2 }} />
-
-          {canRollback ? (
-            <RollbackActionButton
-              isPending={isRollbackPending}
-              onClick={() => void handleRollback()}
-            />
-          ) : null}
-
-          <WorkflowToolMenuButton
-            isDeletePending={isDeletePending}
-            canDelete={canDelete}
-            onOpenMenu={handleCloseTriggerSettings}
-            onDelete={handleDeleteRequest}
-          />
-
-          <SaveStateButton
-            isDirty={isDirty}
-            isSaving={isSavePending}
-            canSave={canSave}
-            onSave={() => void handleSave()}
-          />
-
-          <TriggerControlButton
-            ref={triggerButtonRef}
-            summary={triggerSummary}
-            active={triggerControlActive}
-            onClick={handleToggleTriggerSettings}
-          />
-
-          <RunStopSplitButton
-            isRunning={isRunning}
-            isRunPending={isExecutePending || isStarting}
-            isStopPending={isStopPending}
-            canRun={canRun}
-            canStop={canStop}
-            canOpenMenu={canOpenRunMenu}
-            onRun={() => void handleRun()}
-            onStop={() => void handleStop()}
-            onOpenMenu={handleCloseTriggerSettings}
-            onOpenTriggerSettings={handleOpenTriggerSettings}
-            onCheckBeforeRun={handleCheckBeforeRun}
-          />
         </Box>
       </Box>
 
@@ -552,6 +542,6 @@ export const EditorRemoteBar = () => {
         onCancel={handleDeleteCancel}
         onConfirm={() => void handleDeleteConfirm()}
       />
-    </Box>
+    </>
   );
 };
