@@ -1,7 +1,6 @@
 import { type KeyboardEvent, useRef, useState } from "react";
-import { MdKeyboardArrowDown } from "react-icons/md";
 
-import { Button, Icon, Input, Text } from "@chakra-ui/react";
+import { Button, Input, Text } from "@chakra-ui/react";
 
 import { useWorkflowStore } from "@/features/workflow-editor";
 
@@ -119,7 +118,6 @@ export const WorkflowNameField = ({
       >
         {displayName}
       </Text>
-      <Icon as={MdKeyboardArrowDown} boxSize={4} color="text.secondary" />
     </Button>
   );
 };
