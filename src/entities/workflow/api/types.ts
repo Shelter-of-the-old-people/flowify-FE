@@ -1,8 +1,11 @@
 import { type PageResponse, type ValidationWarning } from "@/shared";
 
+import { type ExecutionSummary } from "../../execution/api/types";
 import { type TriggerConfig, type Workflow } from "../model";
 
 export type WorkflowListResponse = PageResponse<WorkflowResponse>;
+export type WorkflowListStatusFilter = "all" | "running" | "stopped";
+export type WorkflowListStatus = Exclude<WorkflowListStatusFilter, "all">;
 
 export interface EditorCatalogMeta {
   version: string;
@@ -294,6 +297,8 @@ export interface EdgeDefinitionResponse {
 export interface WorkflowResponse extends Omit<Workflow, "nodes" | "edges"> {
   nodes: NodeDefinitionResponse[];
   edges: EdgeDefinitionResponse[];
+  latestExecution?: ExecutionSummary | null;
+  listStatus?: WorkflowListStatus | null;
   warnings?: ValidationWarning[];
   nodeStatuses?: WorkflowNodeStatusResponse[];
 }
