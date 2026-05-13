@@ -45,7 +45,7 @@ type NodeIssueStyle = {
 };
 
 const getNodeIssueGlowGradient = (colorToken: string) =>
-  `radial-gradient(circle at center, color-mix(in srgb, ${colorToken} 34%, transparent) 0%, color-mix(in srgb, ${colorToken} 20%, transparent) 30%, color-mix(in srgb, ${colorToken} 6%, transparent) 46%, transparent 60%)`;
+  `radial-gradient(circle at center, color-mix(in srgb, ${colorToken} 42%, transparent) 0%, color-mix(in srgb, ${colorToken} 22%, transparent) 24%, color-mix(in srgb, ${colorToken} 6%, transparent) 40%, transparent 52%)`;
 
 const NODE_ISSUE_STYLES: Record<NodeVisualIssueTone, NodeIssueStyle> = {
   error: {
@@ -183,7 +183,7 @@ export const BaseNode = ({ id, data, selected, children }: BaseNodeProps) => {
         <Box
           aria-hidden="true"
           position="absolute"
-          inset="-10px -16px"
+          inset="-4px -8px"
           zIndex={0}
           borderRadius="full"
           bg={nodeIssueStyle.glowGradient}
