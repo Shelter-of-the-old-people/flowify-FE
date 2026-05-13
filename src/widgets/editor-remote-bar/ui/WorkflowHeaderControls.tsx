@@ -1,16 +1,17 @@
 import { Box } from "@chakra-ui/react";
 
-import { type WorkflowSaveStatus } from "@/features/workflow-editor";
-
-import { SaveStateIndicator } from "./SaveStateIndicator";
+import {
+  SaveStateIndicator,
+  type SaveStateIndicatorProps,
+} from "./SaveStateIndicator";
 import { WorkflowNameField } from "./WorkflowNameField";
 import { WorkflowToolMenuButton } from "./WorkflowToolMenuButton";
 
 type Props = {
   isRunning: boolean;
   canSaveWorkflow: boolean;
-  saveStatus: WorkflowSaveStatus;
-  saveErrorMessage: string | null;
+  saveStatus: SaveStateIndicatorProps["status"];
+  saveErrorMessage: SaveStateIndicatorProps["errorMessage"];
   canDelete: boolean;
   isDeletePending: boolean;
   onOpenMenu?: () => void;

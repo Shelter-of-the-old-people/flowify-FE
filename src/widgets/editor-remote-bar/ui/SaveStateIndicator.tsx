@@ -9,7 +9,7 @@ import { Box, Icon, Spinner, Text } from "@chakra-ui/react";
 
 import { type WorkflowSaveStatus } from "@/features/workflow-editor";
 
-type SaveStateIndicatorProps = {
+export type SaveStateIndicatorProps = {
   status: WorkflowSaveStatus;
   errorMessage: string | null;
   canSave: boolean;
