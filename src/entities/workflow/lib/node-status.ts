@@ -1,31 +1,48 @@
 const NODE_STATUS_FIELD_LABELS: Record<string, string> = {
   account: "계정",
   action: "액션",
+  aggregateFunction: "집계 방식",
   body_format: "본문 포맷",
   calendar_id: "캘린더",
+  calendarId: "캘린더",
   channel: "채널",
   date_range: "일정 범위",
+  dateRange: "일정 범위",
   duration_minutes: "기본 소요 시간",
+  eventService: "이벤트 서비스",
   event_title_template: "일정 제목 템플릿",
+  eventType: "이벤트 종류",
   file_format: "파일 형식",
+  field: "대상",
   filename_template: "파일명 규칙",
   folder_id: "폴더",
+  format: "형식",
   message_format: "메시지 포맷",
+  messageTemplate: "메시지 내용",
   oauth_scope_insufficient: "권한 부족",
   oauth_token: "인증 연결",
+  operation: "동작",
+  operator: "조건",
   page_id: "페이지",
+  prompt: "지시사항",
   recipient: "수신자",
   service: "서비스",
   sheet_name: "시트",
+  sortDirection: "정렬 방향",
   source_mode: "가져오는 방식",
   spreadsheet_id: "스프레드시트",
   subject: "제목",
   target: "대상",
+  targetField: "처리 대상",
   target_id: "페이지/데이터베이스",
+  targetPath: "경로",
   target_type: "저장 위치 유형",
+  targetUrl: "URL",
   title: "제목",
   title_template: "제목 템플릿",
   to: "수신자",
+  triggerType: "시작 조건",
+  value: "비교 값",
   webhook_url: "Webhook URL",
   write_mode: "저장 방식",
 };
@@ -66,11 +83,17 @@ export const getNodeStatusSummaryLabel = (status: NodeStatusSummarySource) => {
   const missingFields = status.missingFields ?? [];
   const summaryKind = getNodeStatusSummaryKind(status);
 
-  if (!summaryKind || missingFields.length === 0) {
+  if (!summaryKind) {
     return null;
   }
 
   const prefix = summaryKind === "required_config" ? "필수 설정" : "실행 조건";
+
+  if (missingFields.length === 0) {
+    return summaryKind === "required_config"
+      ? "설정 확인 필요"
+      : "실행 조건 확인 필요";
+  }
 
   return `${prefix}: ${missingFields
     .map(getNodeStatusMissingFieldLabel)

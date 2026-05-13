@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { type ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 
 import { Box, Text } from "@chakra-ui/react";
 import { Handle, Position } from "@xyflow/react";
@@ -7,7 +6,7 @@ import { Handle, Position } from "@xyflow/react";
 import { getNodeStatusSummaryLabel } from "@/entities/workflow";
 import { ServiceIcon } from "@/shared";
 
-import { getNodePresentation } from "../model";
+import { getNodePresentation, getNodeSummaryLines } from "../model";
 import { type FlowNodeData } from "../model/types";
 
 import { useNodeEditorContext } from "./NodeEditorContext";
@@ -38,13 +37,26 @@ const ROUTING_SOURCE_HANDLE_IDS = [
 
 const getSummaryContent = (
   helperText: string | null,
+  summaryLines: string[],
   children?: ReactNode,
 ): ReactNode => {
   if (helperText) {
     return helperText;
   }
 
-  return children ?? null;
+  if (children) {
+    return children;
+  }
+
+  if (summaryLines.length === 0) {
+    return null;
+  }
+
+  return summaryLines.map((line) => (
+    <Text key={line} as="span" display="block">
+      {line}
+    </Text>
+  ));
 };
 
 const getNodeServiceKey = (data: FlowNodeData) => {
@@ -82,8 +94,10 @@ export const BaseNode = ({ id, data, selected, children }: BaseNodeProps) => {
   const nodeStatusSummary = nodeStatus
     ? getNodeStatusSummaryLabel(nodeStatus)
     : null;
+  const nodeSummaryLines = getNodeSummaryLines(data);
   const summaryContent = getSummaryContent(
     nodeStatusSummary ?? presentation.helperText,
+    nodeSummaryLines,
     children,
   );
   const showNodeIcon = nodeStatus?.configured ?? data.config.isConfigured;
