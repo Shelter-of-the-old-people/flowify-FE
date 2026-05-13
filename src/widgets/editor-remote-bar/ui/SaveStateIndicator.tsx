@@ -16,7 +16,7 @@ export type SaveStateIndicatorProps = {
   canSave: boolean;
 };
 
-const SAVED_STATUS_VISIBLE_MS = 1600;
+const SAVED_STATUS_VISIBLE_MS = 3000;
 
 const getSaveStateText = (
   status: WorkflowSaveStatus,
