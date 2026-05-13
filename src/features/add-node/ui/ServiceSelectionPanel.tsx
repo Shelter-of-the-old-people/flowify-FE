@@ -624,6 +624,7 @@ export const ServiceSelectionPanel = () => {
   const setActivePlaceholder = useWorkflowStore(
     (state) => state.setActivePlaceholder,
   );
+  const openPanel = useWorkflowStore((state) => state.openPanel);
   const { mutateAsync: addWorkflowNode, isPending: isAddNodePending } =
     useAddWorkflowNodeMutation();
   const { mutateAsync: connectOAuthToken, isPending: isConnectOAuthPending } =
@@ -1025,6 +1026,7 @@ export const ServiceSelectionPanel = () => {
 
       syncWorkflowFromResponse(nextWorkflow);
       resetWizard();
+      openPanel(addedNodeId, { mode: "edit" });
     })();
   };
 
@@ -1101,6 +1103,7 @@ export const ServiceSelectionPanel = () => {
   return (
     <Box
       inset={0}
+      pointerEvents={isEndPlaceholder ? "none" : "auto"}
       position="absolute"
       ref={overlayRef}
       zIndex={20}
@@ -1109,6 +1112,7 @@ export const ServiceSelectionPanel = () => {
       <Box
         left={0}
         onClick={(event) => event.stopPropagation()}
+        pointerEvents="auto"
         position="absolute"
         ref={wrapperRef}
         top={0}
