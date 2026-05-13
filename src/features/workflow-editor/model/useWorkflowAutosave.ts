@@ -78,7 +78,9 @@ export const useWorkflowAutosave = ({
   const delayTimerRef = useRef<number | null>(null);
   const maxWaitTimerRef = useRef<number | null>(null);
   const savePromiseRef = useRef<Promise<WorkflowResponse | null> | null>(null);
-  const runSaveRef = useRef<() => Promise<WorkflowResponse | null>>();
+  const runSaveRef = useRef<(() => Promise<WorkflowResponse | null>) | null>(
+    null,
+  );
 
   const clearAutosaveTimers = useCallback(() => {
     if (delayTimerRef.current !== null) {
