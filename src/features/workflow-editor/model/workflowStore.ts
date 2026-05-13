@@ -64,6 +64,7 @@ interface WorkflowEditorState {
   editorCapabilities: WorkflowEditorCapabilities;
   unsavedNodePositions: Record<string, NodePosition>;
   isDirty: boolean;
+  dirtyRevision: number;
   _isSyncing: boolean;
 }
 
@@ -101,6 +102,7 @@ interface WorkflowEditorActions {
   ) => void;
   clearUnsavedNodePositions: (nodeIds?: string[]) => void;
   markClean: () => void;
+  markCleanIfUnchanged: (dirtyRevision: number) => void;
   resetEditor: () => void;
 }
 
@@ -126,7 +128,13 @@ const initialState: WorkflowEditorState = {
   },
   unsavedNodePositions: {},
   isDirty: false,
+  dirtyRevision: 0,
   _isSyncing: false,
+};
+
+const markDirty = (state: { dirtyRevision: number; isDirty: boolean }) => {
+  state.isDirty = true;
+  state.dirtyRevision += 1;
 };
 
 const hasNode = (
@@ -189,7 +197,7 @@ export const useWorkflowStore = create<
             (change) => change.type === "position" || change.type === "replace",
           );
           if (hasDirtyChange) {
-            state.isDirty = true;
+            markDirty(state);
           }
         }
       }),
@@ -203,7 +211,7 @@ export const useWorkflowStore = create<
             (change) => change.type === "remove" || change.type === "replace",
           );
           if (hasDirtyChange) {
-            state.isDirty = true;
+            markDirty(state);
           }
         }
       }),
@@ -212,7 +220,7 @@ export const useWorkflowStore = create<
       set((state) => {
         state.edges = addEdge(connection, current(state.edges));
         if (!state._isSyncing) {
-          state.isDirty = true;
+          markDirty(state);
         }
       }),
 
@@ -233,7 +241,7 @@ export const useWorkflowStore = create<
         } as FlowNodeData["config"];
 
         if (!state._isSyncing) {
-          state.isDirty = true;
+          markDirty(state);
         }
       }),
 
@@ -245,7 +253,7 @@ export const useWorkflowStore = create<
         node.data.config = config;
 
         if (!state._isSyncing) {
-          state.isDirty = true;
+          markDirty(state);
         }
       }),
 
@@ -270,7 +278,7 @@ export const useWorkflowStore = create<
       set((state) => {
         state.startNodeId = id;
         if (!state._isSyncing) {
-          state.isDirty = true;
+          markDirty(state);
         }
       }),
 
@@ -279,7 +287,7 @@ export const useWorkflowStore = create<
         state.endNodeIds = [...ids];
         state.endNodeId = ids[0] ?? null;
         if (!state._isSyncing) {
-          state.isDirty = true;
+          markDirty(state);
         }
       }),
 
@@ -288,7 +296,7 @@ export const useWorkflowStore = create<
         state.endNodeIds = id ? [id] : [];
         state.endNodeId = id;
         if (!state._isSyncing) {
-          state.isDirty = true;
+          markDirty(state);
         }
       }),
 
@@ -328,7 +336,7 @@ export const useWorkflowStore = create<
         });
 
         if (!state._isSyncing) {
-          state.isDirty = true;
+          markDirty(state);
         }
       }),
 
@@ -342,7 +350,7 @@ export const useWorkflowStore = create<
       set((state) => {
         state.workflowTrigger = trigger;
         state.workflowActive = active;
-        state.isDirty = true;
+        markDirty(state);
       }),
 
     hydrateWorkflow: (payload) =>
@@ -362,6 +370,7 @@ export const useWorkflowStore = create<
         state.activePlaceholder = null;
         state.unsavedNodePositions = {};
         state.isDirty = false;
+        state.dirtyRevision = 0;
         state._isSyncing = false;
       }),
 
@@ -412,13 +421,14 @@ export const useWorkflowStore = create<
           state.activePlaceholder = null;
         }
         state.isDirty = preserveDirty ? state.isDirty : false;
+        state.dirtyRevision = preserveDirty ? state.dirtyRevision : 0;
         state._isSyncing = false;
       }),
 
     setWorkflowName: (name) =>
       set((state) => {
         state.workflowName = name;
-        state.isDirty = true;
+        markDirty(state);
       }),
 
     setEditorCapabilities: (capabilities) =>
@@ -440,6 +450,16 @@ export const useWorkflowStore = create<
 
     markClean: () =>
       set((state) => {
+        state.unsavedNodePositions = {};
+        state.isDirty = false;
+      }),
+
+    markCleanIfUnchanged: (dirtyRevision) =>
+      set((state) => {
+        if (state.dirtyRevision !== dirtyRevision) {
+          return;
+        }
+
         state.unsavedNodePositions = {};
         state.isDirty = false;
       }),
