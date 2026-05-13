@@ -4,6 +4,7 @@ import { type MutationPolicyOptions, toMutationMeta } from "@/shared/api";
 
 import { type NodeAddRequest, workflowApi } from "../api";
 
+import { workflowMutationKeys } from "./mutation-keys";
 import {
   getWorkflowDetailOrFallback,
   syncWorkflowCache,
@@ -21,6 +22,7 @@ export const useAddWorkflowNodeMutation = (
   >,
 ) =>
   useMutation({
+    mutationKey: workflowMutationKeys.structure,
     mutationFn: async ({ workflowId, body }: AddWorkflowNodeVariables) => {
       const workflow = await workflowApi.addNode(workflowId, body);
       return getWorkflowDetailOrFallback(workflowId, workflow);

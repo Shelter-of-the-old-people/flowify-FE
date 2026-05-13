@@ -4,6 +4,7 @@ import {
   getWorkflowDetailOrFallback,
   syncWorkflowCache,
   workflowApi,
+  workflowMutationKeys,
 } from "@/entities/workflow";
 import { type MutationPolicyOptions, toMutationMeta } from "@/shared/api";
 
@@ -14,6 +15,7 @@ import { useWorkflowStore } from "./workflowStore";
 type SaveWorkflowVariables = {
   workflowId: string;
   store: WorkflowEditorSaveState;
+  dirtyRevision: number;
 };
 
 export const useSaveWorkflowMutation = (
@@ -23,6 +25,7 @@ export const useSaveWorkflowMutation = (
   >,
 ) =>
   useMutation({
+    mutationKey: workflowMutationKeys.save,
     mutationFn: async ({ workflowId, store }: SaveWorkflowVariables) => {
       const workflow = await workflowApi.update(
         workflowId,
@@ -34,7 +37,7 @@ export const useSaveWorkflowMutation = (
     meta: toMutationMeta(options),
     onSuccess: async (workflow, variables, onMutateResult, context) => {
       await syncWorkflowCache(workflow);
-      useWorkflowStore.getState().markClean();
+      useWorkflowStore.getState().markCleanIfUnchanged(variables.dirtyRevision);
       await options?.onSuccess?.(workflow, variables, onMutateResult, context);
     },
     onError: async (error, variables, onMutateResult, context) => {
