@@ -3,6 +3,7 @@ import { type ReactNode } from "react";
 import { Box, Link, Text } from "@chakra-ui/react";
 
 import { getDataTypeDisplayLabel } from "@/entities";
+import { getSpreadsheetPreviewSummary } from "../model/spreadsheet-preview";
 
 type Props = {
   title?: string;
@@ -382,6 +383,11 @@ const SpreadsheetPreview = ({ data }: { data: DataRecord }) => {
         .map((row) => row.map((cell) => String(cell ?? "")))
     : [];
   const previewRows = rows.slice(0, MAX_TABLE_ROW_COUNT);
+  const previewSummary = getSpreadsheetPreviewSummary({
+    data,
+    displayedRowCount: previewRows.length,
+    rowCount: rows.length,
+  });
   const columnCount = Math.max(
     headers.length,
     ...previewRows.map((row) => row.length),
@@ -395,7 +401,7 @@ const SpreadsheetPreview = ({ data }: { data: DataRecord }) => {
   return (
     <Box display="flex" flexDirection="column" gap={3}>
       <SummaryCard
-        title={`${rows.length}개 행`}
+        title={`${previewSummary.totalRows}개 행`}
         description={
           getString(data.sheet_name)
             ? `시트: ${getString(data.sheet_name)}`
@@ -451,10 +457,9 @@ const SpreadsheetPreview = ({ data }: { data: DataRecord }) => {
           </Box>
         </Box>
       </Box>
-      {rows.length > previewRows.length ? (
+      {previewSummary.omittedCount > 0 ? (
         <Text fontSize="xs" color="text.secondary">
-          외 {rows.length - previewRows.length}개 행은 미리보기에서
-          생략되었습니다.
+          외 {previewSummary.omittedCount}개 행은 미리보기에서 생략되었습니다.
         </Text>
       ) : null}
     </Box>
