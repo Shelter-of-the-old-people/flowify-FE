@@ -1,6 +1,7 @@
 import { type ReactNode, useState } from "react";
+import { MdErrorOutline, MdWarningAmber } from "react-icons/md";
 
-import { Box, Text } from "@chakra-ui/react";
+import { Box, Icon, Text } from "@chakra-ui/react";
 import { Handle, Position } from "@xyflow/react";
 
 import { getNodeStatusSummaryLabel } from "@/entities/workflow";
@@ -40,23 +41,28 @@ const ROUTING_SOURCE_HANDLE_IDS = [
 ];
 
 type NodeIssueStyle = {
-  glowGradient: string;
-  summaryColor: string;
+  iconColor: string;
+  iconShadow: string;
 };
 
-const getNodeIssueGlowGradient = (colorToken: string) =>
-  `radial-gradient(circle at center, color-mix(in srgb, ${colorToken} 48%, transparent) 0%, color-mix(in srgb, ${colorToken} 30%, transparent) 28%, color-mix(in srgb, ${colorToken} 12%, transparent) 44%, transparent 58%)`;
+const getNodeIssueIconShadow = (colorToken: string) =>
+  `drop-shadow(0 0 8px color-mix(in srgb, ${colorToken} 52%, transparent)) drop-shadow(0 0 20px color-mix(in srgb, ${colorToken} 28%, transparent))`;
 
 const NODE_ISSUE_STYLES: Record<NodeVisualIssueTone, NodeIssueStyle> = {
   error: {
-    glowGradient: getNodeIssueGlowGradient("var(--sd-colors-status-error)"),
-    summaryColor: "status.error",
+    iconColor: "status.error",
+    iconShadow: getNodeIssueIconShadow("var(--sd-colors-status-error)"),
   },
   warning: {
-    glowGradient: getNodeIssueGlowGradient("var(--sd-colors-status-warning)"),
-    summaryColor: "status.warning",
+    iconColor: "yellow.400",
+    iconShadow: getNodeIssueIconShadow("var(--sd-colors-yellow-400)"),
   },
 };
+
+const NODE_ISSUE_ICON = {
+  error: MdErrorOutline,
+  warning: MdWarningAmber,
+} satisfies Record<NodeVisualIssueTone, typeof MdErrorOutline>;
 
 const getSummaryContent = (
   helperText: string | null,
@@ -197,23 +203,12 @@ export const BaseNode = ({ id, data, selected, children }: BaseNodeProps) => {
         alignItems="center"
         justifyContent="center"
       >
-        {nodeIssueStyle ? (
-          <Box
-            aria-hidden="true"
-            position="absolute"
-            top="50%"
-            left="50%"
-            zIndex={0}
-            width="104px"
-            height="104px"
-            borderRadius="full"
-            bg={nodeIssueStyle.glowGradient}
-            pointerEvents="none"
-            transform="translate(-50%, -50%)"
-          />
-        ) : null}
-
-        <Box position="relative" zIndex={1}>
+        <Box
+          position="relative"
+          zIndex={1}
+          filter={nodeIssueStyle?.iconShadow ?? "none"}
+          transition="filter 150ms ease"
+        >
           {renderNodeIcon()}
         </Box>
       </Box>
@@ -234,13 +229,25 @@ export const BaseNode = ({ id, data, selected, children }: BaseNodeProps) => {
         <Box
           position="relative"
           zIndex={1}
+          display={nodeVisualIssue ? "flex" : "block"}
+          alignItems="center"
+          justifyContent="center"
+          gap={1}
           width="100%"
           fontSize="xs"
-          color={nodeIssueStyle?.summaryColor ?? "text.secondary"}
+          color="text.secondary"
           textAlign="center"
           lineHeight="short"
           fontWeight={nodeIssueStyle ? "semibold" : "medium"}
         >
+          {nodeVisualIssue && nodeIssueStyle ? (
+            <Icon
+              as={NODE_ISSUE_ICON[nodeVisualIssue.tone]}
+              boxSize="14px"
+              color={nodeIssueStyle.iconColor}
+              flexShrink={0}
+            />
+          ) : null}
           {summaryContent}
         </Box>
       ) : null}
