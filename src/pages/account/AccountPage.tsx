@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 
 import {
@@ -13,15 +13,24 @@ import {
 } from "@chakra-ui/react";
 
 import {
+  type ManualTokenSupportedService,
   type OAuthConnectionTone,
+  type OAuthTokenSummary,
   getOAuthConnectionUiState,
+  getServiceConnectionKind,
+  isManualTokenSupported,
   isOAuthConnectSupported,
   useConnectOAuthTokenMutation,
   useDisconnectOAuthTokenMutation,
   useOAuthTokensQuery,
   useSinkCatalogQuery,
   useSourceCatalogQuery,
+  useUpsertManualTokenMutation,
 } from "@/entities";
+import {
+  ServiceTokenDialog,
+  ServiceTokenHelpDialog,
+} from "@/features/service-token";
 import {
   ROUTE_PATHS,
   getAuthUser,
@@ -29,9 +38,33 @@ import {
   storeOAuthConnectReturnPath,
 } from "@/shared";
 
-type OAuthServiceItem = {
+type ManagedServiceItem = {
   key: string;
   label: string;
+  kind: ReturnType<typeof getServiceConnectionKind>;
+};
+
+type CatalogServiceSummary = {
+  key: string;
+  label: string;
+  auth_required: boolean;
+};
+
+type ManualTokenCardState = {
+  label: string;
+  description: string;
+  badgeLabel: string;
+  tone: OAuthConnectionTone;
+  actionLabel: string;
+};
+
+const DEFAULT_SERVICE_LABELS: Record<string, string> = {
+  slack: "Slack",
+  gmail: "Gmail",
+  google_drive: "Google Drive",
+  notion: "Notion",
+  github: "GitHub",
+  canvas_lms: "Canvas LMS",
 };
 
 const CONNECTION_TONE_STYLES: Record<
@@ -60,6 +93,139 @@ const CONNECTION_TONE_STYLES: Record<
   },
 };
 
+const formatDateTime = (value: string | null | undefined) =>
+  value ? new Date(value).toLocaleString() : "-";
+
+const isManagedAccountService = (serviceKey: string) =>
+  isOAuthConnectSupported(serviceKey) || isManualTokenSupported(serviceKey);
+
+const toManualTokenServiceKey = (
+  serviceKey: string,
+): ManualTokenSupportedService | null => {
+  if (!isManualTokenSupported(serviceKey)) {
+    return null;
+  }
+
+  return serviceKey as ManualTokenSupportedService;
+};
+
+const buildManagedServices = (
+  sourceServices: CatalogServiceSummary[] | undefined,
+  sinkServices: CatalogServiceSummary[] | undefined,
+): ManagedServiceItem[] => {
+  const serviceMap = new Map<string, ManagedServiceItem>();
+
+  for (const service of [...(sourceServices ?? []), ...(sinkServices ?? [])]) {
+    if (
+      !service.auth_required ||
+      service.key === "google_sheets" ||
+      !isManagedAccountService(service.key)
+    ) {
+      continue;
+    }
+
+    serviceMap.set(service.key, {
+      key: service.key,
+      label: service.label,
+      kind: getServiceConnectionKind(service.key),
+    });
+  }
+
+  for (const [serviceKey, label] of Object.entries(DEFAULT_SERVICE_LABELS)) {
+    if (!isManagedAccountService(serviceKey) || serviceMap.has(serviceKey)) {
+      continue;
+    }
+
+    serviceMap.set(serviceKey, {
+      key: serviceKey,
+      label,
+      kind: getServiceConnectionKind(serviceKey),
+    });
+  }
+
+  return Array.from(serviceMap.values()).sort((left, right) =>
+    left.label.localeCompare(right.label),
+  );
+};
+
+const getManualTokenCardState = (
+  token: OAuthTokenSummary | undefined,
+): ManualTokenCardState => {
+  if (token?.connected) {
+    return {
+      label: "연결 완료",
+      description: "검증된 토큰으로 바로 사용할 수 있습니다.",
+      badgeLabel: "CONNECTED",
+      tone: "success",
+      actionLabel: "토큰 갱신",
+    };
+  }
+
+  if (token?.validationStatus === "scope_insufficient") {
+    return {
+      label: "권한 부족",
+      description:
+        token.reason?.trim() ??
+        "현재 저장된 토큰의 권한이 부족해 다시 입력이 필요합니다.",
+      badgeLabel: "SCOPE REQUIRED",
+      tone: "warning",
+      actionLabel: "토큰 다시 입력",
+    };
+  }
+
+  if (token?.validationStatus === "invalid") {
+    return {
+      label: "검증 실패",
+      description:
+        token.reason?.trim() ?? "현재 저장된 토큰이 유효하지 않습니다.",
+      badgeLabel: "INVALID TOKEN",
+      tone: "error",
+      actionLabel: "토큰 다시 입력",
+    };
+  }
+
+  if (token?.reason?.trim()) {
+    return {
+      label: "상태 확인 필요",
+      description: token.reason.trim(),
+      badgeLabel: "CHECK NEEDED",
+      tone: "warning",
+      actionLabel: "토큰 다시 입력",
+    };
+  }
+
+  return {
+    label: "토큰 입력 필요",
+    description: "계정 페이지에서 토큰을 직접 입력해 연결합니다.",
+    badgeLabel: "TOKEN REQUIRED",
+    tone: "neutral",
+    actionLabel: "토큰 입력",
+  };
+};
+
+const getManualTokenAccountSummary = (token: OAuthTokenSummary | undefined) => {
+  const labels = [token?.accountLabel?.trim(), token?.accountEmail?.trim()]
+    .filter(Boolean)
+    .join(" / ");
+
+  return labels || "-";
+};
+
+const getManualTokenValidationLabel = (
+  token: OAuthTokenSummary | undefined,
+) => {
+  switch (token?.validationStatus) {
+    case "valid":
+      return "검증 완료";
+    case "invalid":
+      return "유효하지 않은 토큰";
+    case "scope_insufficient":
+      return "권한 부족";
+    default:
+      return token?.connected ? "연결 완료" : "확인 필요";
+  }
+};
+
 export default function AccountPage() {
   const navigate = useNavigate();
   const authUser = getAuthUser();
@@ -85,38 +251,51 @@ export default function AccountPage() {
     useConnectOAuthTokenMutation();
   const { mutateAsync: disconnectToken, isPending: isDisconnectPending } =
     useDisconnectOAuthTokenMutation();
+  const { mutateAsync: upsertManualToken, isPending: isManualTokenPending } =
+    useUpsertManualTokenMutation({
+      showErrorToast: false,
+    });
+
+  const [pendingServiceKey, setPendingServiceKey] = useState<string | null>(
+    null,
+  );
+  const [selectedManualServiceKey, setSelectedManualServiceKey] =
+    useState<ManualTokenSupportedService | null>(null);
+  const [selectedManualServiceLabel, setSelectedManualServiceLabel] =
+    useState("");
+  const [manualDialogErrorMessage, setManualDialogErrorMessage] = useState<
+    string | null
+  >(null);
+  const [isTokenDialogOpen, setIsTokenDialogOpen] = useState(false);
+  const [isHelpDialogOpen, setIsHelpDialogOpen] = useState(false);
 
   const tokenMap = useMemo(
     () => new Map((tokens ?? []).map((token) => [token.service, token])),
     [tokens],
   );
-  const oauthServices = useMemo(() => {
-    const serviceMap = new Map<string, OAuthServiceItem>();
-
-    for (const service of [
-      ...(sourceCatalog?.services ?? []),
-      ...(sinkCatalog?.services ?? []),
-    ]) {
-      if (!service.auth_required) {
-        continue;
-      }
-
-      serviceMap.set(service.key, {
-        key: service.key,
-        label: service.label,
-      });
-    }
-
-    return Array.from(serviceMap.values()).sort((left, right) =>
-      left.label.localeCompare(right.label),
-    );
-  }, [sinkCatalog?.services, sourceCatalog?.services]);
+  const managedServices = useMemo(
+    () => buildManagedServices(sourceCatalog?.services, sinkCatalog?.services),
+    [sinkCatalog?.services, sourceCatalog?.services],
+  );
+  const oauthServices = useMemo(
+    () =>
+      managedServices.filter((service) => service.kind === "oauth_redirect"),
+    [managedServices],
+  );
+  const manualServices = useMemo(
+    () => managedServices.filter((service) => service.kind === "manual_token"),
+    [managedServices],
+  );
+  const selectedManualToken = selectedManualServiceKey
+    ? tokenMap.get(selectedManualServiceKey)
+    : undefined;
   const isCatalogLoading = isSourceCatalogLoading || isSinkCatalogLoading;
   const isConnectionSectionLoading =
     isOAuthTokensLoading ||
     isCatalogLoading ||
     isConnectPending ||
-    isDisconnectPending;
+    isDisconnectPending ||
+    isManualTokenPending;
   const isConnectionSectionError =
     isOAuthTokensError || isSourceCatalogError || isSinkCatalogError;
 
@@ -124,6 +303,8 @@ export default function AccountPage() {
     if (!isOAuthConnectSupported(service)) {
       return;
     }
+
+    setPendingServiceKey(service);
 
     try {
       const result = await connectToken(service);
@@ -135,16 +316,69 @@ export default function AccountPage() {
 
       await refetchOAuthTokens();
     } catch {
-      // 화면의 기본 상태 문구로 충분히 안내한다.
+      // 카드 상태를 유지하고 현재 문구로 안내한다.
+    } finally {
+      setPendingServiceKey(null);
     }
   };
 
   const handleDisconnect = async (service: string) => {
+    setPendingServiceKey(service);
+
     try {
       await disconnectToken(service);
       await refetchOAuthTokens();
     } catch {
-      // 화면의 기본 상태 문구로 충분히 안내한다.
+      // 카드 상태를 유지하고 현재 문구로 안내한다.
+    } finally {
+      setPendingServiceKey(null);
+    }
+  };
+
+  const openManualTokenDialog = (service: ManagedServiceItem) => {
+    const manualServiceKey = toManualTokenServiceKey(service.key);
+    if (!manualServiceKey) {
+      return;
+    }
+
+    setSelectedManualServiceKey(manualServiceKey);
+    setSelectedManualServiceLabel(service.label);
+    setManualDialogErrorMessage(null);
+    setIsTokenDialogOpen(true);
+  };
+
+  const openManualHelpDialog = (service: ManagedServiceItem) => {
+    const manualServiceKey = toManualTokenServiceKey(service.key);
+    if (!manualServiceKey) {
+      return;
+    }
+
+    setSelectedManualServiceKey(manualServiceKey);
+    setSelectedManualServiceLabel(service.label);
+    setIsHelpDialogOpen(true);
+  };
+
+  const handleSubmitManualToken = async (accessToken: string) => {
+    if (!selectedManualServiceKey) {
+      return;
+    }
+
+    setPendingServiceKey(selectedManualServiceKey);
+
+    try {
+      setManualDialogErrorMessage(null);
+      await upsertManualToken({
+        service: selectedManualServiceKey,
+        accessToken,
+      });
+      await refetchOAuthTokens();
+      setIsTokenDialogOpen(false);
+    } catch (error) {
+      setManualDialogErrorMessage(
+        error instanceof Error ? error.message : "토큰을 저장하지 못했습니다.",
+      );
+    } finally {
+      setPendingServiceKey(null);
     }
   };
 
@@ -186,7 +420,7 @@ export default function AccountPage() {
             {authUser?.name ?? "로그인 사용자"}
           </Heading>
           <Text color="gray.600" mb={6}>
-            {authUser?.email ?? "저장된 사용자 정보가 없습니다."}
+            {authUser?.email ?? "표시할 사용자 정보가 없습니다."}
           </Text>
 
           <VStack align="stretch" gap={3}>
@@ -223,7 +457,7 @@ export default function AccountPage() {
             QUICK LINKS
           </Text>
           <Heading size="md" mb={4}>
-            자주 쓰는 화면
+            자주 여는 화면
           </Heading>
           <VStack align="stretch" gap={3}>
             <Button
@@ -263,13 +497,14 @@ export default function AccountPage() {
         <HStack justify="space-between" align="flex-start" mb={6}>
           <Box>
             <Text fontSize="sm" fontWeight="semibold" color="gray.500" mb={2}>
-              OAUTH CONNECTIONS
+              EXTERNAL SERVICES
             </Text>
             <Heading size="md" mb={2}>
               외부 서비스 연결
             </Heading>
             <Text color="gray.600">
-              서비스별 연결 상태를 확인하고 다시 연결하거나 해제할 수 있습니다.
+              OAuth 서비스와 직접 토큰을 넣는 서비스를 같은 화면에서 관리할 수
+              있습니다.
             </Text>
           </Box>
           {isConnectionSectionLoading ? <Spinner size="sm" /> : null}
@@ -287,88 +522,229 @@ export default function AccountPage() {
             </Button>
           </VStack>
         ) : (
-          <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>
-            {oauthServices.map((service) => {
-              const token = tokenMap.get(service.key);
-              const connected = token?.connected ?? false;
-              const authState = getOAuthConnectionUiState({
-                authRequired: true,
-                connected,
-                serviceKey: service.key,
-              });
-              const toneStyle = CONNECTION_TONE_STYLES[authState.tone];
-
-              return (
-                <Box
-                  key={service.key}
-                  p={5}
-                  border="1px solid"
-                  borderColor={toneStyle.borderColor}
-                  borderRadius="20px"
-                  bg={toneStyle.bg}
-                >
-                  <HStack justify="space-between" align="flex-start" mb={3}>
-                    <Box>
-                      <Heading size="sm" mb={1}>
-                        {service.label}
-                      </Heading>
-                      <Text fontSize="sm" color="gray.600">
-                        {authState.label}
-                      </Text>
-                      <Text fontSize="xs" color="gray.500" mt={1}>
-                        {authState.description}
-                      </Text>
-                    </Box>
-                    <Text
-                      fontSize="xs"
-                      fontWeight="semibold"
-                      color={toneStyle.badgeColor}
-                    >
-                      {authState.badgeLabel}
-                    </Text>
-                  </HStack>
-
-                  <VStack align="stretch" gap={2} mb={4}>
-                    <Text fontSize="sm" color="gray.600">
-                      계정 {token?.accountEmail ?? "-"}
-                    </Text>
-                    <Text fontSize="sm" color="gray.600">
-                      만료{" "}
-                      {token?.expiresAt
-                        ? new Date(token.expiresAt).toLocaleString()
-                        : "-"}
-                    </Text>
-                  </VStack>
-
-                  {connected ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => void handleDisconnect(service.key)}
-                      disabled={isDisconnectPending}
-                    >
-                      연결 해제
-                    </Button>
-                  ) : (
-                    <Button
-                      size="sm"
-                      onClick={() => void handleConnect(service.key)}
-                      disabled={isConnectPending || !authState.canStartConnect}
-                    >
-                      {authState.actionLabel}
-                    </Button>
-                  )}
-                </Box>
-              );
-            })}
-            {oauthServices.length === 0 && !isCatalogLoading ? (
-              <Text color="gray.600" fontSize="sm">
-                연결 가능한 외부 서비스가 없습니다.
+          <VStack align="stretch" gap={8}>
+            <Box>
+              <Text fontSize="sm" fontWeight="semibold" color="gray.500" mb={2}>
+                OAUTH REDIRECT
               </Text>
-            ) : null}
-          </SimpleGrid>
+              <Heading size="sm" mb={2}>
+                바로 인증해 연결하는 서비스
+              </Heading>
+              <Text color="gray.600" fontSize="sm" mb={4}>
+                Gmail, Google Drive, Slack은 OAuth 인증으로 바로 연결합니다.
+              </Text>
+
+              <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>
+                {oauthServices.map((service) => {
+                  const token = tokenMap.get(service.key);
+                  const connected = token?.connected ?? false;
+                  const authState = getOAuthConnectionUiState({
+                    authRequired: true,
+                    connected,
+                    serviceKey: service.key,
+                  });
+                  const toneStyle = CONNECTION_TONE_STYLES[authState.tone];
+                  const isPending =
+                    pendingServiceKey === service.key &&
+                    (isConnectPending || isDisconnectPending);
+
+                  return (
+                    <Box
+                      key={service.key}
+                      p={5}
+                      border="1px solid"
+                      borderColor={toneStyle.borderColor}
+                      borderRadius="20px"
+                      bg={toneStyle.bg}
+                    >
+                      <HStack justify="space-between" align="flex-start" mb={3}>
+                        <Box>
+                          <Heading size="sm" mb={1}>
+                            {service.label}
+                          </Heading>
+                          <Text fontSize="sm" color="gray.600">
+                            {authState.label}
+                          </Text>
+                          <Text fontSize="xs" color="gray.500" mt={1}>
+                            {authState.description}
+                          </Text>
+                        </Box>
+                        <Text
+                          fontSize="xs"
+                          fontWeight="semibold"
+                          color={toneStyle.badgeColor}
+                        >
+                          {authState.badgeLabel}
+                        </Text>
+                      </HStack>
+
+                      <VStack align="stretch" gap={2} mb={4}>
+                        <Text fontSize="sm" color="gray.600">
+                          연결 계정 {token?.accountEmail ?? "-"}
+                        </Text>
+                        <Text fontSize="sm" color="gray.600">
+                          만료 {formatDateTime(token?.expiresAt)}
+                        </Text>
+                      </VStack>
+
+                      {connected ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => void handleDisconnect(service.key)}
+                          disabled={isDisconnectPending}
+                          loading={isPending && isDisconnectPending}
+                        >
+                          연결 해제
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          onClick={() => void handleConnect(service.key)}
+                          disabled={
+                            isConnectPending || !authState.canStartConnect
+                          }
+                          loading={isPending && isConnectPending}
+                        >
+                          {authState.actionLabel}
+                        </Button>
+                      )}
+                    </Box>
+                  );
+                })}
+              </SimpleGrid>
+            </Box>
+
+            <Box borderTop="1px solid" borderColor="gray.100" pt={8}>
+              <Text fontSize="sm" fontWeight="semibold" color="gray.500" mb={2}>
+                MANUAL TOKENS
+              </Text>
+              <Heading size="sm" mb={2}>
+                직접 발급한 토큰을 저장하는 서비스
+              </Heading>
+              <Text color="gray.600" fontSize="sm" mb={4}>
+                Notion, GitHub, Canvas LMS는 계정 페이지에서 토큰을 직접 저장한
+                뒤 사용합니다.
+              </Text>
+
+              <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>
+                {manualServices.map((service) => {
+                  const token = tokenMap.get(service.key);
+                  const state = getManualTokenCardState(token);
+                  const toneStyle = CONNECTION_TONE_STYLES[state.tone];
+                  const canDisconnect =
+                    Boolean(token) && token?.disconnectable !== false;
+                  const isDisconnectLoading =
+                    pendingServiceKey === service.key && isDisconnectPending;
+
+                  return (
+                    <Box
+                      key={service.key}
+                      p={5}
+                      border="1px solid"
+                      borderColor={toneStyle.borderColor}
+                      borderRadius="20px"
+                      bg={toneStyle.bg}
+                    >
+                      <HStack justify="space-between" align="flex-start" mb={3}>
+                        <Box>
+                          <Heading size="sm" mb={1}>
+                            {service.label}
+                          </Heading>
+                          <Text fontSize="sm" color="gray.600">
+                            {state.label}
+                          </Text>
+                          <Text fontSize="xs" color="gray.500" mt={1}>
+                            {state.description}
+                          </Text>
+                        </Box>
+                        <Text
+                          fontSize="xs"
+                          fontWeight="semibold"
+                          color={toneStyle.badgeColor}
+                        >
+                          {state.badgeLabel}
+                        </Text>
+                      </HStack>
+
+                      <VStack align="stretch" gap={2} mb={4}>
+                        <Text fontSize="sm" color="gray.600">
+                          연결 방식 토큰 직접 입력
+                        </Text>
+                        <Text fontSize="sm" color="gray.600">
+                          연결 계정 {getManualTokenAccountSummary(token)}
+                        </Text>
+                        <Text fontSize="sm" color="gray.600">
+                          저장된 토큰 {token?.maskedHint ?? "-"}
+                        </Text>
+                        <Text fontSize="sm" color="gray.600">
+                          최근 저장 {formatDateTime(token?.updatedAt)}
+                        </Text>
+                        <Text fontSize="sm" color="gray.600">
+                          검증 상태 {getManualTokenValidationLabel(token)}
+                        </Text>
+                      </VStack>
+
+                      <HStack wrap="wrap" gap={2}>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => openManualHelpDialog(service)}
+                        >
+                          발급 가이드
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => openManualTokenDialog(service)}
+                        >
+                          {state.actionLabel}
+                        </Button>
+                        {canDisconnect ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => void handleDisconnect(service.key)}
+                            disabled={isDisconnectPending}
+                            loading={isDisconnectLoading}
+                          >
+                            연결 해제
+                          </Button>
+                        ) : null}
+                      </HStack>
+                    </Box>
+                  );
+                })}
+              </SimpleGrid>
+            </Box>
+          </VStack>
         )}
       </Box>
+
+      <ServiceTokenDialog
+        key={`${selectedManualServiceKey ?? "none"}:${isTokenDialogOpen ? "open" : "closed"}`}
+        open={isTokenDialogOpen}
+        serviceKey={selectedManualServiceKey}
+        serviceLabel={selectedManualServiceLabel}
+        isConnected={Boolean(selectedManualToken?.connected)}
+        isPending={isManualTokenPending}
+        errorMessage={manualDialogErrorMessage}
+        maskedHint={selectedManualToken?.maskedHint ?? null}
+        updatedAt={selectedManualToken?.updatedAt ?? null}
+        onClose={() => {
+          if (!isManualTokenPending) {
+            setIsTokenDialogOpen(false);
+            setManualDialogErrorMessage(null);
+          }
+        }}
+        onHelp={() => setIsHelpDialogOpen(true)}
+        onSubmit={(accessToken) => void handleSubmitManualToken(accessToken)}
+      />
+
+      <ServiceTokenHelpDialog
+        open={isHelpDialogOpen}
+        serviceKey={selectedManualServiceKey}
+        onClose={() => setIsHelpDialogOpen(false)}
+      />
     </Box>
   );
 }

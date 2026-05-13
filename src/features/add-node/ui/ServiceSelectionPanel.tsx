@@ -24,13 +24,16 @@ import {
   SiGooglesheets,
   SiSlack,
 } from "react-icons/si";
+import { useNavigate } from "react-router";
 
 import { Box, Button, Grid, Icon, Input, Text, VStack } from "@chakra-ui/react";
 import { useReactFlow, useViewport } from "@xyflow/react";
 
 import { type DataType, type FlowNodeData } from "@/entities/node";
 import {
+  type OAuthConnectionUiState,
   getOAuthConnectionUiState,
+  getServiceConnectionKind,
   useConnectOAuthTokenMutation,
   useOAuthTokensQuery,
 } from "@/entities/oauth-token";
@@ -56,6 +59,7 @@ import {
 import { buildSourceNodeConfigDraft } from "@/features/configure-node/model";
 import { hydrateStore, useWorkflowStore } from "@/features/workflow-editor";
 import {
+  ROUTE_PATHS,
   ServiceIcon,
   getApiErrorMessage,
   getCurrentRelativeUrl,
@@ -254,17 +258,17 @@ const CatalogServiceGrid = ({
 );
 
 const AuthPrompt = ({
+  authState,
   errorMessage,
   isPending,
   onAuth,
   onBack,
-  serviceLabel,
 }: {
+  authState: OAuthConnectionUiState;
   errorMessage: string | null;
   isPending: boolean;
   onAuth: () => void;
   onBack: () => void;
-  serviceLabel: string;
 }) => (
   <WizardCard>
     <Box
@@ -282,11 +286,10 @@ const AuthPrompt = ({
     </Box>
 
     <Text fontSize="xl" fontWeight="bold" mb={3}>
-      인증이 필요합니다
+      {authState.label}
     </Text>
     <Text color="text.secondary" fontSize="md" mb={6}>
-      {serviceLabel} 계정 연결이 필요합니다. 인증은 처음 한 번만 진행하면
-      됩니다.
+      {authState.description}
     </Text>
 
     <Button
@@ -296,7 +299,7 @@ const AuthPrompt = ({
       variant="outline"
       onClick={onAuth}
     >
-      계정 인증하기
+      {authState.actionLabel}
     </Button>
     {errorMessage ? (
       <Text color="status.error" fontSize="sm" mt={4}>
@@ -305,7 +308,6 @@ const AuthPrompt = ({
     ) : null}
   </WizardCard>
 );
-
 const SourceModeList = ({
   onBack,
   onSelect,
@@ -679,6 +681,7 @@ export const ServiceSelectionPanel = () => {
     useSinkCatalogQuery();
   const { data: sourceCatalog, isLoading: isSourceCatalogLoading } =
     useSourceCatalogQuery();
+  const navigate = useNavigate();
   const { flowToScreenPosition } = useReactFlow();
   const viewport = useViewport();
   const activePlaceholderKind = activePlaceholder?.kind ?? null;
@@ -987,6 +990,11 @@ export const ServiceSelectionPanel = () => {
   };
 
   const handleConnectService = (serviceKey: string) => {
+    if (getServiceConnectionKind(serviceKey) === "manual_token") {
+      navigate(ROUTE_PATHS.ACCOUNT);
+      return;
+    }
+
     void (async () => {
       try {
         setAuthErrorMessage(null);
@@ -1011,7 +1019,6 @@ export const ServiceSelectionPanel = () => {
       }
     })();
   };
-
   const handleCreateEndNode = () => {
     if (
       !selectedSinkService ||
@@ -1190,9 +1197,15 @@ export const ServiceSelectionPanel = () => {
 
               {startStep === "auth" && selectedSourceService ? (
                 <AuthPrompt
+                  authState={getOAuthConnectionUiState({
+                    authRequired: selectedSourceService.auth_required,
+                    connected: isServiceConnected(selectedSourceService.key),
+                    isAuthStatusError: isOAuthTokensError,
+                    isAuthStatusLoading: isOAuthTokensLoading,
+                    serviceKey: selectedSourceService.key,
+                  })}
                   errorMessage={authErrorMessage}
                   isPending={isConnectOAuthPending}
-                  serviceLabel={selectedSourceService.label}
                   onAuth={() => handleConnectService(selectedSourceService.key)}
                   onBack={handleStartBack}
                 />
@@ -1259,9 +1272,15 @@ export const ServiceSelectionPanel = () => {
 
               {endStep === "auth" && selectedSinkService ? (
                 <AuthPrompt
+                  authState={getOAuthConnectionUiState({
+                    authRequired: selectedSinkService.auth_required,
+                    connected: isServiceConnected(selectedSinkService.key),
+                    isAuthStatusError: isOAuthTokensError,
+                    isAuthStatusLoading: isOAuthTokensLoading,
+                    serviceKey: selectedSinkService.key,
+                  })}
                   errorMessage={authErrorMessage}
                   isPending={isConnectOAuthPending}
-                  serviceLabel={selectedSinkService.label}
                   onAuth={() => handleConnectService(selectedSinkService.key)}
                   onBack={handleEndBack}
                 />
