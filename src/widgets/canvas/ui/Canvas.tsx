@@ -24,6 +24,10 @@ import "@xyflow/react/dist/style.css";
 
 import { FlowArrowEdge } from "@/entities/connection";
 import {
+  toNodeRuntimeIssueMap,
+  useLatestExecutionDetailQuery,
+} from "@/entities/execution";
+import {
   CalendarNode,
   CommunicationNode,
   ConditionNode,
@@ -42,6 +46,7 @@ import {
   StorageNode,
   TriggerNode,
   WebScrapingNode,
+  resolveNodeVisualIssue,
 } from "@/entities/node";
 import { type NodeType } from "@/entities/node";
 import { isDataTypeCompatible } from "@/entities/node";
@@ -257,6 +262,7 @@ export const Canvas = () => {
   const nodes = useWorkflowStore((state) => state.nodes);
   const edges = useWorkflowStore((state) => state.edges);
   const nodeStatuses = useWorkflowStore((state) => state.nodeStatuses);
+  const isDirty = useWorkflowStore((state) => state.isDirty);
   const onNodesChange = useWorkflowStore((state) => state.onNodesChange);
   const onEdgesChange = useWorkflowStore((state) => state.onEdgesChange);
   const onConnect = useWorkflowStore((state) => state.onConnect);
@@ -291,6 +297,15 @@ export const Canvas = () => {
     useAddWorkflowNodeMutation();
   const { mutateAsync: deleteWorkflowNode, isPending: isDeleteNodePending } =
     useDeleteWorkflowNodeMutation();
+  const latestExecutionDetailQuery = useLatestExecutionDetailQuery(workflowId, {
+    enabled: Boolean(workflowId && !isDirty),
+    showErrorToast: false,
+  });
+  const runtimeIssueMap = useMemo(
+    () =>
+      isDirty ? {} : toNodeRuntimeIssueMap(latestExecutionDetailQuery.data),
+    [isDirty, latestExecutionDetailQuery.data],
+  );
   const syncWorkflowFromResponse = useCallback(
     (workflow: Parameters<typeof hydrateStore>[0]) => {
       syncWorkflowGraph(hydrateStore(workflow), {
@@ -334,6 +349,11 @@ export const Canvas = () => {
       startNodeId,
       endNodeIds,
       getNodeStatus: (nodeId: string) => nodeStatuses[nodeId] ?? null,
+      getNodeVisualIssue: (nodeId: string) =>
+        resolveNodeVisualIssue({
+          runtimeIssue: runtimeIssueMap[nodeId] ?? null,
+          nodeStatus: nodeStatuses[nodeId] ?? null,
+        }),
       onOpenPanel: openPanel,
       onRemoveNode: handleRemoveNode,
     }),
@@ -343,6 +363,7 @@ export const Canvas = () => {
       handleRemoveNode,
       nodeStatuses,
       openPanel,
+      runtimeIssueMap,
       startNodeId,
     ],
   );

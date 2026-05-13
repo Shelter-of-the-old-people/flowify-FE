@@ -1,13 +1,17 @@
-import { useState } from "react";
-import { type ReactNode } from "react";
+import { type ReactNode, useState } from "react";
+import { MdErrorOutline, MdWarningAmber } from "react-icons/md";
 
-import { Box, Text } from "@chakra-ui/react";
+import { Box, Icon, Text } from "@chakra-ui/react";
 import { Handle, Position } from "@xyflow/react";
 
 import { getNodeStatusSummaryLabel } from "@/entities/workflow";
 import { ServiceIcon } from "@/shared";
 
-import { getNodePresentation } from "../model";
+import {
+  type NodeVisualIssueTone,
+  getNodePresentation,
+  getNodeSummaryLines,
+} from "../model";
 import { type FlowNodeData } from "../model/types";
 
 import { useNodeEditorContext } from "./NodeEditorContext";
@@ -36,15 +40,52 @@ const ROUTING_SOURCE_HANDLE_IDS = [
   "other",
 ];
 
+type NodeIssueStyle = {
+  iconColor: string;
+  iconShadow: string;
+};
+
+const getNodeIssueIconShadow = (colorToken: string) =>
+  `drop-shadow(0 0 8px color-mix(in srgb, ${colorToken} 52%, transparent)) drop-shadow(0 0 20px color-mix(in srgb, ${colorToken} 28%, transparent))`;
+
+const NODE_ISSUE_STYLES: Record<NodeVisualIssueTone, NodeIssueStyle> = {
+  error: {
+    iconColor: "status.error",
+    iconShadow: getNodeIssueIconShadow("var(--sd-colors-status-error)"),
+  },
+  warning: {
+    iconColor: "yellow.400",
+    iconShadow: getNodeIssueIconShadow("var(--sd-colors-yellow-400)"),
+  },
+};
+
+const NODE_ISSUE_ICON = {
+  error: MdErrorOutline,
+  warning: MdWarningAmber,
+} satisfies Record<NodeVisualIssueTone, typeof MdErrorOutline>;
+
 const getSummaryContent = (
   helperText: string | null,
+  summaryLines: string[],
   children?: ReactNode,
 ): ReactNode => {
   if (helperText) {
     return helperText;
   }
 
-  return children ?? null;
+  if (children) {
+    return children;
+  }
+
+  if (summaryLines.length === 0) {
+    return null;
+  }
+
+  return summaryLines.map((line) => (
+    <Text key={line} as="span" display="block">
+      {line}
+    </Text>
+  ));
 };
 
 const getNodeServiceKey = (data: FlowNodeData) => {
@@ -64,6 +105,7 @@ export const BaseNode = ({ id, data, selected, children }: BaseNodeProps) => {
     canEditNodes,
     endNodeIds,
     getNodeStatus,
+    getNodeVisualIssue,
     onOpenPanel,
     onRemoveNode,
     startNodeId,
@@ -71,6 +113,10 @@ export const BaseNode = ({ id, data, selected, children }: BaseNodeProps) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const nodeStatus = getNodeStatus(id);
+  const nodeVisualIssue = getNodeVisualIssue(id);
+  const nodeIssueStyle = nodeVisualIssue
+    ? NODE_ISSUE_STYLES[nodeVisualIssue.tone]
+    : null;
   const isSelected = Boolean(selected);
 
   const presentation = getNodePresentation(data, {
@@ -82,21 +128,19 @@ export const BaseNode = ({ id, data, selected, children }: BaseNodeProps) => {
   const nodeStatusSummary = nodeStatus
     ? getNodeStatusSummaryLabel(nodeStatus)
     : null;
+  const issueMessage = nodeVisualIssue?.message ?? null;
+  const nodeSummaryLines = getNodeSummaryLines(data);
   const summaryContent = getSummaryContent(
-    nodeStatusSummary ?? presentation.helperText,
+    issueMessage ?? nodeStatusSummary ?? presentation.helperText,
+    nodeSummaryLines,
     children,
   );
-  const showNodeIcon = nodeStatus?.configured ?? data.config.isConfigured;
   const serviceKey = getNodeServiceKey(data);
   const sourceMode = getNodeSourceMode(data);
   const shouldShowNodeMenu =
     canEditNodes && (isHovered || isSelected || isMenuOpen);
 
   const renderNodeIcon = () => {
-    if (!showNodeIcon) {
-      return null;
-    }
-
     return (
       <ServiceIcon
         color="text.primary"
@@ -128,25 +172,50 @@ export const BaseNode = ({ id, data, selected, children }: BaseNodeProps) => {
       px={4}
       py={3}
       borderRadius="xl"
-      bg="transform"
+      bg="transparent"
       borderWidth="0px"
       borderStyle="solid"
       borderColor="transparent"
-      transition="border-color 150ms ease, box-shadow 150ms ease"
+      boxShadow="none"
+      outline="0 solid transparent"
+      isolation="isolate"
+      transition="color 150ms ease"
       cursor="pointer"
       onClick={handleOpenPanel}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <Text fontSize="xs" fontWeight="medium" color="text.secondary">
+      <Text
+        position="relative"
+        zIndex={1}
+        fontSize="xs"
+        fontWeight="medium"
+        color="text.secondary"
+      >
         {presentation.roleLabel}
       </Text>
 
-      <Box h={14} display="flex" alignItems="center" justifyContent="center">
-        {renderNodeIcon()}
+      <Box
+        position="relative"
+        zIndex={1}
+        h={14}
+        display="flex"
+        alignItems="center"
+        justifyContent="center"
+      >
+        <Box
+          position="relative"
+          zIndex={1}
+          filter={nodeIssueStyle?.iconShadow ?? "none"}
+          transition="filter 150ms ease"
+        >
+          {renderNodeIcon()}
+        </Box>
       </Box>
 
       <Text
+        position="relative"
+        zIndex={1}
         fontSize="lg"
         fontWeight="bold"
         color="text.primary"
@@ -158,12 +227,27 @@ export const BaseNode = ({ id, data, selected, children }: BaseNodeProps) => {
 
       {summaryContent ? (
         <Box
+          position="relative"
+          zIndex={1}
+          display={nodeVisualIssue ? "flex" : "block"}
+          alignItems="center"
+          justifyContent="center"
+          gap={1}
           width="100%"
           fontSize="xs"
           color="text.secondary"
           textAlign="center"
           lineHeight="short"
+          fontWeight={nodeIssueStyle ? "semibold" : "medium"}
         >
+          {nodeVisualIssue && nodeIssueStyle ? (
+            <Icon
+              as={NODE_ISSUE_ICON[nodeVisualIssue.tone]}
+              boxSize="14px"
+              color={nodeIssueStyle.iconColor}
+              flexShrink={0}
+            />
+          ) : null}
           {summaryContent}
         </Box>
       ) : null}
