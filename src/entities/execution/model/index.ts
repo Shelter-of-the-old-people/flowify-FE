@@ -4,6 +4,7 @@ export * from "./nodeRuntimeIssue";
 export * from "./query-keys";
 export * from "./useExecuteWorkflowMutation";
 export * from "./useExecutionNodeDataQuery";
+export * from "./useLatestExecutionDetailQuery";
 export * from "./useLatestExecutionNodeDataQuery";
 export * from "./useLatestWorkflowExecutionQuery";
 export * from "./useRollbackExecutionMutation";

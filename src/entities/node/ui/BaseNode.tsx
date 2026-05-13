@@ -76,6 +76,7 @@ export const BaseNode = ({ id, data, selected, children }: BaseNodeProps) => {
     canEditNodes,
     endNodeIds,
     getNodeStatus,
+    getNodeVisualIssue,
     onOpenPanel,
     onRemoveNode,
     startNodeId,
@@ -94,9 +95,11 @@ export const BaseNode = ({ id, data, selected, children }: BaseNodeProps) => {
   const nodeStatusSummary = nodeStatus
     ? getNodeStatusSummaryLabel(nodeStatus)
     : null;
+  const nodeVisualIssue = getNodeVisualIssue(id);
+  const issueMessage = nodeVisualIssue?.message ?? null;
   const nodeSummaryLines = getNodeSummaryLines(data);
   const summaryContent = getSummaryContent(
-    nodeStatusSummary ?? presentation.helperText,
+    issueMessage ?? nodeStatusSummary ?? presentation.helperText,
     nodeSummaryLines,
     children,
   );
