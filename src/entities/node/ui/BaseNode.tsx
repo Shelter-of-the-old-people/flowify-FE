@@ -169,7 +169,15 @@ export const BaseNode = ({ id, data, selected, children }: BaseNodeProps) => {
       ) : null}
 
       {shouldShowNodeMenu ? (
-        <Box position="absolute" top={1} right={1} zIndex={1}>
+        <Box
+          className="nodrag nopan"
+          position="absolute"
+          top={1}
+          right={1}
+          zIndex={1}
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => event.stopPropagation()}
+        >
           <NodeMoreMenuButton
             open={isMenuOpen}
             onOpenChange={setIsMenuOpen}
