@@ -1,7 +1,12 @@
-import { type KeyboardEvent, type MouseEvent } from "react";
+import {
+  type KeyboardEvent,
+  type MouseEvent,
+  type SyntheticEvent,
+} from "react";
 import {
   MdErrorOutline,
   MdMoreHoriz,
+  MdOpenInNew,
   MdPlayArrow,
   MdStop,
 } from "react-icons/md";
@@ -13,6 +18,8 @@ import {
   HStack,
   Icon,
   IconButton,
+  Menu,
+  Portal,
   Spinner,
   Text,
   VStack,
@@ -109,6 +116,10 @@ export const WorkflowRow = ({
   ) => {
     event.stopPropagation();
     action();
+  };
+
+  const handleMenuEvent = (event: SyntheticEvent<HTMLElement>) => {
+    event.stopPropagation();
   };
 
   return (
@@ -212,14 +223,50 @@ export const WorkflowRow = ({
               <MdPlayArrow />
             )}
           </IconButton>
-          <IconButton
-            aria-label="워크플로우 상세 보기"
-            variant="ghost"
-            size="sm"
-            onClick={(event) => handleInnerAction(event, onOpen)}
+          <Menu.Root
+            lazyMount
+            unmountOnExit
+            positioning={{ placement: "bottom-end" }}
           >
-            <MdMoreHoriz />
-          </IconButton>
+            <Menu.Trigger asChild>
+              <IconButton
+                type="button"
+                aria-label="워크플로우 메뉴 열기"
+                title="워크플로우 메뉴"
+                variant="ghost"
+                size="sm"
+                onPointerDown={handleMenuEvent}
+                onClick={handleMenuEvent}
+                onKeyDown={handleMenuEvent}
+              >
+                <MdMoreHoriz />
+              </IconButton>
+            </Menu.Trigger>
+
+            <Portal>
+              <Menu.Positioner zIndex={20}>
+                <Menu.Content
+                  minW="148px"
+                  p={1.5}
+                  bg="bg.surface"
+                  border="1px solid"
+                  borderRadius="xl"
+                  borderColor="border.default"
+                  boxShadow="lg"
+                  onPointerDown={handleMenuEvent}
+                  onClick={handleMenuEvent}
+                  onKeyDown={handleMenuEvent}
+                >
+                  <Menu.Item value="open" onSelect={onOpen}>
+                    <Icon as={MdOpenInNew} boxSize={4} />
+                    <Text as="span" fontSize="sm">
+                      워크플로우 열기
+                    </Text>
+                  </Menu.Item>
+                </Menu.Content>
+              </Menu.Positioner>
+            </Portal>
+          </Menu.Root>
         </HStack>
       </Flex>
 
