@@ -72,6 +72,7 @@ export const EditorRemoteBar = () => {
   const workflowTrigger = useWorkflowStore((state) => state.workflowTrigger);
   const workflowActive = useWorkflowStore((state) => state.workflowActive);
   const isDirty = useWorkflowStore((state) => state.isDirty);
+  const dirtyRevision = useWorkflowStore((state) => state.dirtyRevision);
   const canEditNodes = useWorkflowStore(
     (state) => state.editorCapabilities.canEditNodes,
   );
@@ -239,6 +240,7 @@ export const EditorRemoteBar = () => {
         endNodeIds,
         endNodeId,
       },
+      dirtyRevision,
     });
   };
 

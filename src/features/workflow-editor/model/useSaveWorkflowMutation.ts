@@ -14,6 +14,7 @@ import { useWorkflowStore } from "./workflowStore";
 type SaveWorkflowVariables = {
   workflowId: string;
   store: WorkflowEditorSaveState;
+  dirtyRevision: number;
 };
 
 export const useSaveWorkflowMutation = (
@@ -34,7 +35,7 @@ export const useSaveWorkflowMutation = (
     meta: toMutationMeta(options),
     onSuccess: async (workflow, variables, onMutateResult, context) => {
       await syncWorkflowCache(workflow);
-      useWorkflowStore.getState().markClean();
+      useWorkflowStore.getState().markCleanIfUnchanged(variables.dirtyRevision);
       await options?.onSuccess?.(workflow, variables, onMutateResult, context);
     },
     onError: async (error, variables, onMutateResult, context) => {
