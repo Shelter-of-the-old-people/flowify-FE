@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { toNodeRuntimeIssueMap } from "./nodeRuntimeIssue";
+import {
+  getExecutionErrorDisplayMessage,
+  toNodeRuntimeIssueMap,
+} from "./nodeRuntimeIssue";
 
 describe("node runtime issue", () => {
   it("maps only failed execution logs to node issues", () => {
@@ -82,5 +85,33 @@ describe("node runtime issue", () => {
         message: "서비스 연결을 다시 확인해 주세요.",
       },
     });
+  });
+
+  it("maps document content runtime errors to actionable messages", () => {
+    expect(
+      getExecutionErrorDisplayMessage({
+        code: "DOCUMENT_CONTENT_REQUIRED_BUT_UNAVAILABLE",
+        message: "content_required_but_unavailable",
+        stackTrace: null,
+      }),
+    ).toBe(
+      "다음 단계에서 파일 본문이 필요하지만 현재 본문을 사용할 수 없습니다.",
+    );
+
+    expect(
+      getExecutionErrorDisplayMessage({
+        code: "DOCUMENT_CONTENT_TOO_LARGE",
+        message: "max_download_bytes exceeded",
+        stackTrace: null,
+      }),
+    ).toBe("파일이 현재 처리 가능한 크기 제한을 초과했습니다.");
+
+    expect(
+      getExecutionErrorDisplayMessage({
+        code: "DOCUMENT_CONTENT_NOT_REQUESTED",
+        message: "metadata only preview",
+        stackTrace: null,
+      }),
+    ).toBe("본문이 필요한 작업이지만 본문 추출이 수행되지 않았습니다.");
   });
 });

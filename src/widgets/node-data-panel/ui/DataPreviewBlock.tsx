@@ -3,11 +3,26 @@ import { type ReactNode } from "react";
 import { Box, Link, Text } from "@chakra-ui/react";
 
 import { getDataTypeDisplayLabel } from "@/entities";
+
+import {
+  type DocumentContentStatus,
+  getDocumentContentError,
+  getDocumentContentMetadata,
+  getDocumentContentStatus,
+  getDocumentContentStatusDescription,
+  getDocumentContentStatusLabel,
+  getDocumentContentText,
+  getPreviewContentMetadata,
+  getPreviewContentPolicyLabel,
+  getPreviewContentRequirementLabel,
+  isDocumentContentProblem,
+} from "../model/document-content";
 import { getSpreadsheetPreviewSummary } from "../model/spreadsheet-preview";
 
 type Props = {
   title?: string;
   data: unknown;
+  previewMetadata?: Record<string, unknown> | null;
 };
 
 type DataRecord = Record<string, unknown>;
@@ -15,6 +30,14 @@ type DataRecord = Record<string, unknown>;
 const MAX_TEXT_PREVIEW_LENGTH = 1400;
 const MAX_LIST_PREVIEW_COUNT = 12;
 const MAX_TABLE_ROW_COUNT = 12;
+const DOCUMENT_CONTENT_STATUS_ORDER: DocumentContentStatus[] = [
+  "available",
+  "empty",
+  "unsupported",
+  "too_large",
+  "failed",
+  "not_requested",
+];
 
 const isRecord = (value: unknown): value is DataRecord =>
   typeof value === "object" && value !== null && !Array.isArray(value);
@@ -160,7 +183,78 @@ const SummaryCard = ({
   </Box>
 );
 
-const FileItemCard = ({ item, index }: { item: DataRecord; index: number }) => {
+const DocumentContentStatusRows = ({ item }: { item: DataRecord }) => {
+  const status = getDocumentContentStatus(item);
+  if (!status) {
+    return null;
+  }
+
+  const metadata = getDocumentContentMetadata(item);
+  const description = getDocumentContentStatusDescription({
+    error: getDocumentContentError(item),
+    metadata,
+    status,
+  });
+  const charCount = metadata.charCount ?? metadata.storedCharCount;
+
+  return (
+    <>
+      <FieldText
+        label="본문 상태"
+        value={getDocumentContentStatusLabel(status)}
+      />
+      <FieldText
+        label="본문 길이"
+        value={charCount === null ? "" : `${charCount.toLocaleString()}자`}
+      />
+      {description ? (
+        <Text
+          fontSize="xs"
+          color={
+            isDocumentContentProblem(status) ? "red.500" : "text.secondary"
+          }
+        >
+          {description}
+        </Text>
+      ) : null}
+    </>
+  );
+};
+
+const DocumentContentInlinePreview = ({
+  item,
+  label,
+}: {
+  item: DataRecord;
+  label: string;
+}) => {
+  const status = getDocumentContentStatus(item);
+  const content = getDocumentContentText(item);
+
+  if (status && status !== "available") {
+    return null;
+  }
+
+  if (!content) {
+    return null;
+  }
+
+  return (
+    <Text fontSize="xs" color="text.secondary" whiteSpace="pre-wrap">
+      {label}: {truncateText(content, 240)}
+    </Text>
+  );
+};
+
+const FileItemCard = ({
+  item,
+  index,
+  contentLabel = "본문",
+}: {
+  item: DataRecord;
+  index: number;
+  contentLabel?: string;
+}) => {
   const filename = getString(item.filename) || `파일 ${index + 1}`;
   const mimeType = getString(item.mime_type) || getString(item.mimeType);
   const size = formatFileSize(item.size);
@@ -184,9 +278,44 @@ const FileItemCard = ({ item, index }: { item: DataRecord; index: number }) => {
           label="수정일"
           value={formatDateTime(item.modified_time ?? item.modifiedTime)}
         />
+        <DocumentContentStatusRows item={item} />
+        <DocumentContentInlinePreview item={item} label={contentLabel} />
         <ExternalLink href={item.url} />
       </Box>
     </Box>
+  );
+};
+
+const getDocumentContentStatusCounts = (items: DataRecord[]) => {
+  const counts = new Map<DocumentContentStatus, number>();
+
+  for (const item of items) {
+    const status = getDocumentContentStatus(item);
+    if (status) {
+      counts.set(status, (counts.get(status) ?? 0) + 1);
+    }
+  }
+
+  return counts;
+};
+
+const DocumentContentStatusSummary = ({ items }: { items: DataRecord[] }) => {
+  const counts = getDocumentContentStatusCounts(items);
+  if (counts.size === 0) {
+    return null;
+  }
+
+  const labels = DOCUMENT_CONTENT_STATUS_ORDER.flatMap((status) => {
+    const count = counts.get(status) ?? 0;
+    return count > 0
+      ? [`${getDocumentContentStatusLabel(status)} ${count}개`]
+      : [];
+  });
+
+  return (
+    <Text fontSize="xs" color="text.secondary">
+      {labels.join(" · ")}
+    </Text>
   );
 };
 
@@ -204,7 +333,9 @@ const FileListPreview = ({ data }: { data: DataRecord }) => {
             ? "다음 단계로 전달된 파일 목록입니다."
             : "전달된 파일이 없습니다."
         }
-      />
+      >
+        <DocumentContentStatusSummary items={items} />
+      </SummaryCard>
       {previewItems.map((item, index) => (
         <FileItemCard
           key={`${getString(item.filename)}-${index}`}
@@ -223,7 +354,8 @@ const FileListPreview = ({ data }: { data: DataRecord }) => {
 
 const SingleFilePreview = ({ data }: { data: DataRecord }) => {
   const filename = getString(data.filename) || "파일";
-  const content = getString(data.content);
+  const status = getDocumentContentStatus(data);
+  const content = getDocumentContentText(data);
 
   return (
     <Box display="flex" flexDirection="column" gap={3}>
@@ -241,9 +373,10 @@ const SingleFilePreview = ({ data }: { data: DataRecord }) => {
           label="수정일"
           value={formatDateTime(data.modified_time ?? data.modifiedTime)}
         />
+        <DocumentContentStatusRows item={data} />
         <ExternalLink href={data.url} />
       </SummaryCard>
-      {content ? (
+      {content && (!status || status === "available") ? (
         <SummaryCard
           title="본문 미리보기"
           description={truncateText(content)}
@@ -365,6 +498,7 @@ const SingleEmailPreview = ({ data }: { data: DataRecord }) => {
               key={`${getString(item.filename)}-${index}`}
               item={item}
               index={index}
+              contentLabel="첨부 본문"
             />
           ))}
         </Box>
@@ -704,9 +838,17 @@ const CanonicalPreview = ({ data }: { data: unknown }) => {
 export const DataPreviewBlock = ({
   title = "데이터 미리보기",
   data,
+  previewMetadata,
 }: Props) => {
   const payloadType = getPayloadType(data);
   const payloadLabel = payloadType ? getDisplayTypeLabel(payloadType) : null;
+  const parsedPreviewMetadata = getPreviewContentMetadata(previewMetadata);
+  const contentPolicyLabel = getPreviewContentPolicyLabel(
+    parsedPreviewMetadata.contentPolicy,
+  );
+  const contentRequirementLabel = getPreviewContentRequirementLabel(
+    parsedPreviewMetadata,
+  );
 
   return (
     <Box display="flex" flexDirection="column" gap={3}>
@@ -717,6 +859,16 @@ export const DataPreviewBlock = ({
         {payloadLabel ? (
           <Text mt={1} fontSize="xs" color="text.secondary">
             {payloadLabel}
+          </Text>
+        ) : null}
+        {contentPolicyLabel ? (
+          <Text mt={1} fontSize="xs" color="text.secondary">
+            {contentPolicyLabel}
+          </Text>
+        ) : null}
+        {contentRequirementLabel ? (
+          <Text mt={1} fontSize="xs" color="text.secondary">
+            {contentRequirementLabel}
           </Text>
         ) : null}
       </Box>

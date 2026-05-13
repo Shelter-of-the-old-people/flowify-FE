@@ -717,6 +717,11 @@ export const OutputPanel = ({ wizardController }: Props) => {
                     : "출력 데이터"
                 }
                 data={nodeDataPanel.dataToDisplay}
+                previewMetadata={
+                  nodeDataPanel.isPreviewDataDisplayed
+                    ? nodeDataPanel.nodePreviewData?.metadata
+                    : null
+                }
               />
             ) : null}
             {shouldShowSchemaPreview ? (

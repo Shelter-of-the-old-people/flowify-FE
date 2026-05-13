@@ -1,6 +1,9 @@
 import { Box, Spinner, Text } from "@chakra-ui/react";
 
-import { type ExecutionNodeData } from "@/entities";
+import {
+  type ExecutionNodeData,
+  getExecutionErrorDisplayMessage,
+} from "@/entities";
 
 import { type NodeDataPanelKind, type NodeDataPanelState } from "../model";
 
@@ -68,8 +71,9 @@ const getNoticeDescription = (
       return "이번 실행에서 해당 노드는 조건에 의해 실행되지 않았습니다.";
     case "node-failed":
       return (
-        executionData?.error?.message ??
-        "이번 실행에서 해당 노드가 실패했습니다."
+        (executionData?.error
+          ? getExecutionErrorDisplayMessage(executionData.error)
+          : null) ?? "이번 실행에서 해당 노드가 실패했습니다."
       );
     case "node-not-executed":
       return "최근 실행 기록에 해당 노드 실행 정보가 없습니다.";

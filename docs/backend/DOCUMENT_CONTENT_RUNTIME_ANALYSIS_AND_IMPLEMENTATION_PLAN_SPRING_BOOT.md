@@ -84,11 +84,19 @@ Gmail/Google Drive sink가 원본 파일 업로드나 첨부를 수행해야 할
 | `contentPolicy` | `metadata_only` | 본문 미포함 |
 | `contentPolicy` | `content_included` | 본문 포함 |
 | `contentPolicy` | `content_status_only` | 본문 원문 없이 추출 가능/불가 상태만 포함 |
-| `contentPolicy` | `required_by_downstream` | 다음 노드가 본문을 요구함 |
 | `contentIncluded` | boolean | 실제 `content` 포함 여부 |
 | `contentStatusScope` | `none|item|attachment|node` | content status가 어느 단위에 붙었는지 |
+| `contentRequired` | boolean | downstream 또는 runtime config가 본문을 요구하는지 |
+| `contentRequiredReason` | `downstream|user_request|runtime_config|null` | 본문 필요 사유 |
 
 `previewScope=source_metadata`와 `contentPolicy=metadata_only`는 충돌하지 않는다. 전자는 preview API 범위, 후자는 본문 포함 정책이다.
+
+FE 연동 관점에서는 `DOCUMENT_CONTENT_RUNTIME_FRONTEND_INTEGRATION_REVIEW.md`의 표시 계약을 따른다. 특히 downstream 때문에 본문이 필요한 상태는 `contentPolicy` 값으로 직접 섞지 않고 `contentRequired=true`, `contentRequiredReason=downstream`으로 분리한다.
+
+FastAPI raw response 또는 legacy FE 설계에서 `contentPolicy=required_by_downstream` 또는 `contentPolicy=content_required_but_unavailable`이 들어오더라도 Spring public API에서는 가능한 한 정규화한다.
+
+- `required_by_downstream` -> `contentPolicy=metadata_only|content_status_only`, `contentRequired=true`, `contentRequiredReason=downstream`
+- `content_required_but_unavailable` -> `contentPolicy=content_status_only`, `contentIncluded=false`, `contentRequired=true`, `contentRequiredReason=runtime_config`
 
 ### 3.3 `content_status=empty` 정책
 
@@ -127,11 +135,13 @@ FastAPI error code는 Spring public API에서 사용자 표시 가능한 error/s
 | `DOCUMENT_CONTENT_TOO_LARGE` | `PREFLIGHT_VALIDATION_FAILED` 또는 신규 `DOCUMENT_CONTENT_TOO_LARGE` | 413 또는 422 | `unavailable` | 파일이 너무 커서 본문을 읽을 수 없습니다. |
 | `DOCUMENT_CONTENT_EMPTY` | 신규 `DOCUMENT_CONTENT_EMPTY` 또는 `EXECUTION_FAILED` | 422 | `failed` | 파일에서 읽을 수 있는 본문이 없습니다. |
 | `DOCUMENT_CONTENT_EXTRACTION_FAILED` | `EXTERNAL_API_ERROR` 또는 신규 `DOCUMENT_CONTENT_EXTRACTION_FAILED` | 502 | `failed` | 파일 본문 추출 중 오류가 발생했습니다. |
-| `DOCUMENT_CONTENT_NOT_REQUESTED` | 에러 아님 | 200 | `available` | 본문 미포함 미리보기입니다. |
+| `DOCUMENT_CONTENT_NOT_REQUESTED` | 에러 아님. FastAPI가 error response로 보낸 경우 신규 `DOCUMENT_CONTENT_NOT_REQUESTED` | 200 또는 422 | `available` 또는 `failed` | 본문 미포함 미리보기입니다. 실행 실패라면 본문이 필요한 작업이지만 본문 추출이 수행되지 않았습니다. |
 | `OAUTH_SCOPE_INSUFFICIENT` | `OAUTH_SCOPE_INSUFFICIENT` | 403 | `unavailable` | 파일을 읽기 위한 권한이 부족합니다. |
 | `OAUTH_TOKEN_MISSING` | `OAUTH_NOT_CONNECTED` | 401 또는 403 | `unavailable` | 외부 서비스 연결이 필요합니다. |
 
 신규 Spring `ErrorCode`를 추가하지 않는 MVP에서는 기존 code로 매핑하되, `metadata.fastApiErrorCode` 또는 `reason`에 원본 error code를 보존한다. FE가 사용자 문구를 안정적으로 표시해야 한다면 신규 ErrorCode 추가가 더 낫다.
+
+FE 표시 정책상 `DOCUMENT_CONTENT_NOT_REQUESTED`는 기본적으로 실패가 아니라 info 성격의 content policy다. 단, FastAPI가 `requires_content=true`인 실행 경로에서 본문 추출이 수행되지 않아 error response로 내려준 경우에는 Spring public error code도 `DOCUMENT_CONTENT_NOT_REQUESTED`로 보존한다.
 
 ### 4.3 저장/sanitize 경계
 
@@ -153,12 +163,18 @@ FastAPI error code는 Spring public API에서 사용자 표시 가능한 error/s
     "char_count": 4000,
     "original_char_count": 82000,
     "stored_content_truncated": true,
-    "stored_char_count": 1000
+    "stored_char_count": 1000,
+    "limits": {
+      "max_download_bytes": 10485760,
+      "max_extracted_chars": 80000,
+      "max_llm_input_chars": 20000
+    }
   }
 }
 ```
 
 FastAPI가 반환 전 sanitize하는 것이 1차 방어선이고, Spring 저장 전 sanitize는 2차 방어선이다.
+`limits`는 FE가 모든 값을 기본 노출하기 위한 필드가 아니라, `too_large` 또는 truncate 상태의 보조 설명과 디버깅에 사용할 수 있는 metadata다.
 
 ---
 
