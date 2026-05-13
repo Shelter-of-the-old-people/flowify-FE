@@ -4,6 +4,7 @@ import { type MutationPolicyOptions, toMutationMeta } from "@/shared/api";
 
 import { workflowApi } from "../api";
 
+import { workflowMutationKeys } from "./mutation-keys";
 import {
   getWorkflowDetailOrFallback,
   syncWorkflowCache,
@@ -21,6 +22,7 @@ export const useDeleteWorkflowNodeMutation = (
   >,
 ) =>
   useMutation({
+    mutationKey: workflowMutationKeys.structure,
     mutationFn: async ({ workflowId, nodeId }: DeleteWorkflowNodeVariables) => {
       const workflow = await workflowApi.deleteNode(workflowId, nodeId);
       return getWorkflowDetailOrFallback(workflowId, workflow);

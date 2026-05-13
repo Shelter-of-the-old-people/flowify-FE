@@ -4,6 +4,7 @@ import {
   getWorkflowDetailOrFallback,
   syncWorkflowCache,
   workflowApi,
+  workflowMutationKeys,
 } from "@/entities/workflow";
 import { type MutationPolicyOptions, toMutationMeta } from "@/shared/api";
 
@@ -24,6 +25,7 @@ export const useSaveWorkflowMutation = (
   >,
 ) =>
   useMutation({
+    mutationKey: workflowMutationKeys.save,
     mutationFn: async ({ workflowId, store }: SaveWorkflowVariables) => {
       const workflow = await workflowApi.update(
         workflowId,
