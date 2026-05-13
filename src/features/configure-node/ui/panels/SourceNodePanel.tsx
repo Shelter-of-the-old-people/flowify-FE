@@ -1,10 +1,12 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router";
 
 import { Box, Button, Input, Spinner, Text } from "@chakra-ui/react";
 
 import { type FlowNodeData } from "@/entities/node";
 import {
   getOAuthConnectionUiState,
+  getServiceConnectionKind,
   useConnectOAuthTokenMutation,
   useOAuthTokensQuery,
 } from "@/entities/oauth-token";
@@ -18,6 +20,7 @@ import {
 import { buildGoogleSheetsSheetOptionId } from "@/entities/workflow/lib/google-sheets-target-option";
 import { useWorkflowStore } from "@/features/workflow-editor";
 import {
+  ROUTE_PATHS,
   getApiErrorMessage,
   getCurrentRelativeUrl,
   storeOAuthConnectReturnPath,
@@ -149,6 +152,7 @@ export const SourceNodePanel = ({
   onComplete,
   readOnly = false,
 }: NodePanelProps) => {
+  const navigate = useNavigate();
   const updateNodeConfig = useWorkflowStore((state) => state.updateNodeConfig);
   const { data: sourceCatalog, isLoading: isSourceCatalogLoading } =
     useSourceCatalogQuery();
@@ -256,6 +260,11 @@ export const SourceNodePanel = ({
     existingKeyword;
 
   const handleConnectService = (targetServiceKey: string) => {
+    if (getServiceConnectionKind(targetServiceKey) === "manual_token") {
+      navigate(ROUTE_PATHS.ACCOUNT);
+      return;
+    }
+
     void (async () => {
       try {
         setAuthErrorMessage(null);
@@ -272,7 +281,6 @@ export const SourceNodePanel = ({
       }
     })();
   };
-
   const handleSourceTargetChange = (value: SourceTargetSetupValue) => {
     setSourceTargetDraft({
       scope: sourceTargetScope,
