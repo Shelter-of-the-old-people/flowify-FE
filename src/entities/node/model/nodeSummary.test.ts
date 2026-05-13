@@ -62,4 +62,21 @@ describe("node summary", () => {
       "최대 100회",
     ]);
   });
+
+  it("does not invent a loop target summary when target field is empty", () => {
+    const data = {
+      config: {
+        isConfigured: true,
+        maxIterations: 100,
+        targetField: null,
+        timeout: 300,
+      },
+      inputTypes: ["file-list"],
+      label: "하나씩 처리",
+      outputTypes: ["single-file"],
+      type: "loop",
+    } as FlowNodeData;
+
+    expect(getNodeSummaryLines(data)).toEqual(["최대 100회"]);
+  });
 });
