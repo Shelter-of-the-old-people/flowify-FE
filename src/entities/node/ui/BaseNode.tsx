@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { type MouseEvent, type ReactNode } from "react";
-import { MdCancel } from "react-icons/md";
+import { type ReactNode } from "react";
 
-import { Box, IconButton, Text } from "@chakra-ui/react";
+import { Box, Text } from "@chakra-ui/react";
 import { Handle, Position } from "@xyflow/react";
 
 import { getNodeStatusSummaryLabel } from "@/entities/workflow";
@@ -12,6 +11,7 @@ import { getNodePresentation } from "../model";
 import { type FlowNodeData } from "../model/types";
 
 import { useNodeEditorContext } from "./NodeEditorContext";
+import { NodeMoreMenuButton } from "./NodeMoreMenuButton";
 
 interface BaseNodeProps {
   id: string;
@@ -59,7 +59,7 @@ const getNodeSourceMode = (data: FlowNodeData) => {
   return typeof config.source_mode === "string" ? config.source_mode : null;
 };
 
-export const BaseNode = ({ id, data, children }: BaseNodeProps) => {
+export const BaseNode = ({ id, data, selected, children }: BaseNodeProps) => {
   const {
     canEditNodes,
     endNodeIds,
@@ -69,7 +69,9 @@ export const BaseNode = ({ id, data, children }: BaseNodeProps) => {
     startNodeId,
   } = useNodeEditorContext();
   const [isHovered, setIsHovered] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const nodeStatus = getNodeStatus(id);
+  const isSelected = Boolean(selected);
 
   const presentation = getNodePresentation(data, {
     nodeId: id,
@@ -87,6 +89,8 @@ export const BaseNode = ({ id, data, children }: BaseNodeProps) => {
   const showNodeIcon = nodeStatus?.configured ?? data.config.isConfigured;
   const serviceKey = getNodeServiceKey(data);
   const sourceMode = getNodeSourceMode(data);
+  const shouldShowNodeMenu =
+    canEditNodes && (isHovered || isSelected || isMenuOpen);
 
   const renderNodeIcon = () => {
     if (!showNodeIcon) {
@@ -108,8 +112,8 @@ export const BaseNode = ({ id, data, children }: BaseNodeProps) => {
     onOpenPanel(id);
   };
 
-  const handleRemoveNode = (event: MouseEvent<HTMLButtonElement>) => {
-    event.stopPropagation();
+  const handleRemoveNode = () => {
+    setIsMenuOpen(false);
     onRemoveNode(id);
   };
 
@@ -164,18 +168,14 @@ export const BaseNode = ({ id, data, children }: BaseNodeProps) => {
         </Box>
       ) : null}
 
-      {isHovered && canEditNodes ? (
-        <IconButton
-          aria-label="노드 삭제"
-          size="xs"
-          position="absolute"
-          top={1}
-          right={1}
-          variant="ghost"
-          onClick={handleRemoveNode}
-        >
-          <MdCancel />
-        </IconButton>
+      {shouldShowNodeMenu ? (
+        <Box position="absolute" top={1} right={1} zIndex={1}>
+          <NodeMoreMenuButton
+            open={isMenuOpen}
+            onOpenChange={setIsMenuOpen}
+            onDelete={handleRemoveNode}
+          />
+        </Box>
       ) : null}
 
       <Handle
