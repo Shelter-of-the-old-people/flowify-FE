@@ -1,5 +1,10 @@
-import { type KeyboardEvent, type MouseEvent } from "react";
 import {
+  type KeyboardEvent,
+  type MouseEvent,
+  type SyntheticEvent,
+} from "react";
+import {
+  MdDeleteOutline,
   MdErrorOutline,
   MdMoreHoriz,
   MdPlayArrow,
@@ -13,6 +18,8 @@ import {
   HStack,
   Icon,
   IconButton,
+  Menu,
+  Portal,
   Spinner,
   Text,
   VStack,
@@ -40,9 +47,12 @@ type Props = {
   executionActionKind: "run" | "stop";
   executionActionLabel: string;
   isExecutionActionPending: boolean;
+  canDelete: boolean;
+  isDeletePending: boolean;
   onOpen: () => void;
   onAutoRunToggle: () => void;
   onExecutionAction: () => void;
+  onDelete: () => void;
 };
 
 const AUTO_RUN_BUTTON_STYLES: Record<
@@ -83,9 +93,12 @@ export const WorkflowRow = ({
   executionActionKind,
   executionActionLabel,
   isExecutionActionPending,
+  canDelete,
+  isDeletePending,
   onOpen,
   onAutoRunToggle,
   onExecutionAction,
+  onDelete,
 }: Props) => {
   const { startNode, endNode } = getEndpointNodes(workflow);
   const startBadgeKey = getServiceBadgeKey(startNode);
@@ -95,6 +108,8 @@ export const WorkflowRow = ({
   const warningMessages = getWorkflowWarningMessages(workflow);
   const autoRunButtonStyle = AUTO_RUN_BUTTON_STYLES[autoRunKind];
   const shouldShowAutoRunButton = autoRunKind !== "manual";
+  const isAutoRunActionDisabled = isDeletePending || isAutoRunPending;
+  const isExecutionButtonDisabled = isDeletePending || isExecutionActionPending;
 
   const handleRowKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "Enter" || event.key === " ") {
@@ -109,6 +124,10 @@ export const WorkflowRow = ({
   ) => {
     event.stopPropagation();
     action();
+  };
+
+  const handleMenuEvent = (event: SyntheticEvent<HTMLElement>) => {
+    event.stopPropagation();
   };
 
   return (
@@ -179,12 +198,15 @@ export const WorkflowRow = ({
               color={autoRunButtonStyle.color}
               border={autoRunButtonStyle.border}
               opacity={isAutoRunToggleable || isAutoRunPending ? 1 : 0.72}
+              disabled={isAutoRunActionDisabled}
               cursor={
-                isAutoRunToggleable && !isAutoRunPending ? "pointer" : "default"
+                isAutoRunToggleable && !isAutoRunActionDisabled
+                  ? "pointer"
+                  : "default"
               }
               _hover={{
                 bg:
-                  isAutoRunToggleable && !isAutoRunPending
+                  isAutoRunToggleable && !isAutoRunActionDisabled
                     ? autoRunButtonStyle.hoverBg
                     : autoRunButtonStyle.bg,
               }}
@@ -201,7 +223,7 @@ export const WorkflowRow = ({
             aria-label={executionActionLabel}
             variant="ghost"
             size="sm"
-            disabled={isExecutionActionPending}
+            disabled={isExecutionButtonDisabled}
             onClick={(event) => handleInnerAction(event, onExecutionAction)}
           >
             {isExecutionActionPending ? (
@@ -212,14 +234,55 @@ export const WorkflowRow = ({
               <MdPlayArrow />
             )}
           </IconButton>
-          <IconButton
-            aria-label="워크플로우 상세 보기"
-            variant="ghost"
-            size="sm"
-            onClick={(event) => handleInnerAction(event, onOpen)}
+          <Menu.Root
+            lazyMount
+            unmountOnExit
+            positioning={{ placement: "bottom-end" }}
           >
-            <MdMoreHoriz />
-          </IconButton>
+            <Menu.Trigger asChild>
+              <IconButton
+                type="button"
+                aria-label="워크플로우 메뉴 열기"
+                title="워크플로우 메뉴"
+                variant="ghost"
+                size="sm"
+                onPointerDown={handleMenuEvent}
+                onClick={handleMenuEvent}
+                onKeyDown={handleMenuEvent}
+              >
+                <MdMoreHoriz />
+              </IconButton>
+            </Menu.Trigger>
+
+            <Portal>
+              <Menu.Positioner zIndex={20}>
+                <Menu.Content
+                  minW="148px"
+                  p={1.5}
+                  bg="bg.surface"
+                  border="1px solid"
+                  borderRadius="xl"
+                  borderColor="border.default"
+                  boxShadow="lg"
+                  onPointerDown={handleMenuEvent}
+                  onClick={handleMenuEvent}
+                  onKeyDown={handleMenuEvent}
+                >
+                  <Menu.Item
+                    value="delete"
+                    color="status.error"
+                    disabled={!canDelete || isDeletePending}
+                    onSelect={onDelete}
+                  >
+                    <Icon as={MdDeleteOutline} boxSize={4} />
+                    <Text as="span" fontSize="sm">
+                      {isDeletePending ? "삭제 중..." : "삭제"}
+                    </Text>
+                  </Menu.Item>
+                </Menu.Content>
+              </Menu.Positioner>
+            </Portal>
+          </Menu.Root>
         </HStack>
       </Flex>
 
