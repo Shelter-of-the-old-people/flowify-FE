@@ -33,6 +33,16 @@ describe("node status summary", () => {
     ).toBe("실행 조건: 인증 연결");
   });
 
+  it("maps backend snake case fields to user-facing labels", () => {
+    expect(
+      getNodeStatusSummaryLabel({
+        configured: false,
+        executable: false,
+        missingFields: ["config.key_column", "config.lookup_value"],
+      }),
+    ).toBe("필수 설정: 기준 열, 찾을 값");
+  });
+
   it("does not render status text for executable nodes", () => {
     expect(
       getNodeStatusSummaryLabel({
