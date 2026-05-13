@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   MdCheckCircle,
   MdErrorOutline,
@@ -14,6 +15,8 @@ export type SaveStateIndicatorProps = {
   errorMessage: string | null;
   canSave: boolean;
 };
+
+const SAVED_STATUS_VISIBLE_MS = 1600;
 
 const getSaveStateText = (
   status: WorkflowSaveStatus,
@@ -58,11 +61,28 @@ export const SaveStateIndicator = ({
 }: SaveStateIndicatorProps) => {
   const { label, title } = getSaveStateText(status, canSave);
   const isError = canSave && status === "error";
-  const iconColor = isError
-    ? "status.error"
-    : canSave && status === "saved"
-      ? "status.success"
-      : "text.secondary";
+  const isSavedStatus = canSave && (status === "idle" || status === "saved");
+  const [isVisible, setIsVisible] = useState(true);
+  const iconColor = isError ? "status.error" : "text.secondary";
+
+  useEffect(() => {
+    const revealTimeoutId = window.setTimeout(() => {
+      setIsVisible(true);
+    }, 0);
+
+    if (!isSavedStatus) {
+      return () => window.clearTimeout(revealTimeoutId);
+    }
+
+    const hideTimeoutId = window.setTimeout(() => {
+      setIsVisible(false);
+    }, SAVED_STATUS_VISIBLE_MS);
+
+    return () => {
+      window.clearTimeout(revealTimeoutId);
+      window.clearTimeout(hideTimeoutId);
+    };
+  }, [isSavedStatus, status]);
 
   return (
     <Box
@@ -77,7 +97,9 @@ export const SaveStateIndicator = ({
       fontWeight="medium"
       fontSize="xs"
       lineHeight="normal"
+      opacity={isSavedStatus && !isVisible ? 0 : 1}
       pointerEvents="none"
+      transition="opacity 0.4s ease"
     >
       {canSave && status === "saving" ? (
         <Spinner size="xs" color="currentColor" />
