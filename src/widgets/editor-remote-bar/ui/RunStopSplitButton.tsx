@@ -41,7 +41,7 @@ export const RunStopSplitButton = ({
     ? !canStop || isStopPending
     : !canRun || isRunPending;
   const runSideLoading = isRunning ? isStopPending : isRunPending;
-  const runSideLabel = isRunning ? "실행 중지" : "실행";
+  const runSideLabel = isRunning ? "중지" : "실행";
   const runSideIcon = isRunning ? MdStop : MdPlayArrow;
   const handleRunSideClick = isRunning ? onStop : onRun;
 
