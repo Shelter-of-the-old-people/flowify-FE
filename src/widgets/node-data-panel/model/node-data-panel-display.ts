@@ -3,6 +3,7 @@ import {
   type NodeStatusSummaryResponse,
   type SourceConfigSummaryResponse,
   getCanonicalInputTypeLabel,
+  getExecutionErrorDisplayMessage,
   getExecutionStatusLabel,
   getNodeDataReasonLabel,
   getTriggerKindLabel,
@@ -107,7 +108,9 @@ export const getExecutionStatusNotice = (
 
   const reasonLabel = getNodeDataReasonLabel(executionData.reason);
   const statusLabel = getExecutionStatusLabel(executionData.status);
-  const errorMessage = executionData.error?.message ?? null;
+  const errorMessage = executionData.error
+    ? getExecutionErrorDisplayMessage(executionData.error)
+    : null;
 
   if (executionData.error || executionData.reason === "NODE_FAILED") {
     return {

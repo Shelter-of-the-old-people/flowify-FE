@@ -7,12 +7,88 @@ const DEFAULT_RUNTIME_ISSUE_MESSAGE = "이 단계 실행 중 문제가 발생했
 const includesAny = (value: string, keywords: string[]) =>
   keywords.some((keyword) => value.includes(keyword));
 
-export const getUserFriendlyExecutionErrorMessage = (
+export const getExecutionErrorDisplayMessage = (
   error: ExecutionErrorDetail | null | undefined,
 ) => {
   const code = error?.code?.toLowerCase() ?? "";
   const message = error?.message?.toLowerCase() ?? "";
   const text = `${code} ${message}`;
+
+  if (
+    includesAny(text, [
+      "document_content_empty",
+      "content_empty",
+      "content status empty",
+      "읽을 수 있는 본문",
+      "본문 없음",
+    ])
+  ) {
+    return "파일에서 읽을 수 있는 본문을 찾지 못했습니다.";
+  }
+
+  if (
+    includesAny(text, [
+      "document_content_unsupported",
+      "unsupported_file_type",
+      "unsupported content",
+      "unsupported document",
+      "지원하지 않는 파일",
+      "지원하지 않는 형식",
+    ])
+  ) {
+    return "현재 지원하지 않는 파일 형식입니다.";
+  }
+
+  if (
+    includesAny(text, [
+      "document_content_too_large",
+      "file_too_large",
+      "content_too_large",
+      "max_download_bytes",
+      "max_extracted_chars",
+      "크기 제한",
+      "용량 제한",
+    ])
+  ) {
+    return "파일이 현재 처리 가능한 크기 제한을 초과했습니다.";
+  }
+
+  if (
+    includesAny(text, [
+      "document_content_required_but_unavailable",
+      "content_required_but_unavailable",
+      "requires_content",
+      "required by downstream",
+      "본문이 필요한",
+      "본문 필요",
+    ])
+  ) {
+    return "다음 단계에서 파일 본문이 필요하지만 현재 본문을 사용할 수 없습니다.";
+  }
+
+  if (
+    includesAny(text, [
+      "document_content_extraction_failed",
+      "document_content_failed",
+      "content_extraction_failed",
+      "extract document content",
+      "본문 추출",
+      "본문 읽기 실패",
+    ])
+  ) {
+    return "파일 본문을 읽는 중 문제가 발생했습니다.";
+  }
+
+  if (
+    includesAny(text, [
+      "document_content_not_requested",
+      "content_not_requested",
+      "not requested",
+      "본문 미포함",
+    ])
+  ) {
+    return "본문이 필요한 작업이지만 본문 추출이 수행되지 않았습니다.";
+  }
 
   if (
     includesAny(text, [
@@ -78,6 +154,9 @@ export const getUserFriendlyExecutionErrorMessage = (
 
   return DEFAULT_RUNTIME_ISSUE_MESSAGE;
 };
+
+export const getUserFriendlyExecutionErrorMessage =
+  getExecutionErrorDisplayMessage;
 
 export const toNodeRuntimeIssueMap = (
   execution: ExecutionDetail | null | undefined,

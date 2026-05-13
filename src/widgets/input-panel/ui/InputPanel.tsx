@@ -226,6 +226,11 @@ export const InputPanel = () => {
                       : "입력 데이터"
                   }
                   data={nodeDataPanel.dataToDisplay}
+                  previewMetadata={
+                    nodeDataPanel.isPreviewDataDisplayed
+                      ? nodeDataPanel.nodePreviewData?.metadata
+                      : null
+                  }
                 />
               ) : null}
               {shouldShowSchemaPreview ? (
