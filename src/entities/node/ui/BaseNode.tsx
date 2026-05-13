@@ -45,7 +45,7 @@ type NodeIssueStyle = {
 };
 
 const getNodeIssueGlowGradient = (colorToken: string) =>
-  `radial-gradient(circle at center, color-mix(in srgb, ${colorToken} 34%, transparent) 0%, color-mix(in srgb, ${colorToken} 20%, transparent) 28%, color-mix(in srgb, ${colorToken} 7%, transparent) 44%, transparent 58%)`;
+  `radial-gradient(circle at center, color-mix(in srgb, ${colorToken} 48%, transparent) 0%, color-mix(in srgb, ${colorToken} 30%, transparent) 28%, color-mix(in srgb, ${colorToken} 12%, transparent) 44%, transparent 58%)`;
 
 const NODE_ISSUE_STYLES: Record<NodeVisualIssueTone, NodeIssueStyle> = {
   error: {
