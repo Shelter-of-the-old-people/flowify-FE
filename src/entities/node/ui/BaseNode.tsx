@@ -45,7 +45,7 @@ type NodeIssueStyle = {
 };
 
 const getNodeIssueGlowGradient = (colorToken: string) =>
-  `radial-gradient(circle at center, color-mix(in srgb, ${colorToken} 42%, transparent) 0%, color-mix(in srgb, ${colorToken} 22%, transparent) 24%, color-mix(in srgb, ${colorToken} 6%, transparent) 40%, transparent 52%)`;
+  `radial-gradient(circle at center, color-mix(in srgb, ${colorToken} 26%, transparent) 0%, color-mix(in srgb, ${colorToken} 14%, transparent) 28%, color-mix(in srgb, ${colorToken} 4%, transparent) 44%, transparent 58%)`;
 
 const NODE_ISSUE_STYLES: Record<NodeVisualIssueTone, NodeIssueStyle> = {
   error: {
@@ -179,18 +179,6 @@ export const BaseNode = ({ id, data, selected, children }: BaseNodeProps) => {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {nodeIssueStyle ? (
-        <Box
-          aria-hidden="true"
-          position="absolute"
-          inset="-4px -8px"
-          zIndex={0}
-          borderRadius="full"
-          bg={nodeIssueStyle.glowGradient}
-          pointerEvents="none"
-        />
-      ) : null}
-
       <Text
         position="relative"
         zIndex={1}
@@ -209,7 +197,25 @@ export const BaseNode = ({ id, data, selected, children }: BaseNodeProps) => {
         alignItems="center"
         justifyContent="center"
       >
-        {renderNodeIcon()}
+        {nodeIssueStyle ? (
+          <Box
+            aria-hidden="true"
+            position="absolute"
+            top="50%"
+            left="50%"
+            zIndex={0}
+            width="76px"
+            height="76px"
+            borderRadius="full"
+            bg={nodeIssueStyle.glowGradient}
+            pointerEvents="none"
+            transform="translate(-50%, -50%)"
+          />
+        ) : null}
+
+        <Box position="relative" zIndex={1}>
+          {renderNodeIcon()}
+        </Box>
       </Box>
 
       <Text
