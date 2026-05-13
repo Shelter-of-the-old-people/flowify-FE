@@ -5,6 +5,7 @@ export type ServiceBadgeKey =
   | "gmail"
   | "google-drive"
   | "google-sheets"
+  | "github"
   | "naver-news"
   | "notion"
   | "seboard"
@@ -40,6 +41,8 @@ export const getServiceBadgeKeyFromService = (
     case "google-sheets":
     case "google_sheets":
       return "google-sheets";
+    case "github":
+      return "github";
     case "naver-news":
     case "naver_news":
       return "naver-news";
