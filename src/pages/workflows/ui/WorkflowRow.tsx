@@ -4,9 +4,9 @@ import {
   type SyntheticEvent,
 } from "react";
 import {
+  MdDeleteOutline,
   MdErrorOutline,
   MdMoreHoriz,
-  MdOpenInNew,
   MdPlayArrow,
   MdStop,
 } from "react-icons/md";
@@ -47,9 +47,12 @@ type Props = {
   executionActionKind: "run" | "stop";
   executionActionLabel: string;
   isExecutionActionPending: boolean;
+  canDelete: boolean;
+  isDeletePending: boolean;
   onOpen: () => void;
   onAutoRunToggle: () => void;
   onExecutionAction: () => void;
+  onDelete: () => void;
 };
 
 const AUTO_RUN_BUTTON_STYLES: Record<
@@ -90,9 +93,12 @@ export const WorkflowRow = ({
   executionActionKind,
   executionActionLabel,
   isExecutionActionPending,
+  canDelete,
+  isDeletePending,
   onOpen,
   onAutoRunToggle,
   onExecutionAction,
+  onDelete,
 }: Props) => {
   const { startNode, endNode } = getEndpointNodes(workflow);
   const startBadgeKey = getServiceBadgeKey(startNode);
@@ -102,6 +108,8 @@ export const WorkflowRow = ({
   const warningMessages = getWorkflowWarningMessages(workflow);
   const autoRunButtonStyle = AUTO_RUN_BUTTON_STYLES[autoRunKind];
   const shouldShowAutoRunButton = autoRunKind !== "manual";
+  const isAutoRunActionDisabled = isDeletePending || isAutoRunPending;
+  const isExecutionButtonDisabled = isDeletePending || isExecutionActionPending;
 
   const handleRowKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "Enter" || event.key === " ") {
@@ -190,12 +198,15 @@ export const WorkflowRow = ({
               color={autoRunButtonStyle.color}
               border={autoRunButtonStyle.border}
               opacity={isAutoRunToggleable || isAutoRunPending ? 1 : 0.72}
+              disabled={isAutoRunActionDisabled}
               cursor={
-                isAutoRunToggleable && !isAutoRunPending ? "pointer" : "default"
+                isAutoRunToggleable && !isAutoRunActionDisabled
+                  ? "pointer"
+                  : "default"
               }
               _hover={{
                 bg:
-                  isAutoRunToggleable && !isAutoRunPending
+                  isAutoRunToggleable && !isAutoRunActionDisabled
                     ? autoRunButtonStyle.hoverBg
                     : autoRunButtonStyle.bg,
               }}
@@ -212,7 +223,7 @@ export const WorkflowRow = ({
             aria-label={executionActionLabel}
             variant="ghost"
             size="sm"
-            disabled={isExecutionActionPending}
+            disabled={isExecutionButtonDisabled}
             onClick={(event) => handleInnerAction(event, onExecutionAction)}
           >
             {isExecutionActionPending ? (
@@ -257,10 +268,15 @@ export const WorkflowRow = ({
                   onClick={handleMenuEvent}
                   onKeyDown={handleMenuEvent}
                 >
-                  <Menu.Item value="open" onSelect={onOpen}>
-                    <Icon as={MdOpenInNew} boxSize={4} />
+                  <Menu.Item
+                    value="delete"
+                    color="status.error"
+                    disabled={!canDelete || isDeletePending}
+                    onSelect={onDelete}
+                  >
+                    <Icon as={MdDeleteOutline} boxSize={4} />
                     <Text as="span" fontSize="sm">
-                      워크플로우 열기
+                      {isDeletePending ? "삭제 중..." : "삭제"}
                     </Text>
                   </Menu.Item>
                 </Menu.Content>
