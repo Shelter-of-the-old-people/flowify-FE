@@ -1,7 +1,6 @@
 import {
   type DashboardIssueResponse,
   type DashboardMetricsResponse,
-  type DashboardServiceResponse,
 } from "@/entities/dashboard";
 import { isOAuthConnectSupported } from "@/entities/oauth-token";
 import {
@@ -32,6 +31,16 @@ type RecommendedDashboardService = {
   serviceKey: string;
   badgeKey: SupportedServiceKey;
   label: string;
+};
+
+type DashboardServiceLike = {
+  service: string | null;
+  connected: boolean;
+  accountEmail?: string | null;
+  expiresAt?: string | null;
+  aliasOf?: string | null;
+  disconnectable?: boolean | null;
+  reason?: string | null;
 };
 
 const DASHBOARD_METRIC_LABELS: Record<DashboardMetricId, string> = {
@@ -173,10 +182,10 @@ export const getDashboardIssuesFromSummary = (
     };
   });
 
-const getServiceKey = (service: DashboardServiceResponse) =>
+const getServiceKey = (service: DashboardServiceLike) =>
   service.service?.trim() ?? "";
 
-const getConnectedServiceStatusLabel = (service: DashboardServiceResponse) => {
+const getConnectedServiceStatusLabel = (service: DashboardServiceLike) => {
   if (service.accountEmail?.trim()) {
     return service.accountEmail.trim();
   }
@@ -192,8 +201,8 @@ const getConnectedServiceStatusLabel = (service: DashboardServiceResponse) => {
   return "연결됨";
 };
 
-export const getConnectedServiceCardsFromSummary = (
-  services: DashboardServiceResponse[] | null | undefined,
+export const getConnectedServiceCards = (
+  services: DashboardServiceLike[] | null | undefined,
 ) =>
   (services ?? [])
     .filter((service) => service.connected && getServiceKey(service).length > 0)
@@ -221,8 +230,8 @@ export const getConnectedServiceCardsFromSummary = (
       };
     });
 
-export const getRecommendedServiceCardsFromSummary = (
-  services: DashboardServiceResponse[] | null | undefined,
+export const getRecommendedServiceCards = (
+  services: DashboardServiceLike[] | null | undefined,
 ) => {
   const connectedServiceKeys = new Set(
     (services ?? [])

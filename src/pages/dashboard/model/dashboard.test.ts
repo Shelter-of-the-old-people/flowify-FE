@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  getConnectedServiceCardsFromSummary,
+  getConnectedServiceCards,
   getDashboardIssuesFromSummary,
   getDashboardMetrics,
-  getRecommendedServiceCardsFromSummary,
+  getRecommendedServiceCards,
 } from "./dashboard";
 
 describe("dashboard summary mappers", () => {
@@ -85,8 +85,8 @@ describe("dashboard summary mappers", () => {
       },
     ];
 
-    const connectedServices = getConnectedServiceCardsFromSummary(services);
-    const recommendedServices = getRecommendedServiceCardsFromSummary(services);
+    const connectedServices = getConnectedServiceCards(services);
+    const recommendedServices = getRecommendedServiceCards(services);
 
     expect(connectedServices[0]).toMatchObject({
       id: "connected-gmail",
@@ -97,6 +97,26 @@ describe("dashboard summary mappers", () => {
     expect(
       recommendedServices.map((service) => service.serviceKey),
     ).not.toContain("gmail");
+  });
+
+  it("maps oauth token service summaries without dashboard-only fields", () => {
+    const services = [
+      {
+        service: "discord",
+        connected: true,
+        accountEmail: null,
+        expiresAt: null,
+      },
+    ];
+
+    const connectedServices = getConnectedServiceCards(services);
+
+    expect(connectedServices[0]).toMatchObject({
+      id: "connected-discord",
+      badgeKey: "discord",
+      serviceKey: "discord",
+      actionKind: "disconnect",
+    });
   });
 
   it("marks alias services as non-disconnectable", () => {
@@ -112,7 +132,7 @@ describe("dashboard summary mappers", () => {
       },
     ];
 
-    const connectedServices = getConnectedServiceCardsFromSummary(services);
+    const connectedServices = getConnectedServiceCards(services);
 
     expect(connectedServices[0]).toMatchObject({
       serviceKey: "google_sheets",
