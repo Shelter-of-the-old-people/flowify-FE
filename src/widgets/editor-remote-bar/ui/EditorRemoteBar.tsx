@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 
 import { Box } from "@chakra-ui/react";
+import { useIsMutating } from "@tanstack/react-query";
 
 import {
   executionPollInterval,
@@ -16,12 +17,12 @@ import {
 } from "@/entities";
 import {
   type WorkflowNodeStatusResponse,
-  type WorkflowResponse,
   getWorkflowTriggerSummary,
   useDeleteWorkflowMutation,
+  workflowMutationKeys,
 } from "@/entities/workflow";
 import {
-  useSaveWorkflowMutation,
+  useWorkflowAutosave,
   useWorkflowStore,
 } from "@/features/workflow-editor";
 import { ROUTE_PATHS } from "@/shared";
@@ -32,7 +33,7 @@ import { DeleteConfirmDialog } from "./DeleteConfirmDialog";
 import { ExecutionStatusBadge } from "./ExecutionStatusBadge";
 import { RollbackActionButton } from "./RollbackActionButton";
 import { RunStopSplitButton } from "./RunStopSplitButton";
-import { SaveStateButton } from "./SaveStateButton";
+import { SaveStateIndicator } from "./SaveStateIndicator";
 import { TriggerControlButton } from "./TriggerControlButton";
 import { TriggerSettingsPanel } from "./TriggerSettingsPanel";
 import { WorkflowHeaderControls } from "./WorkflowHeaderControls";
@@ -46,33 +47,18 @@ const getExecutableBlockers = (
 
 const getExecutionBlockerMessage = (blockerCount: number) =>
   blockerCount === 1
-    ? "저장 후 다시 확인한 결과 아직 실행할 수 없는 노드가 1개 있습니다."
-    : `저장 후 다시 확인한 결과 아직 실행할 수 없는 노드가 ${blockerCount}개 있습니다.`;
+    ? "실행 전에 설정 확인이 필요한 노드가 1개 있습니다."
+    : `실행 전에 설정 확인이 필요한 노드가 ${blockerCount}개 있습니다.`;
 
-/**
- * 에디터 하단 고정 리모컨 바.
- *
- * 참고: docs/EDITOR_REMOTE_BAR_DESIGN.md
- * Figma: https://www.figma.com/design/liTdK7QHV5tufaQW8DwV6U/Untitled?node-id=1882-3344
- *
- * 워크플로우 제목/관리 메뉴는 상단 헤더에 두고, 하단 바는 실행 관련
- * 컨트롤만 유지한다.
- */
 export const EditorRemoteBar = () => {
   const navigate = useNavigate();
 
   const workflowId = useWorkflowStore((state) => state.workflowId);
   const workflowName = useWorkflowStore((state) => state.workflowName);
-  const nodes = useWorkflowStore((state) => state.nodes);
-  const edges = useWorkflowStore((state) => state.edges);
   const nodeStatuses = useWorkflowStore((state) => state.nodeStatuses);
-  const startNodeId = useWorkflowStore((state) => state.startNodeId);
-  const endNodeIds = useWorkflowStore((state) => state.endNodeIds);
-  const endNodeId = useWorkflowStore((state) => state.endNodeId);
   const workflowTrigger = useWorkflowStore((state) => state.workflowTrigger);
   const workflowActive = useWorkflowStore((state) => state.workflowActive);
   const isDirty = useWorkflowStore((state) => state.isDirty);
-  const dirtyRevision = useWorkflowStore((state) => state.dirtyRevision);
   const canEditNodes = useWorkflowStore(
     (state) => state.editorCapabilities.canEditNodes,
   );
@@ -83,8 +69,6 @@ export const EditorRemoteBar = () => {
     (state) => state.editorCapabilities.canRunWorkflow,
   );
 
-  const { mutateAsync: saveWorkflow, isPending: isSavePending } =
-    useSaveWorkflowMutation();
   const { mutateAsync: executeWorkflow, isPending: isExecutePending } =
     useExecuteWorkflowMutation();
   const { mutateAsync: stopExecution, isPending: isStopPending } =
@@ -93,6 +77,14 @@ export const EditorRemoteBar = () => {
     useRollbackExecutionMutation();
   const { mutateAsync: deleteWorkflow, isPending: isDeletePending } =
     useDeleteWorkflowMutation();
+  const structureMutationCount = useIsMutating({
+    mutationKey: workflowMutationKeys.structure,
+  });
+  const nodeConfigMutationCount = useIsMutating({
+    mutationKey: workflowMutationKeys.nodeConfig,
+  });
+  const blockingWorkflowMutationCount =
+    structureMutationCount + nodeConfigMutationCount;
 
   const [runPhase, setRunPhase] = useState<"idle" | "auto-saving" | "starting">(
     "idle",
@@ -162,13 +154,21 @@ export const EditorRemoteBar = () => {
           : hasExecutableBlock
             ? "실행 전에 설정 확인 필요"
             : null;
+  const { saveStatus, saveErrorMessage, flushSave } = useWorkflowAutosave({
+    enabled:
+      Boolean(workflowId) &&
+      canSaveWorkflow &&
+      effectiveRunPhase === "idle" &&
+      !isRemoteExecutionInFlight &&
+      !isDeletePending,
+  });
 
   const canRun =
     Boolean(workflowId) &&
     canRunWorkflow &&
     effectiveRunPhase === "idle" &&
     !isRemoteExecutionInFlight &&
-    !isSavePending &&
+    blockingWorkflowMutationCount === 0 &&
     !isDeletePending &&
     !isExecutePending &&
     !isRollbackPending &&
@@ -179,12 +179,6 @@ export const EditorRemoteBar = () => {
     Boolean(activeExecution) &&
     !isStarting &&
     isRemoteExecutionInFlight;
-  const canSave =
-    Boolean(workflowId) &&
-    canSaveWorkflow &&
-    effectiveRunPhase === "idle" &&
-    !isRemoteExecutionInFlight &&
-    !isDeletePending;
   const canDelete =
     Boolean(workflowId) &&
     canEditNodes &&
@@ -196,8 +190,13 @@ export const EditorRemoteBar = () => {
     canSaveWorkflow &&
     effectiveRunPhase === "idle" &&
     !isRemoteExecutionInFlight &&
-    !isDeletePending;
-  const canOpenRunMenu = Boolean(workflowId) && !isDeletePending && !isRunning;
+    !isDeletePending &&
+    blockingWorkflowMutationCount === 0;
+  const canOpenRunMenu =
+    Boolean(workflowId) &&
+    !isDeletePending &&
+    !isRunning &&
+    blockingWorkflowMutationCount === 0;
   const canRollback =
     Boolean(workflowId) &&
     canRunWorkflow &&
@@ -223,67 +222,42 @@ export const EditorRemoteBar = () => {
     return () => window.clearTimeout(timeoutId);
   }, [refetchExecutions, trackedExecution, trackedExecutionId]);
 
-  const saveCurrentWorkflow = async (): Promise<WorkflowResponse> => {
-    if (!workflowId) {
-      throw new Error("workflowId is required");
-    }
-
-    return saveWorkflow({
-      workflowId,
-      store: {
-        workflowName,
-        workflowTrigger,
-        workflowActive,
-        nodes,
-        edges,
-        startNodeId,
-        endNodeIds,
-        endNodeId,
-      },
-      dirtyRevision,
-    });
-  };
-
   const handleRun = async () => {
     if (!workflowId || !canRun) {
       return;
     }
 
-    if (isDirty) {
+    const shouldFlushBeforeRun =
+      isDirty || saveStatus === "scheduled" || saveStatus === "saving";
+
+    if (shouldFlushBeforeRun) {
       setRunPhase("auto-saving");
-      try {
-        const savedWorkflow = await saveCurrentWorkflow();
-        const latestNodeStatuses = savedWorkflow.nodeStatuses;
 
-        if (!latestNodeStatuses) {
-          setRunPhase("idle");
-          toaster.create({
-            title: "실행 준비 필요",
-            description:
-              "저장 후 최신 실행 가능 상태를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.",
-            type: "error",
-          });
-          return;
-        }
-
-        const latestExecutableBlockers =
-          getExecutableBlockers(latestNodeStatuses);
-        if (latestExecutableBlockers.length > 0) {
-          setRunPhase("idle");
-          toaster.create({
-            title: "실행 전 설정 확인",
-            description: getExecutionBlockerMessage(
-              latestExecutableBlockers.length,
-            ),
-            type: "error",
-          });
-          return;
-        }
-      } catch {
+      const savedWorkflow = await flushSave();
+      if (useWorkflowStore.getState().isDirty) {
         setRunPhase("idle");
         toaster.create({
           title: "저장 실패",
-          description: "워크플로우 저장에 실패했습니다.",
+          description:
+            "워크플로우 저장에 실패했습니다. 저장 후 다시 실행해 주세요.",
+          type: "error",
+        });
+        return;
+      }
+
+      const latestNodeStatuses =
+        savedWorkflow?.nodeStatuses ??
+        Object.values(useWorkflowStore.getState().nodeStatuses);
+      const latestExecutableBlockers =
+        getExecutableBlockers(latestNodeStatuses);
+
+      if (latestExecutableBlockers.length > 0) {
+        setRunPhase("idle");
+        toaster.create({
+          title: "실행 전 설정 확인",
+          description: getExecutionBlockerMessage(
+            latestExecutableBlockers.length,
+          ),
           type: "error",
         });
         return;
@@ -305,6 +279,7 @@ export const EditorRemoteBar = () => {
       });
     }
   };
+
   const handleStop = async () => {
     if (!workflowId || !activeExecution) {
       return;
@@ -319,22 +294,6 @@ export const EditorRemoteBar = () => {
       toaster.create({
         title: "중지 실패",
         description: "실행 중지를 요청하지 못했습니다.",
-        type: "error",
-      });
-    }
-  };
-
-  const handleSave = async () => {
-    if (!workflowId || !canSave) {
-      return;
-    }
-
-    try {
-      await saveCurrentWorkflow();
-    } catch {
-      toaster.create({
-        title: "저장 실패",
-        description: "워크플로우 저장에 실패했습니다.",
         type: "error",
       });
     }
@@ -364,7 +323,7 @@ export const EditorRemoteBar = () => {
     if (!workflowId) {
       toaster.create({
         title: "워크플로우 정보 없음",
-        description: "워크플로우 정보를 불러온 후 다시 확인해 주세요.",
+        description: "워크플로우 정보를 불러온 뒤 다시 확인해 주세요.",
         type: "error",
       });
       return;
@@ -387,11 +346,30 @@ export const EditorRemoteBar = () => {
       return;
     }
 
-    if (isDirty) {
+    if (blockingWorkflowMutationCount > 0) {
       toaster.create({
-        title: "저장 필요",
+        title: "변경사항 처리 중",
+        description: "노드 변경사항이 반영된 뒤 다시 확인해 주세요.",
+      });
+      return;
+    }
+
+    if (isDirty || saveStatus === "scheduled" || saveStatus === "saving") {
+      toaster.create({
+        title: "자동 저장 중",
         description:
-          "저장되지 않은 변경사항이 있습니다. 저장 후 최신 설정 상태를 확인해 주세요.",
+          "변경사항을 저장하고 있습니다. 저장 완료 후 다시 확인해 주세요.",
+      });
+      return;
+    }
+
+    if (saveStatus === "error") {
+      toaster.create({
+        title: "저장 상태 확인 필요",
+        description:
+          saveErrorMessage ??
+          "최근 변경사항 저장에 실패했습니다. 수정 후 다시 확인해 주세요.",
+        type: "error",
       });
       return;
     }
@@ -410,6 +388,7 @@ export const EditorRemoteBar = () => {
       description: "현재 저장된 설정으로 워크플로우를 실행할 수 있습니다.",
     });
   };
+
   const handleRollback = async () => {
     if (!workflowId || !activeExecution || !canRollback) {
       return;
@@ -514,11 +493,10 @@ export const EditorRemoteBar = () => {
               />
             ) : null}
 
-            <SaveStateButton
-              isDirty={isDirty}
-              isSaving={isSavePending}
-              canSave={canSave}
-              onSave={() => void handleSave()}
+            <SaveStateIndicator
+              status={saveStatus}
+              errorMessage={saveErrorMessage}
+              canSave={canSaveWorkflow}
             />
 
             <TriggerControlButton
