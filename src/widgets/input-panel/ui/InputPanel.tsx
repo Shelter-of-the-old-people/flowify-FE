@@ -45,22 +45,39 @@ export const InputPanel = () => {
   );
   const isDirty = useWorkflowStore((state) => state.isDirty);
   const closePanel = useWorkflowStore((state) => state.closePanel);
+  const setActivePlaceholder = useWorkflowStore(
+    (state) => state.setActivePlaceholder,
+  );
   const layout = useDualPanelLayout();
-  const isOpen = Boolean(activePanelNodeId) && activePlaceholder === null;
+  const sinkPlaceholderSourceNodeId =
+    activePlaceholder?.kind === "sink" && activePlaceholder.sourceNodeId
+      ? activePlaceholder.sourceNodeId
+      : null;
+  const isSinkPlaceholderInputMode =
+    !activePanelNodeId && Boolean(sinkPlaceholderSourceNodeId);
+  const inputPanelNodeId = isSinkPlaceholderInputMode
+    ? sinkPlaceholderSourceNodeId
+    : activePanelNodeId;
+  const inputPanelKind = isSinkPlaceholderInputMode ? "output" : "input";
+  const isOpen =
+    (Boolean(activePanelNodeId) && activePlaceholder === null) ||
+    isSinkPlaceholderInputMode;
   const { data: mappingRulesResponse } = useMappingRulesQuery();
   const mappingRules = useMemo(
     () => toChoiceMappingRules(mappingRulesResponse),
     [mappingRulesResponse],
   );
   const nodeDataPanel = useNodeDataPanelModel({
-    panelKind: "input",
+    panelKind: inputPanelKind,
     workflowId: workflowId || undefined,
-    nodeId: activePanelNodeId,
+    nodeId: inputPanelNodeId,
     canViewExecutionData,
     isWorkflowDirty: isDirty,
   });
   const { activeNode, sourceNode, isStartNode, isEndNode } = nodeDataPanel;
-  const sourceData = sourceNode?.data ?? null;
+  const sourceData = isSinkPlaceholderInputMode
+    ? (activeNode?.data ?? null)
+    : (sourceNode?.data ?? null);
   const sourceMeta = sourceData ? NODE_REGISTRY[sourceData.type] : null;
   const headerNodeData = sourceData ?? (isStartNode ? activeNode?.data : null);
   const headerMeta = headerNodeData ? NODE_REGISTRY[headerNodeData.type] : null;
@@ -74,8 +91,8 @@ export const InputPanel = () => {
       ? headerConfig.source_mode
       : null;
   const isMiddleNode = Boolean(activeNode) && !isStartNode && !isEndNode;
-  const storeNodeStatus = activePanelNodeId
-    ? (nodeStatuses[activePanelNodeId] ?? null)
+  const storeNodeStatus = inputPanelNodeId
+    ? (nodeStatuses[inputPanelNodeId] ?? null)
     : null;
   const activeNodeStatus =
     nodeDataPanel.schemaPreview?.nodeStatus ?? storeNodeStatus;
@@ -104,6 +121,9 @@ export const InputPanel = () => {
     nodeDataPanel.state !== "data-ready" &&
     nodeDataPanel.schemaToDisplay !== null &&
     !nodeDataPanel.isSchemaPreviewLoading;
+  const displayDataTypeLabel = isSinkPlaceholderInputMode
+    ? nodeDataPanel.staticOutputLabel
+    : nodeDataPanel.staticInputLabel;
   const closedTransform =
     layout.mode === "stacked"
       ? `translate3d(0, -${layout.inputPanelTop + layout.panelHeight + 24}px, 0)`
@@ -111,6 +131,14 @@ export const InputPanel = () => {
   const transition = isOpen
     ? `transform ${PANEL_TRANSITION_MS}ms ease, opacity ${PANEL_TRANSITION_MS}ms ease, visibility 0ms linear 0ms`
     : `transform ${PANEL_TRANSITION_MS}ms ease, opacity ${PANEL_TRANSITION_MS}ms ease, visibility 0ms linear ${PANEL_TRANSITION_MS}ms`;
+  const handleClose = () => {
+    if (isSinkPlaceholderInputMode) {
+      setActivePlaceholder(null);
+      return;
+    }
+
+    closePanel();
+  };
 
   return (
     <Box
@@ -158,7 +186,7 @@ export const InputPanel = () => {
             들어오는 데이터
           </Text>
         </Box>
-        <Box cursor="pointer" onClick={closePanel}>
+        <Box cursor="pointer" onClick={handleClose}>
           <Icon as={MdCancel} boxSize={6} color="gray.600" />
         </Box>
       </Box>
@@ -172,7 +200,10 @@ export const InputPanel = () => {
               </Text>
               {sourceData ? (
                 <Text fontSize="sm" color="text.secondary">
-                  출력 타입: {nodeDataPanel.staticInputLabel ?? "없음"}
+                  {isSinkPlaceholderInputMode
+                    ? "도착노드로 들어올 데이터 타입"
+                    : "출력 타입"}
+                  : {displayDataTypeLabel ?? "없음"}
                 </Text>
               ) : isStartNode ? (
                 <Text fontSize="sm" color="text.secondary">
@@ -223,7 +254,9 @@ export const InputPanel = () => {
                   title={
                     nodeDataPanel.isPreviewDataDisplayed
                       ? "미리보기 데이터"
-                      : "입력 데이터"
+                      : isSinkPlaceholderInputMode
+                        ? "들어올 데이터"
+                        : "입력 데이터"
                   }
                   data={nodeDataPanel.dataToDisplay}
                   previewMetadata={
