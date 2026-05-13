@@ -69,6 +69,7 @@ export const TemplateWorkflowPreview = ({ graph }: Props) => {
       startNodeId: graph?.startNodeId ?? null,
       endNodeIds: graph?.endNodeIds ?? [],
       getNodeStatus: () => null,
+      getNodeVisualIssue: () => null,
       onOpenPanel: () => {},
       onRemoveNode: () => {},
     }),

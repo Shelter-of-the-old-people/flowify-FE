@@ -19,14 +19,12 @@ export const useLatestExecutionDetailQuery = (
     | QueryPolicyOptions<Awaited<ReturnType<typeof executionApi.getById>>>,
 ) => {
   const options = resolveQueryPolicyOptions(enabledOrOptions);
-  const isEnabled = options?.enabled ?? true;
+  const isEnabled =
+    typeof options?.enabled === "boolean" ? options.enabled : true;
   const latestExecutionQuery = useLatestWorkflowExecutionQuery(workflowId, {
     enabled: isEnabled,
     errorMessage: options?.errorMessage,
-    refetchOnMount: options?.refetchOnMount,
-    retry: options?.retry,
     showErrorToast: options?.showErrorToast,
-    staleTime: options?.staleTime,
   });
   const latestExecution = latestExecutionQuery.data ?? null;
   const executionId = latestExecution?.id;
