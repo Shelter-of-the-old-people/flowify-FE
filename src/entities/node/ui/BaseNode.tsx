@@ -204,8 +204,8 @@ export const BaseNode = ({ id, data, selected, children }: BaseNodeProps) => {
             top="50%"
             left="50%"
             zIndex={0}
-            width="76px"
-            height="76px"
+            width="104px"
+            height="104px"
             borderRadius="full"
             bg={nodeIssueStyle.glowGradient}
             pointerEvents="none"
