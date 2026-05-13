@@ -1,40 +1,40 @@
-﻿# Canvas LMS / Direct Connect Sync Design
+# Canvas LMS / Direct Connect Sync Design
 
-> ?묒꽦?? 2026-04-28
-> ???釉뚮옖移? `feat#108-canvas-lms-direct-connect-sync`
-> 紐⑹쟻: backend 理쒖떊 ?곹깭??留욎떠 `canvas_lms` source ?몄텧, direct-connect OAuth UX, service key 湲곕컲 restore/presentation ?뺥빀??FE?먯꽌 ?대뼸寃??섏슜?좎? ?ㅺ퀎?쒕떎.
-
----
-
-## 1. 諛곌꼍
-
-source/sink editor 1李??꾪솚? ?대? ?꾨즺?섏뿀??
-
-- ?쒖옉 ?몃뱶: source service picker
-- 以묎컙 泥섎━: `mapping_rules` 湲곕컲 wizard
-- ?꾩갑 ?몃뱶: sink service picker
-- lifecycle: backend `nodeStatuses` 湲곗? 諛섏쁺
-
-?대쾲 ?댁뒋????援ъ“瑜??ㅼ떆 諛붽씀???묒뾽???꾨땲??
-
-???backend 理쒖떊 援ы쁽?먯꽌 ?덈줈 ?쒕윭???꾨옒 ??媛吏瑜?FE媛 ?섏슜?섎룄濡??뺣젹?섎뒗 ?묒뾽?대떎.
-
-1. Spring source catalog??`canvas_lms`媛 異붽??섏뿀??
-2. OAuth connect ?묐떟??`redirect`留??덈뒗 寃껋씠 ?꾨땲??`directly connected`??議댁옱?쒕떎.
-3. FastAPI runtime?먯꽌 `canvas_lms` source媛 ?ㅼ젣濡??ㅽ뻾?섏?留? payload ?섎???湲곗〈 `google_drive`/`slack`? ?ㅻⅤ??
-
-利??대쾲 ?댁뒋??蹂몄쭏? `source/sink editor 2李?由щ뵒?먯씤`???꾨땲??
-`??source + ??connect 諛⑹떇 + service presentation ?뺥빀`?대떎.
+> 작성일: 2026-04-28
+> 대상 브랜치: `feat#108-canvas-lms-direct-connect-sync`
+> 목적: backend 최신 상태에 맞춰 `canvas_lms` source 노출, direct-connect OAuth UX, service key 기반 restore/presentation 정합을 FE에서 어떻게 수용할지 설계한다.
 
 ---
 
-## 2. Backend 湲곗? ?ъ떎
+## 1. 배경
+
+source/sink editor 1차 전환은 이미 완료되었다.
+
+- 시작 노드: source service picker
+- 중간 처리: `mapping_rules` 기반 wizard
+- 도착 노드: sink service picker
+- lifecycle: backend `nodeStatuses` 기준 반영
+
+이번 이슈는 이 구조를 다시 바꾸는 작업이 아니다.
+
+대신 backend 최신 구현에서 새로 드러난 아래 세 가지를 FE가 수용하도록 정렬하는 작업이다.
+
+1. Spring source catalog에 `canvas_lms`가 추가되었다.
+2. OAuth connect 응답이 `redirect`만 있는 것이 아니라 `directly connected`도 존재한다.
+3. FastAPI runtime에서 `canvas_lms` source가 실제로 실행되지만, payload 의미는 기존 `google_drive`/`slack`와 다르다.
+
+즉 이번 이슈의 본질은 `source/sink editor 2차 리디자인`이 아니라
+`새 source + 새 connect 방식 + service presentation 정합`이다.
+
+---
+
+## 2. Backend 기준 사실
 
 ## 2.1 Spring public contract
 
 ### 2.1.1 `canvas_lms` source catalog
 
-Spring `source_catalog.json` 湲곗? `canvas_lms`???대? public catalog???ы븿?섏뼱 ?덈떎.
+Spring `source_catalog.json` 기준 `canvas_lms`는 이미 public catalog에 포함되어 있다.
 
 - service key: `canvas_lms`
 - `auth_required: true`
@@ -43,33 +43,33 @@ Spring `source_catalog.json` 湲곗? `canvas_lms`???대? public catalog???ы븿?
   - `course_new_file` -> `SINGLE_FILE`
   - `term_all_files` -> `FILE_LIST`
 - target schema:
-  - ?꾨? `text_input`
-  - ?덉떆 placeholder:
-    - 怨쇰ぉ ID
-    - ?숆린紐?
+  - 전부 `text_input`
+  - 예시 placeholder:
+    - 과목 ID
+    - 학기명
 
-?뺣━?섎㈃ FE??`canvas_lms`瑜??꾪빐 ??picker control??留뚮뱾 ?꾩슂媛 ?녿떎.
-湲곗〈 `text_input` target step??洹몃?濡??ъ궗?⑺븯硫??쒕떎.
+정리하면 FE는 `canvas_lms`를 위해 새 picker control을 만들 필요가 없다.
+기존 `text_input` target step을 그대로 재사용하면 된다.
 
-### 2.1.2 OAuth connect 寃곌낵媛 2醫낅쪟??
+### 2.1.2 OAuth connect 결과가 2종류다
 
-`POST /api/oauth-tokens/{service}/connect`??connector???곕씪 ?쒕줈 ?ㅻⅨ 寃곌낵瑜??뚮젮以??
+`POST /api/oauth-tokens/{service}/connect`는 connector에 따라 서로 다른 결과를 돌려준다.
 
 - redirect required:
-  - ?? Slack, Google Drive
-  - ?묐떟 shape: `{ "authUrl": "..." }`
+  - 예: Slack, Google Drive
+  - 응답 shape: `{ "authUrl": "..." }`
 - directly connected:
-  - ?? Notion, GitHub, Canvas LMS
-  - ?묐떟 shape: `{ "connected": "true", "service": "<serviceKey>" }`
+  - 예: Notion, GitHub, Canvas LMS
+  - 응답 shape: `{ "connected": "true", "service": "<serviceKey>" }`
 
-以묒슂????
+중요한 점:
 
-- backend ?묐떟?먮뒗 `kind` 媛숈? ?먮퀎?먭? ?녿떎.
-- FE媛 ?묐떟 shape瑜?蹂닿퀬 遺꾧린?댁빞 ?쒕떎.
+- backend 응답에는 `kind` 같은 판별자가 없다.
+- FE가 응답 shape를 보고 분기해야 한다.
 
-### 2.1.3 backend connector 吏??踰붿쐞
+### 2.1.3 backend connector 지원 범위
 
-?꾩옱 FE媛 connectable濡?蹂????덈뒗 ?쒕퉬?ㅻ뒗 backend connector 湲곗??쇰줈 ?ㅼ쓬怨?媛숇떎.
+현재 FE가 connectable로 볼 수 있는 서비스는 backend connector 기준으로 다음과 같다.
 
 - `slack`
 - `google_drive`
@@ -77,27 +77,27 @@ Spring `source_catalog.json` 湲곗? `canvas_lms`???대? public catalog???ы븿?
 - `github`
 - `canvas_lms`
 
-諛섎?濡??꾨옒 ?쒕퉬?ㅻ뱾? catalog??蹂댁뿬???꾩옱 ???댁뒋 踰붿쐞?먯꽌??connectable濡?媛꾩＜?섏? ?딅뒗??
+반대로 아래 서비스들은 catalog에 보여도 현재 이 이슈 범위에서는 connectable로 간주하지 않는다.
 
 - `gmail`
 - `google_sheets`
 - `google_calendar`
 
-利?FE??`auth_required === true`留뚯쑝濡?"?곌껐 ?쒖옉 媛?????먮떒?섎㈃ ???쒕떎.
+즉 FE는 `auth_required === true`만으로 "연결 시작 가능"을 판단하면 안 된다.
 
 ## 2.2 FastAPI runtime semantics
 
-### 2.2.1 `canvas_lms` source ?ㅽ뻾? ?대? 議댁옱?쒕떎
+### 2.2.1 `canvas_lms` source 실행은 이미 존재한다
 
-FastAPI `InputNodeStrategy` 湲곗? `canvas_lms`???ㅼ젣 ?ㅽ뻾 ??곸씠??
+FastAPI `InputNodeStrategy` 기준 `canvas_lms`는 실제 실행 대상이다.
 
 - `course_files` -> `FILE_LIST`
 - `course_new_file` -> `SINGLE_FILE`
 - `term_all_files` -> `FILE_LIST`
 
-### 2.2.2 payload ?섎?
+### 2.2.2 payload 의미
 
-`canvas_lms` source媛 ?대젮二쇰뒗 payload???泥대줈 `url` 以묒떖?대떎.
+`canvas_lms` source가 내려주는 payload는 대체로 `url` 중심이다.
 
 - `course_files` / `term_all_files`
   - `items[*].filename`
@@ -110,121 +110,121 @@ FastAPI `InputNodeStrategy` 湲곗? `canvas_lms`???ㅼ젣 ?ㅽ뻾 ??곸씠??
   - `url`
   - `content: null`
 
-利?FE媛 湲곕???寃껋? ?ㅼ쓬?대떎.
+즉 FE가 기대할 것은 다음이다.
 
-- source/sink editor ?④퀎?먯꽌 canonical type? 留욊쾶 ?곌껐??
-- runtime?먯꽌 ?ㅼ젣 ?뚯씪 諛붿씠?덈━ handoff ?щ???FE媛 蹂댁옣?섏? ?딆쓬
+- source/sink editor 단계에서 canonical type은 맞게 연결됨
+- runtime에서 실제 파일 바이너리 handoff 여부는 FE가 보장하지 않음
 
-### 2.2.3 ?대쾲 FE ?댁뒋??鍮꾩콉??踰붿쐞
+### 2.2.3 이번 FE 이슈의 비책임 범위
 
-?꾩옱 backend runtime?먮뒗 ?꾨옒 ?섎? 李⑥씠媛 ?⑥븘 ?덈떎.
+현재 backend runtime에는 아래 의미 차이가 남아 있다.
 
 - `FILE_LIST` + `url only` item
 - `SINGLE_FILE` + `content: null`
 
-?닿쾬??Google Drive sink?먯꽌 ?ㅼ젣 ?뚯씪 ?ㅼ슫濡쒕뱶/?낅줈?쒕줈 ?꾩쟾???댁뼱吏?붿???backend runtime 梨낆엫?대떎.
+이것이 Google Drive sink에서 실제 파일 다운로드/업로드로 완전히 이어지는지는 backend runtime 책임이다.
 
-FE???대쾲 ?댁뒋?먯꽌 ???숈옉??異붾줎?섍굅??蹂댁젙?섏? ?딅뒗??
+FE는 이번 이슈에서 이 동작을 추론하거나 보정하지 않는다.
 
 ---
 
-## 3. ?꾩옱 FE 媛?
+## 3. 현재 FE 갭
 
-?꾩옱 ?꾨줎??援ъ“?먯꽌 ?ㅼ젣濡?鍮꾩뼱 ?덈뒗 吏?먯? ?ㅼ쓬?대떎.
+현재 프론트 구조에서 실제로 비어 있는 지점은 다음이다.
 
 ## 3.1 source rollout
 
-`source-rollout.ts`??`canvas_lms`媛 ?녿떎.
+`source-rollout.ts`에 `canvas_lms`가 없다.
 
-寃곌낵:
+결과:
 
-- catalog???덉뼱???쒖옉 ?몃뱶 picker???몄텧?섏? ?딅뒗??
+- catalog에 있어도 시작 노드 picker에 노출되지 않는다.
 
 ## 3.2 connect response model
 
-?꾩옱 connect ?묐떟 ??낆? `authUrl`留?媛?뺥븳??
+현재 connect 응답 타입은 `authUrl`만 가정한다.
 
 - `OAuthConnectResponse = { authUrl: string }`
-- `window.location.assign(result.authUrl)`瑜??꾩젣濡???
+- `window.location.assign(result.authUrl)`를 전제로 함
 
-寃곌낵:
+결과:
 
-- `DirectlyConnected` ?묐떟??FE媛 泥섎━?????녿떎.
+- `DirectlyConnected` 응답을 FE가 처리할 수 없다.
 
 ## 3.3 connect support matrix
 
-?꾩옱 connectable service allowlist???ъ떎??`slack`留?吏?먰븳??
+현재 connectable service allowlist는 사실상 `slack`만 지원한다.
 
-寃곌낵:
+결과:
 
 - `canvas_lms`
 - `google_drive`
 - `notion`
 - `github`
 
-紐⑤몢 backend??connect 媛?ν빐??FE??unsupported泥섎읆 ?숈옉?쒕떎.
+모두 backend는 connect 가능해도 FE는 unsupported처럼 동작한다.
 
 ## 3.4 service key -> visual node mapping
 
-?꾩옱 `workflow-node-adapter`??`canvas_lms`瑜?紐⑤Ⅸ??
+현재 `workflow-node-adapter`는 `canvas_lms`를 모른다.
 
-寃곌낵:
+결과:
 
-- start node ?앹꽦 ??visual node type??李얠? 紐삵븳??
-- backend?먯꽌 ??λ맂 `type = canvas_lms` node瑜?hydrate???뚮룄 presentation???덉젙?곸씠吏 ?딅떎.
+- start node 생성 시 visual node type을 찾지 못한다.
+- backend에서 저장된 `type = canvas_lms` node를 hydrate할 때도 presentation이 안정적이지 않다.
 
 ## 3.5 presentation / badge / icon layer
 
-?꾩옱 FE??`canvas_lms` ?꾩슜 label/icon/badge媛 ?녿떎.
+현재 FE는 `canvas_lms` 전용 label/icon/badge가 없다.
 
-寃곌낵:
+결과:
 
-- picker, account, workflow list, dashboard, node title?먯꽌 ?쇨????쒕퉬???쒗쁽???대졄??
+- picker, account, workflow list, dashboard, node title에서 일관된 서비스 표현이 어렵다.
 
-## 3.6 `web-scraping` node config ?섎?
+## 3.6 `web-scraping` node config 의미
 
-?꾩옱 `web-scraping` config???ъ떎??URL scraping ?꾩젣??
+현재 `web-scraping` config는 사실상 URL scraping 전제다.
 
 - `targetUrl`
 - `selector`
 - `outputFields`
 
-洹몃윴??`canvas_lms`??媛숈? visual node carrier瑜??곕뜑?쇰룄
-?ㅼ젣 config ?섎???`service/source_mode/target`??媛源앸떎.
+그런데 `canvas_lms`는 같은 visual node carrier를 쓰더라도
+실제 config 의미는 `service/source_mode/target`에 가깝다.
 
-利?FE??"visual node type"怨?"persisted service semantics"瑜???紐낇솗??遺꾨━?댁빞 ?쒕떎.
+즉 FE는 "visual node type"과 "persisted service semantics"를 더 명확히 분리해야 한다.
 
 ---
 
-## 4. ?ㅺ퀎 ?먯튃
+## 4. 설계 원칙
 
-## 4.1 ??editor瑜?留뚮뱾吏 ?딅뒗??
+## 4.1 새 editor를 만들지 않는다
 
-`canvas_lms`??source/sink editor 1李?援ъ“ ?꾩뿉 ?밸뒗??
+`canvas_lms`는 source/sink editor 1차 구조 위에 얹는다.
 
-- ?쒖옉 ?몃뱶 flow ?ъ궗??
-- auth step ?ъ궗??
-- source mode step ?ъ궗??
-- target step ?ъ궗??
+- 시작 노드 flow 재사용
+- auth step 재사용
+- source mode step 재사용
+- target step 재사용
 
-## 4.2 ??visual node type? ?대쾲 ?댁뒋 踰붿쐞媛 ?꾨땲??
+## 4.2 새 visual node type은 이번 이슈 범위가 아니다
 
-?대쾲 ?댁뒋?먯꽌??`canvas_lms` ?꾩슜 `NodeType`??留뚮뱾吏 ?딅뒗??
+이번 이슈에서는 `canvas_lms` 전용 `NodeType`을 만들지 않는다.
 
-?댁쑀:
+이유:
 
-- ?꾩옱 editor??generic domain node type ?꾩뿉 service key瑜??밸뒗 援ъ“??
-- `canvas_lms` 異붽?留뚯쑝濡?taxonomy瑜??ㅼ떆 ?섎늻湲??쒖옉?섎㈃ 踰붿쐞媛 而ㅼ쭊??
-- backend persisted contract??service key媛 蹂몄껜?닿퀬, visual type? FE ?쒗쁽 ?덉씠?대떎.
+- 현재 editor는 generic domain node type 위에 service key를 얹는 구조다.
+- `canvas_lms` 추가만으로 taxonomy를 다시 나누기 시작하면 범위가 커진다.
+- backend persisted contract는 service key가 본체이고, visual type은 FE 표현 레이어다.
 
-?곕씪???대쾲 ?댁뒋?먯꽌 `canvas_lms`??湲곗〈 `web-scraping` visual node瑜?carrier濡??ъ슜?쒕떎.
+따라서 이번 이슈에서 `canvas_lms`는 기존 `web-scraping` visual node를 carrier로 사용한다.
 
-## 4.3 connectability??catalog媛 ?꾨땲??verified support matrix濡??먮떒?쒕떎
+## 4.3 connectability는 catalog가 아니라 verified support matrix로 판단한다
 
-`auth_required`??"?몄쬆???꾩슂?섎떎"瑜??삵븷 肉?
-"吏湲?FE?먯꽌 ?곌껐 ?쒖옉??媛?ν븯??瑜??삵븯吏 ?딅뒗??
+`auth_required`는 "인증이 필요하다"를 뜻할 뿐,
+"지금 FE에서 연결 시작이 가능하다"를 뜻하지 않는다.
 
-FE??蹂꾨룄 support matrix瑜??좎??쒕떎.
+FE는 별도 support matrix를 유지한다.
 
 - connectable:
   - `slack`
@@ -237,68 +237,68 @@ FE??蹂꾨룄 support matrix瑜??좎??쒕떎.
   - `google_sheets`
   - `google_calendar`
 
-??allowlist??backend媛 capability endpoint瑜??대젮二쇨린 ?꾧퉴吏 ?좎??섎뒗
-?꾩떆 FE ?뺤콉?대떎.
+이 allowlist는 backend가 capability endpoint를 내려주기 전까지 유지하는
+임시 FE 정책이다.
 
-## 4.4 direct connect??redirect flow???덉쇅媛 ?꾨땲??媛숈? connect flow????醫낅쪟??
+## 4.4 direct connect는 redirect flow의 예외가 아니라 같은 connect flow의 한 종류다
 
-FE??connect瑜??ㅼ쓬 ??媛吏 以??섎굹濡?泥섎━?쒕떎.
+FE는 connect를 다음 두 가지 중 하나로 처리한다.
 
 - `redirect`
 - `direct`
 
-吏곸젒 ?곌껐? 蹂꾨룄 ?꾩떆 UX媛 ?꾨땲???숈씪??service auth step ?덉뿉??泥섎━?쒕떎.
+직접 연결은 별도 임시 UX가 아니라 동일한 service auth step 안에서 처리한다.
 
-## 4.5 FE??runtime payload ?섎?瑜?怨쇰?異붾줎?섏? ?딅뒗??
+## 4.5 FE는 runtime payload 의미를 과대추론하지 않는다
 
-`canvas_lms -> google_drive`媛 editor?먯꽌 ?곌껐 媛?ν븯?ㅻ뒗 ?ъ떎怨?
-"?ㅼ젣 ?뚯씪??諛붿씠???⑥쐞濡??낅줈?쒕맂?????ъ떎? ?ㅻⅤ??
+`canvas_lms -> google_drive`가 editor에서 연결 가능하다는 사실과
+"실제 파일이 바이트 단위로 업로드된다"는 사실은 다르다.
 
-?대쾲 ?댁뒋?먯꽌 FE???ㅼ쓬源뚯?留?梨낆엫吏꾨떎.
+이번 이슈에서 FE는 다음까지만 책임진다.
 
-- source ?좏깮 媛??
-- connect 媛??
-- mode/target ?ㅼ젙 媛??
-- node ???蹂듭썝 媛??
-- canonical data type ?먮쫫 ?곌껐 媛??
+- source 선택 가능
+- connect 가능
+- mode/target 설정 가능
+- node 저장/복원 가능
+- canonical data type 흐름 연결 가능
 
 ---
 
-## 5. ?곸꽭 ?ㅺ퀎
+## 5. 상세 설계
 
-## 5.1 Source rollout ?ㅺ퀎
+## 5.1 Source rollout 설계
 
-`canvas_lms`瑜?source rollout allowlist??異붽??쒕떎.
+`canvas_lms`를 source rollout allowlist에 추가한다.
 
-異붽? mode:
+추가 mode:
 
 - `course_files`
 - `course_new_file`
 - `term_all_files`
 
-### UX ?숈옉
+### UX 동작
 
-- ?쒖옉 ?몃뱶 service picker?먯꽌 `Canvas LMS` ?몄텧
-- auth state ?쒖떆
-- mode ?좏깮 吏꾩엯
-- target step?먯꽌 湲곗〈 `text_input` ?ъ슜
+- 시작 노드 service picker에서 `Canvas LMS` 노출
+- auth state 표시
+- mode 선택 진입
+- target step에서 기존 `text_input` 사용
 
-### target ?낅젰 洹쒖튃
+### target 입력 규칙
 
 - `course_files`
-  - 怨쇰ぉ ID 臾몄옄??
+  - 과목 ID 문자열
 - `course_new_file`
-  - 怨쇰ぉ ID 臾몄옄??
+  - 과목 ID 문자열
 - `term_all_files`
-  - ?숆린紐?臾몄옄??
+  - 학기명 문자열
 
-???낅젰媛믪? FE媛 ?섎?瑜??댁꽍?섏? ?딄퀬 backend contract string?쇰줈 ??ν븳??
+이 입력값은 FE가 의미를 해석하지 않고 backend contract string으로 저장한다.
 
-## 5.2 OAuth connect domain model ?ㅺ퀎
+## 5.2 OAuth connect domain model 설계
 
 ### 5.2.1 Raw response
 
-backend raw response???ㅼ쓬 union?대떎.
+backend raw response는 다음 union이다.
 
 ```ts
 type RawOAuthConnectResponse =
@@ -308,7 +308,7 @@ type RawOAuthConnectResponse =
 
 ### 5.2.2 FE normalized response
 
-FE ?대??먯꽌???먮퀎 媛?ν븳 union?쇰줈 ?뺢퇋?뷀븳??
+FE 내부에서는 판별 가능한 union으로 정규화한다.
 
 ```ts
 type OAuthConnectResult =
@@ -316,53 +316,53 @@ type OAuthConnectResult =
   | { kind: "direct"; service: string; connected: true };
 ```
 
-?뺢퇋??梨낆엫? API layer ?먮뒗 entity adapter???붾떎.
-UI??raw map??吏곸젒 ?댁꽍?섏? ?딅뒗??
+정규화 책임은 API layer 또는 entity adapter에 둔다.
+UI는 raw map을 직접 해석하지 않는다.
 
-### 5.2.3 connect action 泥섎━
+### 5.2.3 connect action 처리
 
 #### redirect result
 
-- 湲곗〈?濡?`window.location.assign(authUrl)`
+- 기존대로 `window.location.assign(authUrl)`
 
 #### direct result
 
-- ?꾩옱 ?붾㈃???⑥븘 ?덉쓬
+- 현재 화면에 남아 있음
 - `useOAuthTokensQuery` refetch
-- connected state 諛섏쁺
-- ?꾩옱 wizard step???ㅼ쓬 ?④퀎濡?吏꾪뻾
+- connected state 반영
+- 현재 wizard step을 다음 단계로 진행
 
-利?direct connect??callback ?섏씠吏瑜?嫄곗튂吏 ?딅뒗??
+즉 direct connect는 callback 페이지를 거치지 않는다.
 
-## 5.3 Auth step UX ?ㅺ퀎
+## 5.3 Auth step UX 설계
 
 ## 5.3.1 ServiceSelectionPanel
 
-start/end auth step?먯꽌 `?곌껐 ?쒖옉` ?대┃ ??
+start/end auth step에서 `연결 시작` 클릭 시:
 
-- `redirect`硫??몃?濡??대룞
-- `direct`硫?媛숈? panel ?덉뿉???곌껐 ?꾨즺 泥섎━
+- `redirect`면 외부로 이동
+- `direct`면 같은 panel 안에서 연결 완료 처리
 
-### direct connect ?깃났 ??next step
+### direct connect 성공 시 next step
 
 - start node
   - `auth -> mode`
 - end node
   - `auth -> confirm`
 
-利??ъ슜?먮뒗 `Canvas LMS`瑜??좏깮?섍퀬 ?곌껐 ?쒖옉???꾨Ⅸ ??
-釉뚮씪?곗? ?대룞 ?놁씠 諛붾줈 ?ㅼ쓬 ?④퀎濡?媛꾨떎.
+즉 사용자는 `Canvas LMS`를 선택하고 연결 시작을 누른 뒤
+브라우저 이동 없이 바로 다음 단계로 간다.
 
 ## 5.3.2 Account page
 
-Account page??connect 踰꾪듉???숈씪??normalized result瑜??ъ슜?쒕떎.
+Account page의 connect 버튼도 동일한 normalized result를 사용한다.
 
-- `redirect`硫??몃? ?대룞
-- `direct`硫??좏겙 refetch ??badge ?곹깭瑜?`CONNECTED`濡??꾪솚
+- `redirect`면 외부 이동
+- `direct`면 토큰 refetch 후 badge 상태를 `CONNECTED`로 전환
 
-## 5.4 connect support matrix ?ㅺ퀎
+## 5.4 connect support matrix 설계
 
-?꾩옱 FE support matrix??backend verified connector 踰붿쐞??留욎떠 ?뺤옣?쒕떎.
+현재 FE support matrix는 backend verified connector 범위에 맞춰 확장한다.
 
 ```ts
 const OAUTH_CONNECT_SUPPORTED_SERVICES = [
@@ -374,49 +374,49 @@ const OAUTH_CONNECT_SUPPORTED_SERVICES = [
 ] as const;
 ```
 
-??媛믪? "OAuth only"媛 ?꾨땲??"FE connect action supported" ?섎?濡??댁꽍?쒕떎.
-?대쫫???ㅽ빐瑜?留뚮뱺?ㅻ㈃ ?꾩냽 由ы뙥?곕쭅?먯꽌 `CONNECT_SUPPORTED_SERVICES`濡??쇰컲?뷀븳??
-?먰븳 backend媛 connect capability metadata瑜?蹂꾨룄濡??쒓났?섍린 ?꾧퉴吏??
-FE媛 吏곸젒 ?좎??섎뒗 ?꾩떆 allowlist濡??붾떎.
+이 값은 "OAuth only"가 아니라 "FE connect action supported" 의미로 해석한다.
+이름이 오해를 만든다면 후속 리팩터링에서 `CONNECT_SUPPORTED_SERVICES`로 일반화한다.
+또한 backend가 connect capability metadata를 별도로 제공하기 전까지는
+FE가 직접 유지하는 임시 allowlist로 둔다.
 
-## 5.5 workflow node mapping ?ㅺ퀎
+## 5.5 workflow node mapping 설계
 
 ## 5.5.1 persisted service key -> visual node type
 
-`workflow-node-adapter`???ㅼ쓬 mapping??異붽??쒕떎.
+`workflow-node-adapter`에 다음 mapping을 추가한다.
 
 ```ts
 canvas_lms -> web-scraping
 ```
 
-?섎룄:
+의도:
 
-- backend persisted type? 怨꾩냽 `canvas_lms`
-- FE visual node??湲곗〈 `web-scraping` node shell ?ъ궗??
+- backend persisted type은 계속 `canvas_lms`
+- FE visual node는 기존 `web-scraping` node shell 재사용
 
-## 5.5.2 persisted start/end node ???洹쒖튃
+## 5.5.2 persisted start/end node 저장 규칙
 
-?꾩옱 援ъ“? ?숈씪?섍쾶:
+현재 구조와 동일하게:
 
-- persisted `type`? service key
-- visual node??FE媛 hydrate ??mapping
+- persisted `type`은 service key
+- visual node는 FE가 hydrate 시 mapping
 
-利?`canvas_lms`???ㅻⅨ source/sink service? ?숈씪 洹쒖튃???곕Ⅸ??
+즉 `canvas_lms`도 다른 source/sink service와 동일 규칙을 따른다.
 
-## 5.5.3 config shape 蹂닿컯
+## 5.5.3 config shape 보강
 
-`web-scraping` visual node媛 `canvas_lms`瑜??댁쓣 ???덈룄濡?
-service-backed source config ?꾨뱶瑜??덉슜?쒕떎.
+`web-scraping` visual node가 `canvas_lms`를 담을 수 있도록
+service-backed source config 필드를 허용한다.
 
-理쒖냼 ?꾩슂 ?꾨뱶:
+최소 필요 필드:
 
 - `service`
 - `source_mode`
 - `target`
 - `canonical_input_type`
 
-援ъ껜?곸쑝濡쒕뒗 `entities/node/model/types.ts`??`WebScrapingNodeConfig`??
-?꾨옒 optional ?꾨뱶瑜?異붽??섎뒗 諛⑹떇?쇰줈 ?뺤옣?쒕떎.
+구체적으로는 `entities/node/model/types.ts`의 `WebScrapingNodeConfig`에
+아래 optional 필드를 추가하는 방식으로 확장한다.
 
 ```ts
 service?: "canvas_lms" | "coupang" | "github" | "naver_news" | "youtube" | null;
@@ -425,265 +425,265 @@ target?: string | null;
 canonical_input_type?: string | null;
 ```
 
-利??대쾲 蹂寃쎌? `web-scraping`????node taxonomy濡?諛붽씀??寃껋씠 ?꾨땲??
-湲곗〈 visual carrier媛 service-backed source???댁쓣 ???덇쾶 typed config瑜?蹂닿컯?섎뒗 ?묒뾽?대떎.
+즉 이번 변경은 `web-scraping`을 새 node taxonomy로 바꾸는 것이 아니라,
+기존 visual carrier가 service-backed source도 담을 수 있게 typed config를 보강하는 작업이다.
 
-湲곗〈 `targetUrl` ?꾩슜 媛?뺤? presentation layer?먯꽌 fallback?쇰줈留??④릿??
+기존 `targetUrl` 전용 가정은 presentation layer에서 fallback으로만 남긴다.
 
-## 5.5.4 hydrate ??service backfill 洹쒖튃
+## 5.5.4 hydrate 시 service backfill 규칙
 
-?꾩옱 FE???쇰? start/end service node留?hydrate ??`config.service = node.type`??蹂댁젙?쒕떎.
+현재 FE는 일부 start/end service node만 hydrate 시 `config.service = node.type`을 보정한다.
 
-?대쾲 ?댁뒋?먯꽌??`web-scraping` carrier?먮룄 媛숈? 洹쒖튃???뺤옣?쒕떎.
+이번 이슈에서는 `web-scraping` carrier에도 같은 규칙을 확장한다.
 
-- 議곌굔:
-  - `node.role`??`start` ?먮뒗 `end`
-  - frontend visual node type??`web-scraping`
-  - `config.service`媛 鍮꾩뼱 ?덉쓬
-- ?숈옉:
+- 조건:
+  - `node.role`이 `start` 또는 `end`
+  - frontend visual node type이 `web-scraping`
+  - `config.service`가 비어 있음
+- 동작:
   - `config.service = node.type`
 
-??洹쒖튃???덉뼱??backend persisted `type = canvas_lms` node瑜?reload???ㅼ뿉??
-title / badge / summary媛 ?덉젙?곸쑝濡?蹂듭썝?쒕떎.
+이 규칙이 있어야 backend persisted `type = canvas_lms` node를 reload한 뒤에도
+title / badge / summary가 안정적으로 복원된다.
 
-## 5.6 node presentation ?ㅺ퀎
+## 5.6 node presentation 설계
 
-## 5.6.1 ?쒕ぉ
+## 5.6.1 제목
 
-`web-scraping` node presentation?먯꽌:
+`web-scraping` node presentation에서:
 
-1. `config.service`媛 `canvas_lms`硫?`Canvas LMS`
-2. 洹???service-backed source硫?service label
-3. ?????놁쑝硫?湲곗〈 `targetUrl`
+1. `config.service`가 `canvas_lms`면 `Canvas LMS`
+2. 그 외 service-backed source면 service label
+3. 둘 다 없으면 기존 `targetUrl`
 
-?쒖꽌濡??쒕ぉ???뺥븳??
+순서로 제목을 정한다.
 
 ## 5.6.2 helper text / summary
 
-`canvas_lms` node??URL scraping helper瑜??곗? ?딅뒗??
+`canvas_lms` node는 URL scraping helper를 쓰지 않는다.
 
-????ㅼ쓬 ?곗꽑?쒖쐞濡?summary瑜?蹂댁뿬以??
+대신 다음 우선순위로 summary를 보여준다.
 
 1. source mode label
-2. target 媛?
-3. 湲곗〈 generic helper
+2. target 값
+3. 기존 generic helper
 
-??
+예:
 
-- `?뱀젙 怨쇰ぉ 媛뺤쓽?먮즺 ?꾩껜`
-- `怨쇰ぉ ID: 12345`
+- `특정 과목 강의자료 전체`
+- `과목 ID: 12345`
 
 ## 5.6.3 custom node surface
 
-`WebScrapingNode`媛 `targetUrl ?? "URL 誘몄꽕??`留?蹂댁뿬二쇱? ?딅룄濡??섏젙 諛⑺뼢???〓뒗??
+`WebScrapingNode`가 `targetUrl ?? "URL 미설정"`만 보여주지 않도록 수정 방향을 잡는다.
 
-`config.service`媛 ?덈뒗 寃쎌슦:
+`config.service`가 있는 경우:
 
 - service label
-- source mode / target 以묒떖 summary
+- source mode / target 중심 summary
 
-瑜??곗꽑 ?뚮뜑?쒕떎.
+를 우선 렌더한다.
 
-## 5.7 badge / icon ?ㅺ퀎
+## 5.7 badge / icon 설계
 
 ## 5.7.1 service picker / account icon
 
-`canvas_lms` ?꾩슜 ?꾩씠肄섏쓣 異붽??쒕떎.
+`canvas_lms` 전용 아이콘을 추가한다.
 
-?대쾲 ?댁뒋?먯꽌????asset ?쒖옉蹂대떎 湲곗〈 icon set???숆탳/?숈뒿 怨꾩뿴 ?꾩씠肄섏쓣 ?곗꽑 ?ъ슜?쒕떎.
+이번 이슈에서는 새 asset 제작보다 기존 icon set의 학교/학습 계열 아이콘을 우선 사용한다.
 
 ## 5.7.2 service badge surfaces
 
-workflow list / dashboard / template icon surfaces??service badge key瑜??ъ슜?쒕떎.
+workflow list / dashboard / template icon surfaces는 service badge key를 사용한다.
 
-?ш린?먮뒗 `canvas-lms` ?꾩슜 badge key瑜?異붽??섎뒗 履쎌쓣 ?곗꽑?쒕떎.
+여기에는 `canvas-lms` 전용 badge key를 추가하는 쪽을 우선한다.
 
-?댁쑀:
+이유:
 
-- visual node type? `web-scraping` carrier?????덉뼱??
-- ?쒕퉬??諛곗???`Canvas LMS`?쇰뒗 ?ㅼ젣 integration identity瑜?蹂댁뿬以섏빞 ?섍린 ?뚮Ц?대떎.
+- visual node type은 `web-scraping` carrier일 수 있어도
+- 서비스 배지는 `Canvas LMS`라는 실제 integration identity를 보여줘야 하기 때문이다.
 
-利?
+즉:
 
 - node shell: `web-scraping`
 - backend service key: `canvas_lms`
 - FE badge key: `canvas-lms`
 
-濡???븷??遺꾨━?쒕떎.
+로 역할을 분리한다.
 
-`getServiceBadgeKeyFromService()`??backend service key `canvas_lms`瑜?諛쏆븘
-FE ?쒗쁽 ??`canvas-lms`濡?蹂?섑븳??
+`getServiceBadgeKeyFromService()`는 backend service key `canvas_lms`를 받아
+FE 표현 키 `canvas-lms`로 변환한다.
 
-## 5.8 sink 諛?runtime guard ?ㅺ퀎
+## 5.8 sink 및 runtime guard 설계
 
-?대쾲 ?댁뒋?먯꽌 FE??`canvas_lms -> google_drive` 寃쎈줈瑜?editor ?섏??먯꽌 留됱? ?딅뒗??
+이번 이슈에서 FE는 `canvas_lms -> google_drive` 경로를 editor 수준에서 막지 않는다.
 
-?? ?꾨옒瑜?遺꾨챸???좎??쒕떎.
+단, 아래를 분명히 유지한다.
 
-- sink accepted input type 湲곗? filtering
-- backend `nodeStatuses` / save / execute guard 湲곗? ?숈옉
-- runtime file handoff ?섎???FE媛 蹂댁젙?섏? ?딆쓬
+- sink accepted input type 기준 filtering
+- backend `nodeStatuses` / save / execute guard 기준 동작
+- runtime file handoff 의미는 FE가 보정하지 않음
 
-利?FE??"?곌껐 媛?ν븳 graph瑜?留뚮뱾 ???덈뒗媛"源뚯?留?梨낆엫吏꾨떎.
-
----
-
-## 6. 援ы쁽 ?④퀎 ?쒖븞
-
-援ы쁽? ?꾨옒 4?④퀎濡??딅뒗??
-媛??④퀎??**?묎쾶 癒몄? 媛?ν븳 ?⑥쐞**濡??좎??섍퀬, ?④퀎 醫낅즺 ??而ㅻ컠???④릿??
-
-而ㅻ컠 ?ㅽ??쇱? ?꾩옱 釉뚮옖移??덉뒪?좊━??留욎떠 ?ㅼ쓬 prefix瑜??ъ슜?쒕떎.
-
-- 湲곕뒫 異붽?/吏??踰붿쐞 ?뺤옣: `feat:`
-- ?숈옉 蹂댁젙/?뚭? ?섏젙: `fix:`
-- 援ъ“ ?뺣━/?섎? ?뺣━: `refactor:`
-- 臾몄꽌: `docs:`
-
-## ?④퀎 1. OAuth connect contract ?뺢퇋??
-
-### 紐⑺몴
-
-- backend raw connect ?묐떟??FE domain model濡??덉쟾?섍쾶 ?뺢퇋?뷀븳??
-- direct-connect? redirect-connect瑜?媛숈? action ?먮쫫 ?덉뿉???ㅻ０ 以鍮꾨? ?앸궦??
-
-### 沅뚯옣 而ㅻ컠 ?ㅽ???
-
-- `feat: OAuth connect ?묐떟 ?뺢퇋??諛?吏??踰붿쐞 ?뺤옣`
-
-### 泥댄겕由ъ뒪??
-
-- [ ] `entities/oauth-token/api/types.ts`??raw connect ?묐떟 union 異붽?
-- [ ] FE ?대??먯꽌 ?ъ슜??normalized `OAuthConnectResult` union ?뺤쓽
-- [ ] API layer ?먮뒗 entity adapter?먯꽌 raw -> normalized 蹂??援ы쁽
-- [ ] `authUrl`留?媛?뺥븳 ?몄텧遺媛 ??normalized 寃곌낵瑜?諛쏅룄濡?API surface ?뺣━
-- [ ] connect support matrix瑜?`slack`, `google_drive`, `notion`, `github`, `canvas_lms`濡??뺤옣
-- [ ] `gmail`, `google_sheets`, `google_calendar`??怨꾩냽 unsupported濡??⑤뒗?ㅻ뒗 ???좎?
-- [ ] barrel export媛 源⑥?吏 ?딅룄濡?`index.ts` 怨듦컻 API ?뺣━
-
-### 鍮좎?硫????섎뒗 ?뺤씤 ?ъ씤??
-
-- [ ] backend raw ?묐떟??`kind` discriminator媛 ?녿떎???꾩젣瑜?肄붾뱶??諛섏쁺?덈뒗媛
-- [ ] direct-connect ?묐떟??`connected: "true"`瑜?boolean `true`濡??뺢퇋?뷀뻽?붽?
-- [ ] UI layer媛 raw map shape瑜?吏곸젒 ?댁꽍?섏? ?딄쾶 留됱븯?붽?
-
-## ?④퀎 2. Canvas LMS source rollout + direct-connect UX
-
-### 紐⑺몴
-
-- ?쒖옉 ?몃뱶 picker?먯꽌 `canvas_lms`瑜??ㅼ젣 ?좏깮 媛?ν븯寃??곕떎.
-- direct-connect ?쒕퉬?ㅻ? 釉뚮씪?곗? ?대룞 ?놁씠 泥섎━?쒕떎.
-
-### 沅뚯옣 而ㅻ컠 ?ㅽ???
-
-- `feat: canvas_lms source rollout 諛?direct-connect UX 諛섏쁺`
-
-### 泥댄겕由ъ뒪??
-
-- [ ] `source-rollout.ts`??`canvas_lms` 3媛?mode 異붽?
-- [ ] source picker icon map??`canvas_lms` 異붽?
-- [ ] ServiceSelectionPanel??direct/redirect 寃곌낵瑜?遺꾧린 泥섎━?섎룄濡??섏젙
-- [ ] start node auth step?먯꽌 direct-connect ?깃났 ??`auth -> mode`濡?吏꾪뻾
-- [ ] end node auth step?먯꽌 direct-connect ?깃났 ??`auth -> confirm`濡?吏꾪뻾
-- [ ] Account page connect 踰꾪듉??媛숈? normalized connect 寃곌낵 ?ъ슜
-- [ ] direct-connect ?깃났 ??`useOAuthTokensQuery` refetch濡?connected ?곹깭 ?щ룞湲고솕
-- [ ] auth error UX媛 redirect/direct ??寃쎌슦 紐⑤몢 ?좎??섎뒗吏 ?뺤씤
-
-### 鍮좎?硫????섎뒗 ?뺤씤 ?ъ씤??
-
-- [ ] `canvas_lms` target step? 湲곗〈 `text_input`??洹몃?濡??ъ궗?⑺븯?붽?
-- [ ] direct-connect ?깃났 ??`window.location.assign()`媛 ?몄텧?섏? ?딅뒗媛
-- [ ] redirect-connect ?쒕퉬??`slack`, `google_drive`) ?뚭?媛 ?녿뒗媛
-
-## ?④퀎 3. Node mapping / restore / presentation ?뺥빀
-
-### 紐⑺몴
-
-- persisted `type = canvas_lms`? FE visual `web-scraping` carrier瑜??뺣젹?쒕떎.
-- reload ?댄썑?먮룄 service identity媛 title/badge/summary???덉젙?곸쑝濡??④쾶 ?쒕떎.
-
-### 沅뚯옣 而ㅻ컠 ?ㅽ???
-
-- `feat: canvas_lms node mapping 諛?presentation ?뺣젹`
-
-### 泥댄겕由ъ뒪??
-
-- [ ] `workflow-node-adapter`??`canvas_lms -> web-scraping` mapping 異붽?
-- [ ] `WebScrapingNodeConfig`??service-backed source optional ?꾨뱶 異붽?
-- [ ] hydrate ??`web-scraping` carrier?먮룄 `config.service = node.type` backfill 洹쒖튃 異붽?
-- [ ] start node ?앹꽦 ??persisted `type = canvas_lms` ????뺤씤
-- [ ] `nodePresentation`?먯꽌 `canvas_lms` title / helper / summary 洹쒖튃 諛섏쁺
-- [ ] `WebScrapingNode`媛 `targetUrl` ?꾩슜 UI??臾띠씠吏 ?딅룄濡?蹂닿컯
-- [ ] picker / account / workflow list / dashboard???쒕퉬???꾩씠肄?諛섏쁺
-- [ ] `ServiceBadgeKey`??`canvas-lms` 異붽?
-- [ ] `getServiceBadgeKeyFromService()`媛 `canvas_lms -> canvas-lms` 蹂?섑븯?꾨줉 蹂닿컯
-
-### 鍮좎?硫????섎뒗 ?뺤씤 ?ъ씤??
-
-- [ ] ??`NodeType`瑜?留뚮뱾吏 ?딄퀬 湲곗〈 `web-scraping` shell留??ъ궗?⑺븯?붽?
-- [ ] reload ??`canvas_lms` node媛 fallback title?대굹 generic web label濡?臾대꼫吏吏 ?딅뒗媛
-- [ ] service badge key? backend service key瑜??쇰룞?섏? ?딅룄濡?遺꾨━?덈뒗媛
-
-## ?④퀎 4. Smoke test 諛??뚭? 蹂댁젙
-
-### 紐⑺몴
-
-- editor 湲곗? 二쇱슂 ?먮쫫???ㅼ젣濡??듦낵?쒗궎怨? 諛쒓껄???뚭?瑜??묒? ?섏젙?쇰줈 ?ル뒗??
-
-### 沅뚯옣 而ㅻ컠 ?ㅽ???
-
-- ?뚭?/蹂댁젙 諛쒖깮 ??`fix:` prefix ?ъ슜
-- 肄붾뱶 蹂寃쎌씠 ?녿떎硫?鍮?而ㅻ컠? 留뚮뱾吏 ?딅뒗??
-
-### 泥댄겕由ъ뒪??
-
-- [ ] `Canvas LMS`媛 ?쒖옉 ?몃뱶 picker???몄텧?섎뒗吏 ?뺤씤
-- [ ] `Canvas LMS` direct-connect ?깃났 ?щ? ?뺤씤
-- [ ] start node ?앹꽦 ??persisted `type = canvas_lms` ????뺤씤
-- [ ] reload ??`canvas_lms` node title / badge / summary 蹂듭썝 ?뺤씤
-- [ ] `google_drive` sink? ?곌껐 媛?ν븳 graph 援ъ꽦 ?뺤씤
-- [ ] save ??`nodeStatuses` ?щ룞湲고솕 ?뺤씤
-- [ ] execute guard媛 湲곗〈 洹쒖튃?濡??숈옉?섎뒗吏 ?뺤씤
-- [ ] `slack`, `google_drive` redirect-connect ?뚭? ?뺤씤
-- [ ] `pnpm build` ?듦낵 ?뺤씤
-
-### 理쒖냼 ?뺤씤 寃쎈줈
-
-1. `Canvas LMS` source picker ?몄텧
-2. direct connect ?깃났
-3. start node ?앹꽦 / ???
-4. reload ??`canvas_lms` node 蹂듭썝
-5. `google_drive` sink ?곌껐
-6. save / execute guard ?숈옉 ?뺤씤
+즉 FE는 "연결 가능한 graph를 만들 수 있는가"까지만 책임진다.
 
 ---
 
-## 7. 踰붿쐞 ?쒖쇅
+## 6. 구현 단계 제안
 
-- `canvas_lms` ?꾩슜 ??visual node type ?ㅺ퀎
-- runtime?먯꽌 Canvas URL???ㅼ젣 諛붿씠?덈━ ?뚯씪濡?蹂?섑븯??濡쒖쭅
-- Gmail / Google Sheets / Google Calendar connector 異붽?
-- capability endpoint 湲곕컲 ?숈쟻 connectability 怨꾩궛
+구현은 아래 4단계로 끊는다.
+각 단계는 **작게 머지 가능한 단위**로 유지하고, 단계 종료 시 커밋을 남긴다.
+
+커밋 스타일은 현재 브랜치 히스토리에 맞춰 다음 prefix를 사용한다.
+
+- 기능 추가/지원 범위 확장: `feat:`
+- 동작 보정/회귀 수정: `fix:`
+- 구조 정리/의미 정리: `refactor:`
+- 문서: `docs:`
+
+## 단계 1. OAuth connect contract 정규화
+
+### 목표
+
+- backend raw connect 응답을 FE domain model로 안전하게 정규화한다.
+- direct-connect와 redirect-connect를 같은 action 흐름 안에서 다룰 준비를 끝낸다.
+
+### 권장 커밋 스타일
+
+- `feat: OAuth connect 응답 정규화 및 지원 범위 확장`
+
+### 체크리스트
+
+- [ ] `entities/oauth-token/api/types.ts`에 raw connect 응답 union 추가
+- [ ] FE 내부에서 사용할 normalized `OAuthConnectResult` union 정의
+- [ ] API layer 또는 entity adapter에서 raw -> normalized 변환 구현
+- [ ] `authUrl`만 가정한 호출부가 새 normalized 결과를 받도록 API surface 정리
+- [ ] connect support matrix를 `slack`, `google_drive`, `notion`, `github`, `canvas_lms`로 확장
+- [ ] `gmail`, `google_sheets`, `google_calendar`는 계속 unsupported로 남는다는 점 유지
+- [ ] barrel export가 깨지지 않도록 `index.ts` 공개 API 정리
+
+### 빠지면 안 되는 확인 포인트
+
+- [ ] backend raw 응답에 `kind` discriminator가 없다는 전제를 코드에 반영했는가
+- [ ] direct-connect 응답의 `connected: "true"`를 boolean `true`로 정규화했는가
+- [ ] UI layer가 raw map shape를 직접 해석하지 않게 막았는가
+
+## 단계 2. Canvas LMS source rollout + direct-connect UX
+
+### 목표
+
+- 시작 노드 picker에서 `canvas_lms`를 실제 선택 가능하게 연다.
+- direct-connect 서비스를 브라우저 이동 없이 처리한다.
+
+### 권장 커밋 스타일
+
+- `feat: canvas_lms source rollout 및 direct-connect UX 반영`
+
+### 체크리스트
+
+- [ ] `source-rollout.ts`에 `canvas_lms` 3개 mode 추가
+- [ ] source picker icon map에 `canvas_lms` 추가
+- [ ] ServiceSelectionPanel이 direct/redirect 결과를 분기 처리하도록 수정
+- [ ] start node auth step에서 direct-connect 성공 시 `auth -> mode`로 진행
+- [ ] end node auth step에서 direct-connect 성공 시 `auth -> confirm`로 진행
+- [ ] Account page connect 버튼도 같은 normalized connect 결과 사용
+- [ ] direct-connect 성공 후 `useOAuthTokensQuery` refetch로 connected 상태 재동기화
+- [ ] auth error UX가 redirect/direct 두 경우 모두 유지되는지 확인
+
+### 빠지면 안 되는 확인 포인트
+
+- [ ] `canvas_lms` target step은 기존 `text_input`을 그대로 재사용하는가
+- [ ] direct-connect 성공 시 `window.location.assign()`가 호출되지 않는가
+- [ ] redirect-connect 서비스(`slack`, `google_drive`) 회귀가 없는가
+
+## 단계 3. Node mapping / restore / presentation 정합
+
+### 목표
+
+- persisted `type = canvas_lms`와 FE visual `web-scraping` carrier를 정렬한다.
+- reload 이후에도 service identity가 title/badge/summary에 안정적으로 남게 한다.
+
+### 권장 커밋 스타일
+
+- `feat: canvas_lms node mapping 및 presentation 정렬`
+
+### 체크리스트
+
+- [ ] `workflow-node-adapter`에 `canvas_lms -> web-scraping` mapping 추가
+- [ ] `WebScrapingNodeConfig`에 service-backed source optional 필드 추가
+- [ ] hydrate 시 `web-scraping` carrier에도 `config.service = node.type` backfill 규칙 추가
+- [ ] start node 생성 시 persisted `type = canvas_lms` 저장 확인
+- [ ] `nodePresentation`에서 `canvas_lms` title / helper / summary 규칙 반영
+- [ ] `WebScrapingNode`가 `targetUrl` 전용 UI에 묶이지 않도록 보강
+- [ ] picker / account / workflow list / dashboard용 서비스 아이콘 반영
+- [ ] `ServiceBadgeKey`에 `canvas-lms` 추가
+- [ ] `getServiceBadgeKeyFromService()`가 `canvas_lms -> canvas-lms` 변환하도록 보강
+
+### 빠지면 안 되는 확인 포인트
+
+- [ ] 새 `NodeType`를 만들지 않고 기존 `web-scraping` shell만 재사용하는가
+- [ ] reload 시 `canvas_lms` node가 fallback title이나 generic web label로 무너지지 않는가
+- [ ] service badge key와 backend service key를 혼동하지 않도록 분리했는가
+
+## 단계 4. Smoke test 및 회귀 보정
+
+### 목표
+
+- editor 기준 주요 흐름을 실제로 통과시키고, 발견된 회귀를 작은 수정으로 닫는다.
+
+### 권장 커밋 스타일
+
+- 회귀/보정 발생 시 `fix:` prefix 사용
+- 코드 변경이 없다면 빈 커밋은 만들지 않는다
+
+### 체크리스트
+
+- [ ] `Canvas LMS`가 시작 노드 picker에 노출되는지 확인
+- [ ] `Canvas LMS` direct-connect 성공 여부 확인
+- [ ] start node 생성 후 persisted `type = canvas_lms` 저장 확인
+- [ ] reload 후 `canvas_lms` node title / badge / summary 복원 확인
+- [ ] `google_drive` sink와 연결 가능한 graph 구성 확인
+- [ ] save 후 `nodeStatuses` 재동기화 확인
+- [ ] execute guard가 기존 규칙대로 동작하는지 확인
+- [ ] `slack`, `google_drive` redirect-connect 회귀 확인
+- [ ] `pnpm build` 통과 확인
+
+### 최소 확인 경로
+
+1. `Canvas LMS` source picker 노출
+2. direct connect 성공
+3. start node 생성 / 저장
+4. reload 후 `canvas_lms` node 복원
+5. `google_drive` sink 연결
+6. save / execute guard 동작 확인
 
 ---
 
-## 8. ?꾨즺 議곌굔
+## 7. 범위 제외
 
-- FE source picker?먯꽌 `canvas_lms`媛 ?몄텧?쒕떎
-- `canvas_lms`??direct-connect ?쒕퉬?ㅻ줈 FE?먯꽌 ?뺤긽 ?곌껐?쒕떎
-- start node ?앹꽦 ??`type = canvas_lms`濡???λ맂??
-- reload ??`canvas_lms` node媛 ?섎룄??visual node? title濡?蹂듭썝?쒕떎
-- account / workflow list / dashboard?먯꽌 `canvas_lms` service identity媛 ?쇨??섍쾶 蹂댁씤??
-- FE媛 direct-connect? redirect-connect瑜?紐⑤몢 吏?먰븳??
-- runtime file handoff ?섎???FE?먯꽌 怨쇰?異붾줎?섏? ?딅뒗??
+- `canvas_lms` 전용 새 visual node type 설계
+- runtime에서 Canvas URL을 실제 바이너리 파일로 변환하는 로직
+- Gmail / Google Sheets / Google Calendar connector 추가
+- capability endpoint 기반 동적 connectability 계산
 
 ---
 
-## 9. ??以??붿빟
+## 8. 완료 조건
 
-?대쾲 ?댁뒋??FE ?ㅺ퀎??
-`canvas_lms`瑜???editor 援ъ“濡??ㅼ떆 留뚮뱶??寃껋씠 ?꾨땲??
-**湲곗〈 source/sink editor ?꾩뿉 `canvas_lms` source? direct-connect contract瑜??뺥솗???밴퀬, service key 湲곕컲 restore/presentation源뚯? ?뺣젹?섎뒗 ?묒뾽**?대떎.
+- FE source picker에서 `canvas_lms`가 노출된다
+- `canvas_lms`는 direct-connect 서비스로 FE에서 정상 연결된다
+- start node 생성 시 `type = canvas_lms`로 저장된다
+- reload 후 `canvas_lms` node가 의도한 visual node와 title로 복원된다
+- account / workflow list / dashboard에서 `canvas_lms` service identity가 일관되게 보인다
+- FE가 direct-connect와 redirect-connect를 모두 지원한다
+- runtime file handoff 의미는 FE에서 과대추론하지 않는다
+
+---
+
+## 9. 한 줄 요약
+
+이번 이슈의 FE 설계는
+`canvas_lms`를 새 editor 구조로 다시 만드는 것이 아니라,
+**기존 source/sink editor 위에 `canvas_lms` source와 direct-connect contract를 정확히 얹고, service key 기반 restore/presentation까지 정렬하는 작업**이다.
 
 ---
 

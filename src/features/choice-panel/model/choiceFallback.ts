@@ -210,9 +210,15 @@ export const resolveActionChoiceResponse = ({
     "action",
   );
 
+  const shouldFallbackForInvalidServerChoice =
+    serverChoice?.requiresProcessingMethod === true;
+  const normalizedServerChoice = shouldFallbackForInvalidServerChoice
+    ? null
+    : serverChoice;
+
   return resolveChoiceResponse({
-    allowFallback,
-    serverChoice,
+    allowFallback: allowFallback || shouldFallbackForInvalidServerChoice,
+    serverChoice: normalizedServerChoice,
     fallbackChoice,
   });
 };

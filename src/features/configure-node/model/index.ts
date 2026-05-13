@@ -1,3 +1,4 @@
+export * from "./google-sheets-presentation";
 export * from "./panelRegistry";
 export * from "./sink-field-presentation";
 export * from "./setup-types";

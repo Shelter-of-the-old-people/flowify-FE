@@ -6,6 +6,7 @@ import {
   MdInsertDriveFile,
   MdLabel,
   MdSchool,
+  MdTableChart,
 } from "react-icons/md";
 
 import { Box, Button, Input, Text } from "@chakra-ui/react";
@@ -17,6 +18,8 @@ import {
   getWorkflowMetadataSummary,
   isGroupedSourceTargetOptionPicker,
   isSeBoardNewPostsSourceMode,
+  useCreateGoogleSheetMutation,
+  useCreateGoogleSheetsSpreadsheetMutation,
   useInfiniteSourceTargetOptionsQuery,
 } from "@/entities/workflow";
 import {
@@ -24,6 +27,7 @@ import {
   type RemoteOptionPickerItem,
   getApiErrorMessage,
 } from "@/shared";
+import { toaster } from "@/shared/utils";
 
 import {
   DAY_PICKER_OPTIONS,
@@ -45,7 +49,7 @@ type Props = {
 };
 
 type PickerState = {
-  folderPath: SourceTargetOptionItemResponse[];
+  path: SourceTargetOptionItemResponse[];
   scope: string;
   searchQuery: string;
 };
@@ -56,11 +60,13 @@ const TARGET_OPTION_ICON_MAP = {
   file: MdInsertDriveFile,
   folder: MdFolder,
   label: MdLabel,
+  sheet: MdTableChart,
+  spreadsheet: MdTableChart,
   term: MdCalendarMonth,
 };
 
 const createPickerState = (scope: string): PickerState => ({
-  folderPath: [],
+  path: [],
   scope,
   searchQuery: "",
 });
@@ -88,7 +94,15 @@ const getPickerRootLabel = (serviceKey: string, schemaType: string) => {
     return "SE Board 게시판";
   }
 
-  return "내 드라이브";
+  if (serviceKey === "google_sheets" && schemaType === "sheet_picker") {
+    return "Google Sheets";
+  }
+
+  if (schemaType === "folder_picker") {
+    return "내 드라이브";
+  }
+
+  return "루트";
 };
 
 export const SourceTargetForm = ({
@@ -101,10 +115,13 @@ export const SourceTargetForm = ({
   const schemaType = getSourceTargetSchemaType(mode.target_schema);
   const isRemotePicker = isRemoteSourceTargetPicker(mode.target_schema);
   const isFolderPicker = schemaType === "folder_picker";
+  const isSheetPicker = schemaType === "sheet_picker";
   const isGroupedPicker = isGroupedSourceTargetOptionPicker(
     serviceKey,
     schemaType,
   );
+  const isGoogleSheetsPicker = serviceKey === "google_sheets" && isSheetPicker;
+  const supportsPathBrowsing = isFolderPicker || isSheetPicker;
   const helperText = getSourceTargetSchemaHelperText(mode.target_schema);
   const validationMessage = getSourceTargetSchemaValidationMessage(
     mode.target_schema,
@@ -122,12 +139,12 @@ export const SourceTargetForm = ({
     pickerState.scope === pickerScope
       ? pickerState
       : createPickerState(pickerScope);
-  const { folderPath, searchQuery } = activePickerState;
+  const { path, searchQuery } = activePickerState;
   const parentId =
-    isFolderPicker && folderPath.length > 0
-      ? folderPath[folderPath.length - 1]?.id
+    supportsPathBrowsing && path.length > 0
+      ? path[path.length - 1]?.id
       : undefined;
-  const pickerPath = folderPath.map(({ id, label }) => ({ id, label }));
+  const pickerPath = path.map(({ id, label }) => ({ id, label }));
   const targetOptionsParams = useMemo(
     () =>
       isRemotePicker
@@ -155,6 +172,18 @@ export const SourceTargetForm = ({
   const items =
     targetOptions?.pages.flatMap((page) => page.items) ??
     ([] as SourceTargetOptionItemResponse[]);
+  const currentSpreadsheet =
+    isGoogleSheetsPicker && path.length > 0 ? path[path.length - 1] : null;
+  const [newSpreadsheetName, setNewSpreadsheetName] = useState("");
+  const [newSheetName, setNewSheetName] = useState("");
+  const createSpreadsheetMutation = useCreateGoogleSheetsSpreadsheetMutation({
+    showErrorToast: true,
+    errorMessage: "Google Sheets 스프레드시트 생성에 실패했습니다.",
+  });
+  const createSheetMutation = useCreateGoogleSheetMutation({
+    showErrorToast: true,
+    errorMessage: "Google Sheets 시트 생성에 실패했습니다.",
+  });
 
   const setScopedSearchQuery = (nextQuery: string) => {
     setPickerState((current) => {
@@ -172,7 +201,11 @@ export const SourceTargetForm = ({
 
   const handleBrowseOption = (option: RemoteOptionPickerItem) => {
     const sourceOption = items.find((item) => item.id === option.id);
-    if (!sourceOption || sourceOption.type !== "folder") {
+    const canBrowseFolder = sourceOption?.type === "folder";
+    const canBrowseSpreadsheet =
+      isSheetPicker && sourceOption?.type === "spreadsheet";
+
+    if (!sourceOption || (!canBrowseFolder && !canBrowseSpreadsheet)) {
       return;
     }
 
@@ -184,7 +217,7 @@ export const SourceTargetForm = ({
 
       return {
         ...base,
-        folderPath: [...base.folderPath, sourceOption],
+        path: [...base.path, sourceOption],
         searchQuery: "",
       };
     });
@@ -194,6 +227,11 @@ export const SourceTargetForm = ({
   const handleSelectOption = (option: RemoteOptionPickerItem) => {
     const sourceOption = items.find((item) => item.id === option.id);
     if (!sourceOption) {
+      return;
+    }
+
+    if (isSheetPicker && sourceOption.type === "spreadsheet") {
+      handleBrowseOption(option);
       return;
     }
 
@@ -214,7 +252,7 @@ export const SourceTargetForm = ({
 
       return {
         ...base,
-        folderPath: base.folderPath.slice(0, index + 1),
+        path: base.path.slice(0, index + 1),
         searchQuery: "",
       };
     });
@@ -225,14 +263,70 @@ export const SourceTargetForm = ({
     onChange({ ...value, keyword });
   };
 
+  const handleCreateSpreadsheet = async () => {
+    const trimmedName = newSpreadsheetName.trim();
+    if (!isGoogleSheetsPicker || disabled || trimmedName.length === 0) {
+      return;
+    }
+
+    try {
+      const createdSpreadsheet = await createSpreadsheetMutation.mutateAsync({
+        name: trimmedName,
+      });
+      setPickerState((current) => {
+        const base =
+          current.scope === pickerScope
+            ? current
+            : createPickerState(pickerScope);
+
+        return {
+          ...base,
+          path: [createdSpreadsheet],
+          searchQuery: "",
+        };
+      });
+      setNewSpreadsheetName("");
+      setNewSheetName("");
+      onChange({ ...value, option: null, value: "" });
+      toaster.create({
+        type: "success",
+        description: "새 스프레드시트를 만들고 바로 이동했습니다.",
+      });
+    } catch {
+      // mutation toast handles the error state
+    }
+  };
+
+  const handleCreateSheet = async () => {
+    const trimmedSheetName = newSheetName.trim();
+    if (!currentSpreadsheet || disabled || trimmedSheetName.length === 0) {
+      return;
+    }
+
+    try {
+      const createdSheet = await createSheetMutation.mutateAsync({
+        spreadsheetId: currentSpreadsheet.id,
+        sheetName: trimmedSheetName,
+      });
+      setNewSheetName("");
+      onChange({ ...value, option: createdSheet, value: createdSheet.id });
+      toaster.create({
+        type: "success",
+        description: "시트를 준비하고 바로 선택했습니다.",
+      });
+    } catch {
+      // mutation toast handles the error state
+    }
+  };
+
   const keywordInput = shouldShowKeywordInput ? (
     <Box mt={4}>
       <Text fontSize="sm" fontWeight="semibold" mb={2}>
-        포함할 단어
+        포함 검색어
       </Text>
       <Input
         disabled={disabled}
-        placeholder="예: 장학, 수강신청"
+        placeholder="예: 수강신청, 공지"
         value={value.keyword}
         onChange={(event) => handleKeywordChange(event.target.value)}
       />
@@ -325,32 +419,109 @@ export const SourceTargetForm = ({
           {helperText}
         </Text>
       ) : null}
-      <RemoteOptionPicker
-        canBrowseItem={(option) => isFolderPicker && option.type === "folder"}
-        disabled={disabled}
-        emptyMessage={`선택할 수 있는 ${getSourceTargetSchemaLabel(mode.target_schema)}이 없습니다.`}
-        errorMessage={isError ? getApiErrorMessage(error) : null}
-        getBrowseLabel={(option) => `${option.label} 내부 폴더 보기`}
-        getItemIcon={getOptionIcon}
-        hasMore={Boolean(hasNextPage)}
-        isLoading={isLoading}
-        isLoadingMore={isFetchingNextPage}
-        items={items}
-        path={isFolderPicker ? pickerPath : undefined}
-        renderItemMetadata={renderOptionMetadata}
-        rootLabel={getPickerRootLabel(serviceKey, schemaType)}
-        searchPlaceholder={`${getSourceTargetSchemaLabel(mode.target_schema)} 검색`}
-        searchValue={searchQuery}
-        selectedId={value.value}
-        onBrowse={isFolderPicker ? handleBrowseOption : undefined}
-        onLoadMore={() => void fetchNextPage()}
-        onPathSelect={isFolderPicker ? handlePathSelect : undefined}
-        onResetPath={isFolderPicker ? handleResetPath : undefined}
-        onRetry={() => void refetch()}
-        onSearchChange={setScopedSearchQuery}
-        onSelect={handleSelectOption}
-      />
-      {keywordInput}
+      <Box display="flex" flexDirection="column" gap={3}>
+        <RemoteOptionPicker
+          canBrowseItem={(option) =>
+            (isFolderPicker && option.type === "folder") ||
+            (isSheetPicker && option.type === "spreadsheet")
+          }
+          disabled={disabled}
+          emptyMessage={`선택할 ${getSourceTargetSchemaLabel(mode.target_schema)}가 없습니다.`}
+          errorMessage={isError ? getApiErrorMessage(error) : null}
+          getBrowseLabel={(option) =>
+            isSheetPicker
+              ? `${option.label} 시트 보기`
+              : `${option.label} 아래 폴더 보기`
+          }
+          getItemIcon={getOptionIcon}
+          hasMore={Boolean(hasNextPage)}
+          isLoading={isLoading}
+          isLoadingMore={isFetchingNextPage}
+          items={items}
+          path={supportsPathBrowsing ? pickerPath : undefined}
+          renderItemMetadata={renderOptionMetadata}
+          rootLabel={getPickerRootLabel(serviceKey, schemaType)}
+          searchPlaceholder={`${getSourceTargetSchemaLabel(mode.target_schema)} 검색`}
+          searchValue={searchQuery}
+          selectedId={value.value}
+          onBrowse={supportsPathBrowsing ? handleBrowseOption : undefined}
+          onLoadMore={() => void fetchNextPage()}
+          onPathSelect={supportsPathBrowsing ? handlePathSelect : undefined}
+          onResetPath={supportsPathBrowsing ? handleResetPath : undefined}
+          onRetry={() => void refetch()}
+          onSearchChange={setScopedSearchQuery}
+          onSelect={handleSelectOption}
+        />
+
+        {keywordInput}
+
+        {isGoogleSheetsPicker ? (
+          <Box display="flex" flexDirection="column" gap={2}>
+            {currentSpreadsheet ? (
+              <>
+                <Text color="text.secondary" fontSize="xs">
+                  원하는 시트가 없으면 여기에서 새 시트를 만들 수 있습니다.
+                </Text>
+                <Box display="flex" gap={2}>
+                  <Input
+                    disabled={disabled}
+                    placeholder="새 시트 이름"
+                    value={newSheetName}
+                    onChange={(event) => setNewSheetName(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        void handleCreateSheet();
+                      }
+                    }}
+                  />
+                  <Button
+                    disabled={disabled || newSheetName.trim().length === 0}
+                    flexShrink={0}
+                    loading={createSheetMutation.isPending}
+                    onClick={() => void handleCreateSheet()}
+                  >
+                    새 시트 만들기
+                  </Button>
+                </Box>
+              </>
+            ) : (
+              <>
+                <Text color="text.secondary" fontSize="xs">
+                  원하는 스프레드시트가 없으면 새 파일을 만들고 바로 들어갈 수
+                  있습니다.
+                </Text>
+                <Box display="flex" gap={2}>
+                  <Input
+                    disabled={disabled}
+                    placeholder="새 스프레드시트 이름"
+                    value={newSpreadsheetName}
+                    onChange={(event) =>
+                      setNewSpreadsheetName(event.target.value)
+                    }
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        void handleCreateSpreadsheet();
+                      }
+                    }}
+                  />
+                  <Button
+                    disabled={
+                      disabled || newSpreadsheetName.trim().length === 0
+                    }
+                    flexShrink={0}
+                    loading={createSpreadsheetMutation.isPending}
+                    onClick={() => void handleCreateSpreadsheet()}
+                  >
+                    새 스프레드시트 만들기
+                  </Button>
+                </Box>
+              </>
+            )}
+          </Box>
+        ) : null}
+      </Box>
     </Box>
   );
 };
