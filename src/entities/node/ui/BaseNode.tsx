@@ -6,7 +6,11 @@ import { Handle, Position } from "@xyflow/react";
 import { getNodeStatusSummaryLabel } from "@/entities/workflow";
 import { ServiceIcon } from "@/shared";
 
-import { getNodePresentation, getNodeSummaryLines } from "../model";
+import {
+  type NodeVisualIssueTone,
+  getNodePresentation,
+  getNodeSummaryLines,
+} from "../model";
 import { type FlowNodeData } from "../model/types";
 
 import { useNodeEditorContext } from "./NodeEditorContext";
@@ -34,6 +38,28 @@ const ROUTING_SOURCE_HANDLE_IDS = [
   "presentation",
   "other",
 ];
+
+type NodeIssueStyle = {
+  bg: string;
+  boxShadow: string;
+  outlineColor: string;
+  summaryColor: string;
+};
+
+const NODE_ISSUE_STYLES: Record<NodeVisualIssueTone, NodeIssueStyle> = {
+  error: {
+    bg: "error.50",
+    boxShadow: "md",
+    outlineColor: "status.error",
+    summaryColor: "status.error",
+  },
+  warning: {
+    bg: "warning.50",
+    boxShadow: "md",
+    outlineColor: "status.warning",
+    summaryColor: "status.warning",
+  },
+};
 
 const getSummaryContent = (
   helperText: string | null,
@@ -84,6 +110,10 @@ export const BaseNode = ({ id, data, selected, children }: BaseNodeProps) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const nodeStatus = getNodeStatus(id);
+  const nodeVisualIssue = getNodeVisualIssue(id);
+  const nodeIssueStyle = nodeVisualIssue
+    ? NODE_ISSUE_STYLES[nodeVisualIssue.tone]
+    : null;
   const isSelected = Boolean(selected);
 
   const presentation = getNodePresentation(data, {
@@ -95,7 +125,6 @@ export const BaseNode = ({ id, data, selected, children }: BaseNodeProps) => {
   const nodeStatusSummary = nodeStatus
     ? getNodeStatusSummaryLabel(nodeStatus)
     : null;
-  const nodeVisualIssue = getNodeVisualIssue(id);
   const issueMessage = nodeVisualIssue?.message ?? null;
   const nodeSummaryLines = getNodeSummaryLines(data);
   const summaryContent = getSummaryContent(
@@ -145,11 +174,14 @@ export const BaseNode = ({ id, data, selected, children }: BaseNodeProps) => {
       px={4}
       py={3}
       borderRadius="xl"
-      bg="transform"
+      bg={nodeIssueStyle?.bg ?? "transparent"}
       borderWidth="0px"
       borderStyle="solid"
       borderColor="transparent"
-      transition="border-color 150ms ease, box-shadow 150ms ease"
+      boxShadow={nodeIssueStyle?.boxShadow ?? "none"}
+      outline={nodeIssueStyle ? "1px solid" : "0 solid transparent"}
+      outlineColor={nodeIssueStyle?.outlineColor ?? "transparent"}
+      transition="background 150ms ease, box-shadow 150ms ease, outline-color 150ms ease"
       cursor="pointer"
       onClick={handleOpenPanel}
       onMouseEnter={() => setIsHovered(true)}
@@ -177,9 +209,10 @@ export const BaseNode = ({ id, data, selected, children }: BaseNodeProps) => {
         <Box
           width="100%"
           fontSize="xs"
-          color="text.secondary"
+          color={nodeIssueStyle?.summaryColor ?? "text.secondary"}
           textAlign="center"
           lineHeight="short"
+          fontWeight={nodeIssueStyle ? "semibold" : "medium"}
         >
           {summaryContent}
         </Box>
