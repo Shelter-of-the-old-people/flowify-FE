@@ -40,23 +40,20 @@ const ROUTING_SOURCE_HANDLE_IDS = [
 ];
 
 type NodeIssueStyle = {
-  bg: string;
-  boxShadow: string;
-  outlineColor: string;
+  glowGradient: string;
   summaryColor: string;
 };
 
+const getNodeIssueGlowGradient = (colorToken: string) =>
+  `radial-gradient(circle at center, color-mix(in srgb, ${colorToken} 34%, transparent) 0%, color-mix(in srgb, ${colorToken} 22%, transparent) 38%, color-mix(in srgb, ${colorToken} 8%, transparent) 58%, transparent 74%)`;
+
 const NODE_ISSUE_STYLES: Record<NodeVisualIssueTone, NodeIssueStyle> = {
   error: {
-    bg: "error.50",
-    boxShadow: "md",
-    outlineColor: "status.error",
+    glowGradient: getNodeIssueGlowGradient("var(--sd-colors-status-error)"),
     summaryColor: "status.error",
   },
   warning: {
-    bg: "warning.50",
-    boxShadow: "md",
-    outlineColor: "status.warning",
+    glowGradient: getNodeIssueGlowGradient("var(--sd-colors-status-warning)"),
     summaryColor: "status.warning",
   },
 };
@@ -132,17 +129,12 @@ export const BaseNode = ({ id, data, selected, children }: BaseNodeProps) => {
     nodeSummaryLines,
     children,
   );
-  const showNodeIcon = nodeStatus?.configured ?? data.config.isConfigured;
   const serviceKey = getNodeServiceKey(data);
   const sourceMode = getNodeSourceMode(data);
   const shouldShowNodeMenu =
     canEditNodes && (isHovered || isSelected || isMenuOpen);
 
   const renderNodeIcon = () => {
-    if (!showNodeIcon) {
-      return null;
-    }
-
     return (
       <ServiceIcon
         color="text.primary"
@@ -174,28 +166,55 @@ export const BaseNode = ({ id, data, selected, children }: BaseNodeProps) => {
       px={4}
       py={3}
       borderRadius="xl"
-      bg={nodeIssueStyle?.bg ?? "transparent"}
+      bg="transparent"
       borderWidth="0px"
       borderStyle="solid"
       borderColor="transparent"
-      boxShadow={nodeIssueStyle?.boxShadow ?? "none"}
-      outline={nodeIssueStyle ? "1px solid" : "0 solid transparent"}
-      outlineColor={nodeIssueStyle?.outlineColor ?? "transparent"}
-      transition="background 150ms ease, box-shadow 150ms ease, outline-color 150ms ease"
+      boxShadow="none"
+      outline="0 solid transparent"
+      isolation="isolate"
+      transition="color 150ms ease"
       cursor="pointer"
       onClick={handleOpenPanel}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <Text fontSize="xs" fontWeight="medium" color="text.secondary">
+      {nodeIssueStyle ? (
+        <Box
+          aria-hidden="true"
+          position="absolute"
+          inset="-24px -32px"
+          zIndex={0}
+          borderRadius="full"
+          bg={nodeIssueStyle.glowGradient}
+          pointerEvents="none"
+        />
+      ) : null}
+
+      <Text
+        position="relative"
+        zIndex={1}
+        fontSize="xs"
+        fontWeight="medium"
+        color="text.secondary"
+      >
         {presentation.roleLabel}
       </Text>
 
-      <Box h={14} display="flex" alignItems="center" justifyContent="center">
+      <Box
+        position="relative"
+        zIndex={1}
+        h={14}
+        display="flex"
+        alignItems="center"
+        justifyContent="center"
+      >
         {renderNodeIcon()}
       </Box>
 
       <Text
+        position="relative"
+        zIndex={1}
         fontSize="lg"
         fontWeight="bold"
         color="text.primary"
@@ -207,6 +226,8 @@ export const BaseNode = ({ id, data, selected, children }: BaseNodeProps) => {
 
       {summaryContent ? (
         <Box
+          position="relative"
+          zIndex={1}
           width="100%"
           fontSize="xs"
           color={nodeIssueStyle?.summaryColor ?? "text.secondary"}
