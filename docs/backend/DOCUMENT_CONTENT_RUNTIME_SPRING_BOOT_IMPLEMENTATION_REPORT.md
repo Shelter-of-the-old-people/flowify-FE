@@ -136,6 +136,7 @@ FE 참고:
 | `DOCUMENT_CONTENT_TOO_LARGE` | 413 | 파일이 너무 커서 본문을 읽을 수 없습니다. |
 | `DOCUMENT_CONTENT_EMPTY` | 422 | 파일에서 읽을 수 있는 본문이 없습니다. |
 | `DOCUMENT_CONTENT_EXTRACTION_FAILED` | 502 | 파일 본문 추출 중 오류가 발생했습니다. |
+| `DOCUMENT_CONTENT_NOT_REQUESTED` | 422 | 본문이 필요한 작업이지만 본문 추출이 수행되지 않았습니다. |
 
 FastAPI error code 매핑:
 
@@ -233,9 +234,10 @@ Spring이 FastAPI message를 받으면 해당 message를 우선 전달한다. me
 
 - 파일 다운로드/본문 추출 extractor 구현
 - `content_status`, `content_error`, `content_metadata` 생성
-- FastAPI callback payload sanitize/truncate 실제 필터링
+- FastAPI callback payload sanitize/truncate 실제 필터링. FastAPI sanitize가 1차 방어선이지만, Spring 저장 전 full content/token/signed URL 방어 필터는 운영 안정화 전 별도 후속으로 유지한다.
 - start node 외 AI/중간 노드 preview capability API
-- `contentRequiredReason=downstream`을 graph 분석으로 자동 계산
+- `contentRequiredReason=downstream`을 graph 분석으로 자동 계산. 구현 전까지 Spring 기본값은 `contentRequired=false`, `contentRequiredReason=null`이다.
+- FastAPI callback payload의 `content_status`, `content_error`, `content_metadata`가 node log/public 조회 API까지 보존되는지 더 넓은 통합 테스트를 추가하는 작업. 현재는 service 단위 contract test로 저장 update와 node data 조회 보존을 검증한다.
 
 위 항목은 FastAPI 구현 또는 후속 Spring 작업으로 남긴다.
 
@@ -246,7 +248,7 @@ Spring이 FastAPI message를 받으면 해당 message를 우선 전달한다. me
 실행한 테스트:
 
 ```bash
-./gradlew test --tests org.github.flowify.execution.WorkflowTranslatorTest --tests org.github.flowify.workflow.WorkflowPreviewServiceTest --tests org.github.flowify.execution.FastApiClientTest
+./gradlew test --tests org.github.flowify.execution.WorkflowTranslatorTest --tests org.github.flowify.workflow.WorkflowPreviewServiceTest --tests org.github.flowify.execution.FastApiClientTest --tests org.github.flowify.execution.ExecutionServiceTest
 ```
 
 결과:
@@ -264,3 +266,5 @@ BUILD SUCCESSFUL
 - `includeContent=true` preview metadata가 실제 content/status 기반으로 보정됨
 - FastAPI metadata의 null 값은 Spring 기본 metadata를 덮지 않음
 - `DOCUMENT_CONTENT_UNSUPPORTED`, `DOCUMENT_CONTENT_TOO_LARGE`, `DOCUMENT_CONTENT_NOT_REQUESTED` FastAPI error mapping
+- node data 조회에서 `content_status`, `content_error`, `content_metadata` 보존
+- execution complete update에서 output의 문서 content 상태 필드 보존
