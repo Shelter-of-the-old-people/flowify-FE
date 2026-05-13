@@ -69,22 +69,15 @@ export const SaveStateIndicator = ({
       role="status"
       aria-label={label}
       title={errorMessage ?? title}
-      display="flex"
+      display="inline-flex"
       alignItems="center"
-      height="30px"
-      minW="30px"
-      px={{ base: 2, "2xl": 3 }}
-      bg="bg.surface"
+      gap={1}
       color={isError ? "status.error" : "text.secondary"}
-      border="1px solid"
-      borderColor={isError ? "status.error" : "border.default"}
-      borderRadius="lg"
       fontFamily="'Pretendard Variable', sans-serif"
       fontWeight="medium"
-      fontSize="sm"
+      fontSize="xs"
       lineHeight="normal"
-      gap={1.25}
-      flexShrink={0}
+      pointerEvents="none"
     >
       {canSave && status === "saving" ? (
         <Spinner size="xs" color="currentColor" />
@@ -99,13 +92,11 @@ export const SaveStateIndicator = ({
                   ? MdSchedule
                   : MdCheckCircle
           }
-          boxSize={4}
+          boxSize={3.5}
           color={iconColor}
         />
       )}
-      <Text as="span" display={{ base: "none", "2xl": "inline" }}>
-        {label}
-      </Text>
+      <Text as="span">{label}</Text>
     </Box>
   );
 };

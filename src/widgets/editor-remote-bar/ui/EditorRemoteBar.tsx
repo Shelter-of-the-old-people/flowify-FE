@@ -33,7 +33,6 @@ import { DeleteConfirmDialog } from "./DeleteConfirmDialog";
 import { ExecutionStatusBadge } from "./ExecutionStatusBadge";
 import { RollbackActionButton } from "./RollbackActionButton";
 import { RunStopSplitButton } from "./RunStopSplitButton";
-import { SaveStateIndicator } from "./SaveStateIndicator";
 import { TriggerControlButton } from "./TriggerControlButton";
 import { TriggerSettingsPanel } from "./TriggerSettingsPanel";
 import { WorkflowHeaderControls } from "./WorkflowHeaderControls";
@@ -444,6 +443,8 @@ export const EditorRemoteBar = () => {
       <WorkflowHeaderControls
         isRunning={isRunning}
         canSaveWorkflow={canSaveWorkflow}
+        saveStatus={saveStatus}
+        saveErrorMessage={saveErrorMessage}
         canDelete={canDelete}
         isDeletePending={isDeletePending}
         onOpenMenu={handleCloseTriggerSettings}
@@ -492,12 +493,6 @@ export const EditorRemoteBar = () => {
                 onClick={() => void handleRollback()}
               />
             ) : null}
-
-            <SaveStateIndicator
-              status={saveStatus}
-              errorMessage={saveErrorMessage}
-              canSave={canSaveWorkflow}
-            />
 
             <TriggerControlButton
               ref={triggerButtonRef}
