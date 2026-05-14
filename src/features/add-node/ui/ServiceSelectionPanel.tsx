@@ -49,6 +49,7 @@ import {
   getCurrentRelativeUrl,
   getLeafNodeIds,
   storeOAuthConnectReturnPath,
+  useDualPanelLayout,
 } from "@/shared";
 
 import { isSinkServiceInRollout } from "../model/sink-rollout";
@@ -81,25 +82,35 @@ const WizardCard = ({
   children,
   maxWidth,
   minWidth = "520px",
+  padding = 12,
+  unstyled = false,
 }: {
   children: ReactNode;
   minWidth?: string;
   maxWidth?: string;
-}) => (
-  <Box
-    bg="white"
-    border="1px solid"
-    borderColor={WIZARD_CARD_BORDER}
-    borderRadius="20px"
-    boxShadow="0 4px 4px rgba(0,0,0,0.25)"
-    maxW={maxWidth}
-    minW={minWidth}
-    overflow="hidden"
-    p={12}
-  >
-    {children}
-  </Box>
-);
+  padding?: number;
+  unstyled?: boolean;
+}) => {
+  if (unstyled) {
+    return <>{children}</>;
+  }
+
+  return (
+    <Box
+      bg="white"
+      border="1px solid"
+      borderColor={WIZARD_CARD_BORDER}
+      borderRadius="20px"
+      boxShadow="0 4px 4px rgba(0,0,0,0.25)"
+      maxW={maxWidth}
+      minW={minWidth}
+      overflow="hidden"
+      p={padding}
+    >
+      {children}
+    </Box>
+  );
+};
 
 const hasTargetSchema = (targetSchema: Record<string, unknown>) =>
   Object.keys(targetSchema).length > 0;
@@ -117,9 +128,11 @@ const CatalogServiceGrid = ({
   searchQuery,
   services,
   setSearchQuery,
+  isPanelLayout = false,
 }: {
   connectedServiceKeys: Set<string>;
   emptyMessage: string;
+  isPanelLayout?: boolean;
   isAuthStatusError: boolean;
   isAuthStatusLoading: boolean;
   isLoading: boolean;
@@ -128,7 +141,12 @@ const CatalogServiceGrid = ({
   services: CatalogService[];
   setSearchQuery: (query: string) => void;
 }) => (
-  <WizardCard minWidth="820px" maxWidth="820px">
+  <WizardCard
+    maxWidth={isPanelLayout ? "100%" : "820px"}
+    minWidth={isPanelLayout ? "0" : "820px"}
+    padding={isPanelLayout ? 6 : 12}
+    unstyled={isPanelLayout}
+  >
     <Box position="relative" mb={6}>
       <Input
         bg="white"
@@ -164,7 +182,15 @@ const CatalogServiceGrid = ({
         {emptyMessage}
       </Text>
     ) : (
-      <Grid gap={8} p={6} templateColumns="repeat(5, 1fr)">
+      <Grid
+        gap={isPanelLayout ? 5 : 8}
+        p={isPanelLayout ? 0 : 6}
+        templateColumns={
+          isPanelLayout
+            ? "repeat(auto-fit, minmax(96px, 1fr))"
+            : "repeat(5, 1fr)"
+        }
+      >
         {services.map((service) => {
           const connected = connectedServiceKeys.has(service.key);
           const authState = getOAuthConnectionUiState({
@@ -219,17 +245,19 @@ const CatalogServiceGrid = ({
 const AuthPrompt = ({
   authState,
   errorMessage,
+  isPanelLayout = false,
   isPending,
   onAuth,
   onBack,
 }: {
   authState: OAuthConnectionUiState;
   errorMessage: string | null;
+  isPanelLayout?: boolean;
   isPending: boolean;
   onAuth: () => void;
   onBack: () => void;
 }) => (
-  <WizardCard>
+  <WizardCard unstyled={isPanelLayout}>
     <Box
       alignItems="center"
       color="gray.500"
@@ -546,16 +574,18 @@ const StartNodeConfirm = ({
 
 const SinkNodeConfirm = ({
   inputType,
+  isPanelLayout = false,
   onBack,
   onConfirm,
   service,
 }: {
   inputType: DataType | null;
+  isPanelLayout?: boolean;
   onBack: () => void;
   onConfirm: () => void;
   service: SinkServiceResponse;
 }) => (
-  <WizardCard minWidth="520px" maxWidth="640px">
+  <WizardCard minWidth="520px" maxWidth="640px" unstyled={isPanelLayout}>
     <Box
       alignItems="center"
       color="gray.500"
@@ -624,6 +654,7 @@ export const ServiceSelectionPanel = () => {
   const setActivePlaceholder = useWorkflowStore(
     (state) => state.setActivePlaceholder,
   );
+  const openPanel = useWorkflowStore((state) => state.openPanel);
   const { mutateAsync: addWorkflowNode, isPending: isAddNodePending } =
     useAddWorkflowNodeMutation();
   const { mutateAsync: connectOAuthToken, isPending: isConnectOAuthPending } =
@@ -643,6 +674,7 @@ export const ServiceSelectionPanel = () => {
   const navigate = useNavigate();
   const { flowToScreenPosition } = useReactFlow();
   const viewport = useViewport();
+  const layout = useDualPanelLayout();
   const activePlaceholderKind = activePlaceholder?.kind ?? null;
   const activePlaceholderRouting = activePlaceholder?.routing ?? null;
   const activeSinkSourceNodeId = activePlaceholder?.sourceNodeId ?? null;
@@ -811,8 +843,19 @@ export const ServiceSelectionPanel = () => {
       return;
     }
 
+    if (!wrapperElement) {
+      return;
+    }
+
+    if (activePlaceholderKind === "sink") {
+      wrapperElement.style.left = "";
+      wrapperElement.style.top = "";
+      wrapperElement.style.visibility = "visible";
+      return;
+    }
+
     const overlayElement = overlayRef.current;
-    if (!overlayElement || !wrapperElement) {
+    if (!overlayElement) {
       return;
     }
 
@@ -839,6 +882,7 @@ export const ServiceSelectionPanel = () => {
     wrapperElement.style.visibility = "visible";
   }, [
     activePlaceholder,
+    activePlaceholderKind,
     flowToScreenPosition,
     viewport.x,
     viewport.y,
@@ -1025,6 +1069,7 @@ export const ServiceSelectionPanel = () => {
 
       syncWorkflowFromResponse(nextWorkflow);
       resetWizard();
+      openPanel(addedNodeId, { mode: "edit" });
     })();
   };
 
@@ -1101,32 +1146,69 @@ export const ServiceSelectionPanel = () => {
   return (
     <Box
       inset={0}
+      pointerEvents={isEndPlaceholder ? "none" : "auto"}
       position="absolute"
       ref={overlayRef}
       zIndex={20}
       onClick={handleOverlayClose}
     >
       <Box
-        left={0}
+        bg={isEndPlaceholder ? "white" : undefined}
+        border={isEndPlaceholder ? "1px solid" : undefined}
+        borderColor={isEndPlaceholder ? WIZARD_CARD_BORDER : undefined}
+        borderRadius={isEndPlaceholder ? "20px" : undefined}
+        boxShadow={isEndPlaceholder ? "0 4px 4px rgba(0,0,0,0.25)" : undefined}
+        display={isEndPlaceholder ? "flex" : undefined}
+        flexDirection={isEndPlaceholder ? "column" : undefined}
+        gap={isEndPlaceholder ? 3 : undefined}
+        h={isEndPlaceholder ? `${layout.panelHeight}px` : undefined}
+        left={isEndPlaceholder ? `${layout.outputPanelLeft}px` : 0}
         onClick={(event) => event.stopPropagation()}
+        overflow={isEndPlaceholder ? "hidden" : undefined}
+        pointerEvents="auto"
         position="absolute"
+        px={isEndPlaceholder ? 3 : undefined}
+        py={isEndPlaceholder ? 6 : undefined}
         ref={wrapperRef}
-        top={0}
+        top={isEndPlaceholder ? `${layout.outputPanelTop}px` : 0}
         visibility="hidden"
+        w={isEndPlaceholder ? `${layout.panelWidth}px` : undefined}
       >
-        <Text
-          fontSize="24px"
-          fontWeight="bold"
-          lineHeight="shorter"
-          pb="24px"
-          textAlign="center"
-        >
-          {getGuidelineTitle()}
-        </Text>
+        {isEndPlaceholder ? (
+          <Box
+            alignItems="center"
+            display="flex"
+            justifyContent="space-between"
+            px={3}
+          >
+            <Text fontSize="xl" fontWeight="medium" letterSpacing="-0.4px">
+              {getGuidelineTitle()}
+            </Text>
+            <Box cursor="pointer" onClick={handleOverlayClose}>
+              <Icon as={MdCancel} boxSize={6} color="gray.600" />
+            </Box>
+          </Box>
+        ) : (
+          <Text
+            fontSize="24px"
+            fontWeight="bold"
+            lineHeight="shorter"
+            pb="24px"
+            textAlign="center"
+          >
+            {getGuidelineTitle()}
+          </Text>
+        )}
 
-        <Box position="relative">
+        <Box
+          flex={isEndPlaceholder ? 1 : undefined}
+          overflow={isEndPlaceholder ? "auto" : undefined}
+          p={isEndPlaceholder ? 3 : undefined}
+          position="relative"
+        >
           <Box
             cursor="pointer"
+            display={isEndPlaceholder ? "none" : undefined}
             position="absolute"
             right={5}
             top={5}
@@ -1220,6 +1302,7 @@ export const ServiceSelectionPanel = () => {
                   isAuthStatusError={isOAuthTokensError}
                   isAuthStatusLoading={isOAuthTokensLoading}
                   isLoading={isSinkCatalogLoading}
+                  isPanelLayout={isEndPlaceholder}
                   searchQuery={searchQuery}
                   services={filteredCatalogServices}
                   setSearchQuery={setSearchQuery}
@@ -1239,6 +1322,7 @@ export const ServiceSelectionPanel = () => {
                     serviceKey: selectedSinkService.key,
                   })}
                   errorMessage={authErrorMessage}
+                  isPanelLayout={isEndPlaceholder}
                   isPending={isConnectOAuthPending}
                   onAuth={() => handleConnectService(selectedSinkService.key)}
                   onBack={handleEndBack}
@@ -1248,6 +1332,7 @@ export const ServiceSelectionPanel = () => {
               {endStep === "confirm" && selectedSinkService ? (
                 <SinkNodeConfirm
                   inputType={sinkInputType}
+                  isPanelLayout={isEndPlaceholder}
                   service={selectedSinkService}
                   onBack={handleEndBack}
                   onConfirm={handleCreateEndNode}
