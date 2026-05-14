@@ -1,10 +1,5 @@
 import { type MouseEvent, useId } from "react";
-import {
-  MdKeyboardArrowDown,
-  MdKeyboardArrowUp,
-  MdPlayArrow,
-  MdStop,
-} from "react-icons/md";
+import { MdKeyboardArrowDown, MdKeyboardArrowUp } from "react-icons/md";
 
 import {
   Box,
@@ -12,7 +7,6 @@ import {
   Flex,
   HStack,
   IconButton,
-  Spinner,
   Text,
   VStack,
 } from "@chakra-ui/react";
@@ -23,34 +17,21 @@ import { type DashboardIssue } from "../model";
 
 type Props = {
   issue: DashboardIssue;
-  executionActionKind: "run" | "stop";
-  executionActionLabel: string;
-  isExecutionActionPending: boolean;
   isExpanded: boolean;
   canOpenWorkflow: boolean;
   onOpenWorkflow: () => void;
   onToggle: () => void;
-  onExecutionAction: () => void;
 };
 
 export const DashboardErrorCard = ({
   issue,
-  executionActionKind,
-  executionActionLabel,
-  isExecutionActionPending,
   isExpanded,
   canOpenWorkflow,
   onOpenWorkflow,
   onToggle,
-  onExecutionAction,
 }: Props) => {
   const detailsId = useId();
   const hasIssueItems = issue.items.length > 0;
-
-  const handleExecutionActionClick = (event: MouseEvent<HTMLButtonElement>) => {
-    event.stopPropagation();
-    onExecutionAction();
-  };
 
   const handleToggleClick = (event: MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
@@ -137,22 +118,6 @@ export const DashboardErrorCard = ({
           flexShrink={0}
           alignSelf={{ base: "flex-end", md: "center" }}
         >
-          <IconButton
-            aria-label={executionActionLabel}
-            variant="ghost"
-            size="sm"
-            flexShrink={0}
-            disabled={isExecutionActionPending}
-            onClick={handleExecutionActionClick}
-          >
-            {isExecutionActionPending ? (
-              <Spinner size="xs" />
-            ) : executionActionKind === "stop" ? (
-              <MdStop />
-            ) : (
-              <MdPlayArrow />
-            )}
-          </IconButton>
           <IconButton
             aria-label={isExpanded ? "에러 상세 접기" : "에러 상세 펼치기"}
             aria-expanded={isExpanded}
