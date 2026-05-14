@@ -625,7 +625,7 @@ export const Canvas = () => {
     setActiveNextStep(null);
 
     const sinkPreviewCenterX =
-      activeNextStep.position.x + DEFAULT_FLOW_NODE_WIDTH / 2;
+      activeNextStep.position.x + PLACEHOLDER_NODE_WIDTH / 2;
     setCenter(sinkPreviewCenterX, activeNextStep.centerY, {
       zoom: 1,
       duration: 300,
