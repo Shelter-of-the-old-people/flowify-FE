@@ -4,7 +4,7 @@ const OAUTH_CONNECT_RETURN_PATH_KEY = "oauthConnectReturnPath";
 
 const normalizeReturnPath = (path: string | null) => {
   if (!path || !path.startsWith("/")) {
-    return ROUTE_PATHS.ACCOUNT;
+    return ROUTE_PATHS.SETTINGS;
   }
 
   return path;

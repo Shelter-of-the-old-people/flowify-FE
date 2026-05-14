@@ -261,7 +261,7 @@ export const SourceNodePanel = ({
 
   const handleConnectService = (targetServiceKey: string) => {
     if (getServiceConnectionKind(targetServiceKey) === "manual_token") {
-      navigate(ROUTE_PATHS.ACCOUNT);
+      navigate(ROUTE_PATHS.SETTINGS);
       return;
     }
 

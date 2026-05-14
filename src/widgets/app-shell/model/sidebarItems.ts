@@ -1,23 +1,23 @@
-import { type IconType } from "react-icons";
+import { type ElementType } from "react";
 import {
   MdAdd,
   MdHelpOutline,
-  MdKeyboardDoubleArrowRight,
   MdOutlineHome,
   MdOutlineInventory2,
   MdOutlinePerson,
   MdOutlineSettings,
-  MdOutlineWorkspaces,
 } from "react-icons/md";
 
 import { ROUTE_PATHS } from "@/shared";
+
+import { SidebarPanelIcon, SidebarWorkflowIcon } from "./sidebarIcons";
 
 export type SidebarItemKind = "action" | "route" | "placeholder" | "user";
 
 export type SidebarItem = {
   id: string;
   label: string;
-  icon: IconType;
+  icon: ElementType;
   kind: SidebarItemKind;
   path?: string;
 };
@@ -25,7 +25,7 @@ export type SidebarItem = {
 export const sidebarControlItem: SidebarItem = {
   id: "toggle",
   label: "접기",
-  icon: MdKeyboardDoubleArrowRight,
+  icon: SidebarPanelIcon,
   kind: "action",
 };
 
@@ -46,7 +46,7 @@ export const sidebarPrimaryItems: SidebarItem[] = [
   {
     id: "workflows",
     label: "워크플로우",
-    icon: MdOutlineWorkspaces,
+    icon: SidebarWorkflowIcon,
     kind: "route",
     path: ROUTE_PATHS.WORKFLOWS,
   },

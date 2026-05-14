@@ -950,7 +950,7 @@ export const ServiceSelectionPanel = () => {
 
   const handleConnectService = (serviceKey: string) => {
     if (getServiceConnectionKind(serviceKey) === "manual_token") {
-      navigate(ROUTE_PATHS.ACCOUNT);
+      navigate(ROUTE_PATHS.SETTINGS);
       return;
     }
 

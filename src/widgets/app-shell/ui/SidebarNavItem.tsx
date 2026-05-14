@@ -1,9 +1,9 @@
-import { type IconType } from "react-icons";
+import { type ElementType } from "react";
 
 import { Box, Button, Icon, Text } from "@chakra-ui/react";
 
 type SidebarNavItemProps = {
-  icon: IconType;
+  icon: ElementType;
   label: string;
   isExpanded: boolean;
   isActive?: boolean;
