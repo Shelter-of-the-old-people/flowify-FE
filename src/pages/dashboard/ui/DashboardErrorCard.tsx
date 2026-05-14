@@ -47,12 +47,7 @@ export const DashboardErrorCard = ({
       boxShadow="0 0 4px rgba(239, 61, 61, 0.24)"
       p={4}
     >
-      <Flex
-        align={{ base: "stretch", md: "center" }}
-        justify="space-between"
-        direction={{ base: "column", md: "row" }}
-        gap={3}
-      >
+      <Flex align="center" justify="space-between" gap={3}>
         <Button
           type="button"
           variant="ghost"
@@ -64,6 +59,7 @@ export const DashboardErrorCard = ({
           w="full"
           h="auto"
           p={0}
+          overflow="hidden"
           bg="transparent"
           borderRadius="8px"
           color="inherit"
@@ -95,7 +91,7 @@ export const DashboardErrorCard = ({
             <ServiceBadge type={issue.endBadgeKey} />
           </HStack>
 
-          <Box minW={0}>
+          <Box minW={0} flex={1}>
             <Text
               fontSize="sm"
               fontWeight="medium"
@@ -112,12 +108,7 @@ export const DashboardErrorCard = ({
           </Box>
         </Button>
 
-        <HStack
-          gap={1}
-          flexWrap="nowrap"
-          flexShrink={0}
-          alignSelf={{ base: "flex-end", md: "center" }}
-        >
+        <HStack gap={1} flexWrap="nowrap" flexShrink={0} alignSelf="center">
           <IconButton
             aria-label={isExpanded ? "에러 상세 접기" : "에러 상세 펼치기"}
             aria-expanded={isExpanded}
