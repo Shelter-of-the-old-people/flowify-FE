@@ -23,6 +23,56 @@ type Props = {
   onToggle: () => void;
 };
 
+const LATIN_TEXT_PATTERN = /[A-Za-z]/;
+const UNKNOWN_ERROR_DETAIL_MESSAGE = "오류 상세를 확인해 주세요.";
+
+const getLocalizedDashboardIssueMessage = (message: string) => {
+  const trimmedMessage = message.trim();
+
+  if (trimmedMessage.length === 0) {
+    return UNKNOWN_ERROR_DETAIL_MESSAGE;
+  }
+
+  const messageCode = trimmedMessage.toUpperCase();
+  const normalizedMessage = trimmedMessage.toLowerCase();
+
+  if (messageCode === "EXECUTION_FAILED") {
+    return "워크플로우 실행 중 오류가 발생했습니다.";
+  }
+
+  if (messageCode === "WORKFLOW_NOT_EXECUTABLE") {
+    return "워크플로우 실행에 필요한 설정을 확인해 주세요.";
+  }
+
+  if (normalizedMessage.includes("gmail auth failed")) {
+    return "Gmail 인증에 실패했습니다.";
+  }
+
+  if (normalizedMessage.includes("gmail node execution failed")) {
+    return "Gmail 노드 실행 중 오류가 발생했습니다.";
+  }
+
+  if (
+    normalizedMessage.includes("auth") ||
+    normalizedMessage.includes("unauthorized")
+  ) {
+    return "서비스 인증에 실패했습니다. 연결 상태를 다시 확인해 주세요.";
+  }
+
+  if (
+    normalizedMessage.includes("execution failed") ||
+    normalizedMessage.includes("failed")
+  ) {
+    return "워크플로우 실행 중 오류가 발생했습니다.";
+  }
+
+  if (LATIN_TEXT_PATTERN.test(trimmedMessage)) {
+    return UNKNOWN_ERROR_DETAIL_MESSAGE;
+  }
+
+  return trimmedMessage;
+};
+
 export const DashboardErrorCard = ({
   issue,
   isExpanded,
@@ -126,22 +176,37 @@ export const DashboardErrorCard = ({
       {isExpanded ? (
         <VStack id={detailsId} align="stretch" gap={2} mt={4}>
           {hasIssueItems ? (
-            issue.items.map((item) => (
-              <HStack
-                key={item.id}
-                align="center"
-                gap={4}
-                p={3}
-                border="1px solid"
-                borderColor="border.default"
-                borderRadius="4px"
-              >
-                <ServiceBadge type={item.badgeKey} />
-                <Text fontSize="sm" color="text.primary" lineHeight="1.4">
-                  {item.message}
-                </Text>
-              </HStack>
-            ))
+            issue.items.map((item) => {
+              const localizedMessage = getLocalizedDashboardIssueMessage(
+                item.message,
+              );
+
+              return (
+                <HStack
+                  key={item.id}
+                  align="center"
+                  gap={4}
+                  p={3}
+                  border="1px solid"
+                  borderColor="border.default"
+                  borderRadius="4px"
+                >
+                  <ServiceBadge type={item.badgeKey} />
+                  <Text
+                    fontSize="sm"
+                    color="text.primary"
+                    lineHeight="1.4"
+                    title={
+                      localizedMessage === item.message
+                        ? undefined
+                        : item.message
+                    }
+                  >
+                    {localizedMessage}
+                  </Text>
+                </HStack>
+              );
+            })
           ) : (
             <Text fontSize="sm" color="text.secondary">
               표시할 상세 에러 내역이 없습니다.
