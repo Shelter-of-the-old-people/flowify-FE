@@ -3,6 +3,7 @@ import { MdKeyboardArrowDown, MdKeyboardArrowUp } from "react-icons/md";
 
 import { Box, Flex, HStack, IconButton, Text, VStack } from "@chakra-ui/react";
 
+import { getNodeStatusMissingFieldLabel } from "@/entities/workflow";
 import { ServiceBadge, type ServiceBadgeKey } from "@/shared";
 
 import { type DashboardIssue } from "../model";
@@ -56,6 +57,26 @@ const DASHBOARD_ISSUE_SERVICE_PATTERNS: Array<[RegExp, string]> = [
   [/\bseboard\b|\bse[-_\s]?board\b/, "SE Board"],
 ];
 
+const DASHBOARD_ISSUE_REQUIRED_FIELD_PATTERNS: Array<[RegExp, string]> = [
+  [
+    /\bconfig[._-]?recipient\b|\brecipients?\b|\brecipient_list\b|\bto\b/,
+    "recipient",
+  ],
+  [/\bconfig[._-]?subject\b|\bsubjects?\b|\btitle\b/, "subject"],
+  [
+    /\bconfig[._-]?action\b|\bchoice_action_id\b|\bwrite_mode\b|\baction\b/,
+    "action",
+  ],
+  [/\bconfig[._-]?message\b|\bmessage_template\b|\bbody\b/, "messageTemplate"],
+  [/\bconfig[._-]?channel\b|\bchannel\b/, "channel"],
+  [/\bconfig[._-]?target\b|\btarget\b|\btarget_id\b/, "target"],
+  [/\bconfig[._-]?prompt\b|\bprompt\b/, "prompt"],
+  [/\bspreadsheet_id\b|\bspreadsheetid\b/, "spreadsheet_id"],
+  [/\bsheet_name\b|\bsheetname\b/, "sheet_name"],
+  [/\bcalendar_id\b|\bcalendarid\b/, "calendar_id"],
+  [/\bwebhook_url\b|\bwebhook\b/, "webhook_url"],
+];
+
 const includesAny = (value: string, keywords: string[]) =>
   keywords.some((keyword) => value.includes(keyword));
 
@@ -68,6 +89,14 @@ const getDashboardIssueServiceLabel = (
   );
 
   return matchedService?.[1] ?? DASHBOARD_ISSUE_SERVICE_LABELS[badgeKey];
+};
+
+const getDashboardIssueRequiredFieldLabels = (normalizedMessage: string) => {
+  const labels = DASHBOARD_ISSUE_REQUIRED_FIELD_PATTERNS.filter(([pattern]) =>
+    pattern.test(normalizedMessage),
+  ).map(([, field]) => getNodeStatusMissingFieldLabel(field));
+
+  return Array.from(new Set(labels));
 };
 
 const getLocalizedDashboardIssueMessage = (
@@ -122,6 +151,13 @@ const getLocalizedDashboardIssueMessage = (
       "bad request",
     ])
   ) {
+    const requiredFieldLabels =
+      getDashboardIssueRequiredFieldLabels(normalizedMessage);
+
+    if (requiredFieldLabels.length > 0) {
+      return `${serviceLabel} 필수 설정이 필요합니다. 확인할 항목: ${requiredFieldLabels.join(", ")}`;
+    }
+
     return `${serviceLabel} 노드 설정값을 확인해 주세요.`;
   }
 
