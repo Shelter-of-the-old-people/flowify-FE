@@ -96,19 +96,23 @@ export const deriveProcessingMethodSelectionIntent = ({
   );
   const branchConfig =
     selectionResult.branchConfig ?? option.branchConfig ?? null;
-  const hasFollowUp = Boolean(branchConfig);
-  const nextStep = hasFollowUp
-    ? "follow-up"
-    : nextActionChoice.options.length > 0
-      ? "action"
-      : "complete";
   const nextChoiceNodeType = toChoiceSemanticNodeType({
     option,
     selectionResult,
   });
+  const isPassthrough = nextChoiceNodeType === "PASSTHROUGH";
+  const nextBranchConfig = isPassthrough ? null : branchConfig;
+  const hasFollowUp = Boolean(nextBranchConfig);
+  const nextStep = isPassthrough
+    ? "complete"
+    : hasFollowUp
+      ? "follow-up"
+      : nextActionChoice.options.length > 0
+        ? "action"
+        : "complete";
 
   return {
-    branchConfig,
+    branchConfig: nextBranchConfig,
     hasFollowUp,
     isConfigured: nextStep === "complete",
     nextActionChoice,
