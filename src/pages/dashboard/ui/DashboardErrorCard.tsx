@@ -44,6 +44,7 @@ export const DashboardErrorCard = ({
   onExecutionAction,
 }: Props) => {
   const detailsId = useId();
+  const hasIssueItems = issue.items.length > 0;
 
   const handleExecutionActionClick = (event: MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
@@ -86,7 +87,11 @@ export const DashboardErrorCard = ({
           textAlign="left"
           cursor={canOpenWorkflow ? "pointer" : "default"}
           disabled={!canOpenWorkflow}
+          aria-disabled={!canOpenWorkflow}
           aria-label={`${issue.name} 워크플로우 편집 화면 열기`}
+          title={
+            canOpenWorkflow ? undefined : "연결된 워크플로우 정보가 없습니다."
+          }
           onClick={onOpenWorkflow}
           _hover={canOpenWorkflow ? { bg: "bg.muted" } : undefined}
           _focusVisible={{
@@ -126,6 +131,7 @@ export const DashboardErrorCard = ({
 
         <HStack
           gap={1}
+          flexWrap="nowrap"
           flexShrink={0}
           alignSelf={{ base: "flex-end", md: "center" }}
         >
@@ -161,22 +167,28 @@ export const DashboardErrorCard = ({
 
       {isExpanded ? (
         <VStack id={detailsId} align="stretch" gap={2} mt={4}>
-          {issue.items.map((item) => (
-            <HStack
-              key={item.id}
-              align="center"
-              gap={4}
-              p={3}
-              border="1px solid"
-              borderColor="border.default"
-              borderRadius="4px"
-            >
-              <ServiceBadge type={item.badgeKey} />
-              <Text fontSize="sm" color="text.primary" lineHeight="1.4">
-                {item.message}
-              </Text>
-            </HStack>
-          ))}
+          {hasIssueItems ? (
+            issue.items.map((item) => (
+              <HStack
+                key={item.id}
+                align="center"
+                gap={4}
+                p={3}
+                border="1px solid"
+                borderColor="border.default"
+                borderRadius="4px"
+              >
+                <ServiceBadge type={item.badgeKey} />
+                <Text fontSize="sm" color="text.primary" lineHeight="1.4">
+                  {item.message}
+                </Text>
+              </HStack>
+            ))
+          ) : (
+            <Text fontSize="sm" color="text.secondary">
+              표시할 상세 에러 내역이 없습니다.
+            </Text>
+          )}
         </VStack>
       ) : null}
     </Box>
