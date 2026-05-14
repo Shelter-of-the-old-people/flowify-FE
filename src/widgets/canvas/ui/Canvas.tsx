@@ -111,6 +111,9 @@ const getNodeFallbackHeight = (node: Node) => {
   return DEFAULT_FLOW_NODE_HEIGHT;
 };
 
+const getNodeCenterX = (node: Node, fallbackWidth = DEFAULT_FLOW_NODE_WIDTH) =>
+  node.position.x + getNodeWidth(node, fallbackWidth) / 2;
+
 const getNodeCenterY = (
   node: Node,
   fallbackHeight = DEFAULT_FLOW_NODE_HEIGHT,
@@ -621,9 +624,9 @@ export const Canvas = () => {
     });
     setActiveNextStep(null);
 
-    const viewportWidth = window.innerWidth;
-    const offsetX = viewportWidth * 0.2;
-    setCenter(activeNextStep.position.x + offsetX, activeNextStep.centerY, {
+    const sinkPreviewCenterX =
+      activeNextStep.position.x + DEFAULT_FLOW_NODE_WIDTH / 2;
+    setCenter(sinkPreviewCenterX, activeNextStep.centerY, {
       zoom: 1,
       duration: 300,
     });
@@ -1032,6 +1035,22 @@ export const Canvas = () => {
   useEffect(() => {
     if (!activePanelNodeId) return;
 
+    const activeNode =
+      nodesWithDragControl.find((node) => node.id === activePanelNodeId) ??
+      null;
+
+    if (activeNode && isEndWorkflowNodeId(activeNode.id, endNodeIds)) {
+      setCenter(
+        getNodeCenterX(activeNode, getNodeFallbackWidth(activeNode)),
+        getNodeCenterY(activeNode, getNodeFallbackHeight(activeNode)),
+        {
+          duration: 300,
+          zoom: getZoom(),
+        },
+      );
+      return;
+    }
+
     const chainNodes = getChainNodes(activePanelNodeId);
     if (chainNodes.length === 0) return;
 
@@ -1041,7 +1060,14 @@ export const Canvas = () => {
       duration: 300,
       zoom: getZoom(),
     });
-  }, [activePanelNodeId, getChainNodes, getZoom, setCenter]);
+  }, [
+    activePanelNodeId,
+    endNodeIds,
+    getChainNodes,
+    getZoom,
+    nodesWithDragControl,
+    setCenter,
+  ]);
 
   useEffect(() => {
     if (!pendingAutoLayoutFit) {
