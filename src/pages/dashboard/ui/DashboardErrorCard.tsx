@@ -12,6 +12,8 @@ type Props = {
   issue: DashboardIssue;
   isExpanded: boolean;
   canOpenWorkflow: boolean;
+  workflowMissingFieldLabels: string[];
+  missingFieldLabelsByBadgeKey: Partial<Record<ServiceBadgeKey, string[]>>;
   onOpenWorkflow: () => void;
   onToggle: () => void;
 };
@@ -99,9 +101,14 @@ const getDashboardIssueRequiredFieldLabels = (normalizedMessage: string) => {
   return Array.from(new Set(labels));
 };
 
+const mergeFieldLabels = (
+  ...labelGroups: Array<readonly string[] | undefined>
+) => Array.from(new Set(labelGroups.flatMap((labels) => labels ?? [])));
+
 const getLocalizedDashboardIssueMessage = (
   message: string,
   badgeKey: ServiceBadgeKey,
+  missingFieldLabels?: readonly string[],
 ) => {
   const trimmedMessage = message.trim();
 
@@ -151,8 +158,10 @@ const getLocalizedDashboardIssueMessage = (
       "bad request",
     ])
   ) {
-    const requiredFieldLabels =
-      getDashboardIssueRequiredFieldLabels(normalizedMessage);
+    const requiredFieldLabels = mergeFieldLabels(
+      missingFieldLabels,
+      getDashboardIssueRequiredFieldLabels(normalizedMessage),
+    );
 
     if (requiredFieldLabels.length > 0) {
       return `${serviceLabel} 필수 설정이 필요합니다. 확인할 항목: ${requiredFieldLabels.join(", ")}`;
@@ -235,6 +244,8 @@ export const DashboardErrorCard = ({
   issue,
   isExpanded,
   canOpenWorkflow,
+  workflowMissingFieldLabels,
+  missingFieldLabelsByBadgeKey,
   onOpenWorkflow,
   onToggle,
 }: Props) => {
@@ -243,6 +254,7 @@ export const DashboardErrorCard = ({
   const localizedBuildProgressLabel = getLocalizedDashboardIssueMessage(
     issue.buildProgressLabel,
     issue.startBadgeKey,
+    workflowMissingFieldLabels,
   );
 
   const handleCardClick = () => {
@@ -357,6 +369,7 @@ export const DashboardErrorCard = ({
               const localizedMessage = getLocalizedDashboardIssueMessage(
                 item.message,
                 item.badgeKey,
+                missingFieldLabelsByBadgeKey[item.badgeKey],
               );
 
               return (
