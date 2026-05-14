@@ -52,7 +52,7 @@ const HELP_CONTENT: Record<
       "워크스페이스를 고르고 connection 이름을 적습니다.",
       "Configuration 탭에서 Installation access token을 복사합니다.",
       "Flowify가 읽거나 쓸 페이지 / 데이터베이스를 connection에 공유합니다.",
-      "계정 페이지의 Notion 카드에 토큰을 붙여 넣고 저장합니다.",
+      "설정 화면의 Notion 카드에 토큰을 붙여 넣고 저장합니다.",
     ],
     permissions: [
       "처음에는 Read content, Update content, Insert content를 켜 두면 대부분의 자동화를 시작하기 쉽습니다.",
@@ -93,7 +93,7 @@ const HELP_CONTENT: Record<
       "토큰 이름을 Flowify처럼 알아보기 쉽게 적습니다.",
       "자동화에 필요한 저장소와 권한만 선택합니다.",
       "생성 직후 토큰 값을 복사합니다.",
-      "계정 페이지의 GitHub 카드에 붙여 넣고 저장합니다.",
+      "설정 화면의 GitHub 카드에 붙여 넣고 저장합니다.",
     ],
     permissions: [
       "읽기 자동화는 repository contents read 수준부터 시작하는 편이 안전합니다.",
@@ -129,7 +129,7 @@ const HELP_CONTENT: Record<
       "Profile 또는 Settings 화면에서 New Access Token 버튼을 찾습니다.",
       "토큰 이름과 만료일을 정하고 생성한 뒤 값을 바로 복사합니다.",
       "토큰 소유 계정이 필요한 코스와 파일을 실제로 볼 수 있는지 확인합니다.",
-      "계정 페이지의 Canvas LMS 카드에 붙여 넣고 저장합니다.",
+      "설정 화면의 Canvas LMS 카드에 붙여 넣고 저장합니다.",
     ],
     permissions: [
       "Flowify는 토큰 소유 계정이 실제로 접근 가능한 코스와 파일만 사용할 수 있습니다.",

@@ -128,9 +128,9 @@ export const getOAuthConnectionUiState = ({
         key: "check_needed",
         label: "상태 확인 필요",
         description:
-          "연결 상태를 확인하지 못했습니다. 계정 페이지에서 토큰을 다시 저장해 주세요.",
+          "연결 상태를 확인하지 못했습니다. 설정 화면에서 토큰을 다시 저장해 주세요.",
         badgeLabel: "CHECK NEEDED",
-        actionLabel: "계정 페이지로 이동",
+        actionLabel: "설정 화면으로 이동",
         canStartConnect: true,
         selectionDisabled: false,
         tone: "warning",
@@ -167,9 +167,9 @@ export const getOAuthConnectionUiState = ({
     return {
       key: "connectable",
       label: "토큰 입력 필요",
-      description: "계정 페이지에서 토큰을 직접 입력해 연결합니다.",
+      description: "설정 화면에서 토큰을 직접 입력해 연결합니다.",
       badgeLabel: "TOKEN REQUIRED",
-      actionLabel: "계정 페이지로 이동",
+      actionLabel: "설정 화면으로 이동",
       canStartConnect: true,
       selectionDisabled: false,
       tone: "neutral",

@@ -2,7 +2,7 @@ import { type IconType } from "react-icons";
 
 import { Icon } from "@chakra-ui/react";
 
-import { DiscordIcon, NaverIcon, SeBoardIcon } from "./icons";
+import { getServiceIconMetaFromService } from "./service-icon-registry";
 
 type Props = {
   color?: string;
@@ -22,24 +22,25 @@ export const ServiceIcon = ({
   size = 24,
   sourceMode,
 }: Props) => {
-  if (serviceKey === "discord") {
-    return <DiscordIcon size={size} />;
+  if (!serviceKey) {
+    return fallbackIcon ? (
+      <Icon as={fallbackIcon} boxSize={toCssSize(size)} color={color} />
+    ) : null;
   }
 
-  if (serviceKey === "naver_news") {
-    return <NaverIcon size={size} />;
+  const meta = getServiceIconMetaFromService(serviceKey, sourceMode);
+  const { BrandIcon } = meta;
+
+  if (BrandIcon) {
+    return <BrandIcon size={size} />;
   }
 
-  if (
-    serviceKey === "web_news" &&
-    (sourceMode === "seboard_posts" || sourceMode === "seboard_new_posts")
-  ) {
-    return <SeBoardIcon size={size} />;
-  }
+  const IconComponent =
+    meta.key === "unknown" ? fallbackIcon : meta.fallbackIcon;
 
-  if (!fallbackIcon) {
+  if (!IconComponent) {
     return null;
   }
 
-  return <Icon as={fallbackIcon} boxSize={toCssSize(size)} color={color} />;
+  return <Icon as={IconComponent} boxSize={toCssSize(size)} color={color} />;
 };

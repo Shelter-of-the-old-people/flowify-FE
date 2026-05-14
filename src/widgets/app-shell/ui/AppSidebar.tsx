@@ -1,8 +1,4 @@
 import { useMemo } from "react";
-import {
-  MdKeyboardDoubleArrowLeft,
-  MdKeyboardDoubleArrowRight,
-} from "react-icons/md";
 import { useLocation, useNavigate } from "react-router";
 
 import { Flex } from "@chakra-ui/react";
@@ -31,9 +27,6 @@ export const AppSidebar = ({
   const location = useLocation();
   const navigate = useNavigate();
   const { createWorkflow, isPending } = useCreateWorkflowShortcut();
-  const toggleIcon = isExpanded
-    ? MdKeyboardDoubleArrowLeft
-    : MdKeyboardDoubleArrowRight;
 
   const activeRouteIds = useMemo(() => {
     return new Set(
@@ -83,7 +76,7 @@ export const AppSidebar = ({
       <Flex direction="column" gap={3}>
         <Flex direction="column" gap={1}>
           <SidebarNavItem
-            icon={toggleIcon}
+            icon={sidebarControlItem.icon}
             label={isExpanded ? "접기" : sidebarControlItem.label}
             isExpanded={isExpanded}
             onClick={onToggleExpanded}
@@ -131,6 +124,7 @@ export const AppSidebar = ({
               isExpanded={isExpanded}
               isActive={activeRouteIds.has(item.id)}
               isDisabled={item.kind === "placeholder"}
+              onClick={() => handleRouteClick(item.path)}
             />
           ),
         )}

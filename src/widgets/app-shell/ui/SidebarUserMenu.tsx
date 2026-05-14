@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useNavigate } from "react-router";
 
 import {
   Avatar,
@@ -13,7 +12,7 @@ import {
 } from "@chakra-ui/react";
 
 import { useLogout } from "@/features/auth/logout";
-import { ROUTE_PATHS, getAuthUser } from "@/shared";
+import { getAuthUser } from "@/shared";
 
 type SidebarUserMenuProps = {
   label: string;
@@ -25,7 +24,6 @@ export const SidebarUserMenu = ({
   isExpanded,
 }: SidebarUserMenuProps) => {
   const { isPending, logout } = useLogout();
-  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const authUser = getAuthUser();
   const displayName = authUser?.name || label;
@@ -102,14 +100,6 @@ export const SidebarUserMenu = ({
               </VStack>
             </HStack>
             <Menu.Separator />
-            <Menu.Item
-              value="account"
-              onSelect={() => {
-                navigate(ROUTE_PATHS.ACCOUNT);
-              }}
-            >
-              계정 정보
-            </Menu.Item>
             <Menu.Item
               value="logout"
               disabled={isPending}

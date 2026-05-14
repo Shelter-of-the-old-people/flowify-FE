@@ -7,23 +7,7 @@ import {
   useState,
 } from "react";
 import { type ReactNode } from "react";
-import { type IconType } from "react-icons";
-import {
-  MdArrowBack,
-  MdArticle,
-  MdCancel,
-  MdFolder,
-  MdLanguage,
-  MdSchool,
-  MdSearch,
-} from "react-icons/md";
-import {
-  SiGmail,
-  SiGooglecalendar,
-  SiGoogledrive,
-  SiGooglesheets,
-  SiSlack,
-} from "react-icons/si";
+import { MdArrowBack, MdCancel, MdSearch } from "react-icons/md";
 import { useNavigate } from "react-router";
 
 import { Box, Button, Grid, Icon, Input, Text, VStack } from "@chakra-ui/react";
@@ -93,18 +77,6 @@ const PLACEHOLDER_NODE_WIDTH = 100;
 const START_END_NODE_HEIGHT = 176;
 const EMPTY_TARGET_SENTINEL = "";
 
-const CATALOG_SERVICE_ICON_MAP: Record<string, IconType> = {
-  canvas_lms: MdSchool,
-  gmail: SiGmail,
-  google_calendar: SiGooglecalendar,
-  google_drive: SiGoogledrive,
-  google_sheets: SiGooglesheets,
-  naver_news: MdSearch,
-  notion: MdArticle,
-  slack: SiSlack,
-  web_news: MdLanguage,
-};
-
 const WizardCard = ({
   children,
   maxWidth,
@@ -128,19 +100,6 @@ const WizardCard = ({
     {children}
   </Box>
 );
-
-const getCatalogServiceIcon = (serviceKey: string) =>
-  CATALOG_SERVICE_ICON_MAP[serviceKey] ?? MdFolder;
-
-const renderCatalogServiceIcon = (serviceKey: string) => {
-  return (
-    <ServiceIcon
-      fallbackIcon={getCatalogServiceIcon(serviceKey)}
-      serviceKey={serviceKey}
-      size={64}
-    />
-  );
-};
 
 const hasTargetSchema = (targetSchema: Record<string, unknown>) =>
   Object.keys(targetSchema).length > 0;
@@ -241,7 +200,7 @@ const CatalogServiceGrid = ({
                 h="64px"
                 justifyContent="center"
               >
-                {renderCatalogServiceIcon(service.key)}
+                <ServiceIcon serviceKey={service.key} size={64} />
               </Box>
               <Text fontSize="xs" fontWeight="medium" textAlign="center">
                 {service.label}
@@ -991,7 +950,7 @@ export const ServiceSelectionPanel = () => {
 
   const handleConnectService = (serviceKey: string) => {
     if (getServiceConnectionKind(serviceKey) === "manual_token") {
-      navigate(ROUTE_PATHS.ACCOUNT);
+      navigate(ROUTE_PATHS.SETTINGS);
       return;
     }
 

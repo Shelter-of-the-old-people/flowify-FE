@@ -19,7 +19,7 @@ describe("oauth connection support", () => {
     expect(state.canStartConnect).toBe(true);
   });
 
-  it("treats manual token services as account-page connections", () => {
+  it("treats manual token services as settings-page connections", () => {
     expect(getServiceConnectionKind("github")).toBe("manual_token");
 
     const state = getOAuthConnectionUiState({
@@ -29,7 +29,7 @@ describe("oauth connection support", () => {
     });
 
     expect(state.label).toBe("토큰 입력 필요");
-    expect(state.actionLabel).toBe("계정 페이지로 이동");
+    expect(state.actionLabel).toBe("설정 화면으로 이동");
     expect(state.canStartConnect).toBe(true);
   });
 });

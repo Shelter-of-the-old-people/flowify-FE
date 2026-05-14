@@ -58,6 +58,14 @@ type ManualTokenCardState = {
   actionLabel: string;
 };
 
+type AccountPageProps = {
+  headingEyebrow?: string;
+  headingTitle?: string;
+  headingDescription?: string;
+  manualTokenLocationLabel?: string;
+  showQuickLinks?: boolean;
+};
+
 const DEFAULT_SERVICE_LABELS: Record<string, string> = {
   slack: "Slack",
   gmail: "Gmail",
@@ -150,6 +158,7 @@ const buildManagedServices = (
 
 const getManualTokenCardState = (
   token: OAuthTokenSummary | undefined,
+  locationLabel = "계정 페이지",
 ): ManualTokenCardState => {
   if (token?.connected) {
     return {
@@ -196,7 +205,7 @@ const getManualTokenCardState = (
 
   return {
     label: "토큰 입력 필요",
-    description: "계정 페이지에서 토큰을 직접 입력해 연결합니다.",
+    description: `${locationLabel}에서 토큰을 직접 입력해 연결합니다.`,
     badgeLabel: "TOKEN REQUIRED",
     tone: "neutral",
     actionLabel: "토큰 입력",
@@ -226,7 +235,13 @@ const getManualTokenValidationLabel = (
   }
 };
 
-export default function AccountPage() {
+export default function AccountPage({
+  headingEyebrow = "ACCOUNT",
+  headingTitle = "계정과 서비스 연결",
+  headingDescription = "현재 로그인 정보와 외부 서비스 연결 상태를 한 번에 확인할 수 있습니다.",
+  manualTokenLocationLabel = "계정 페이지",
+  showQuickLinks = true,
+}: AccountPageProps = {}) {
   const navigate = useNavigate();
   const authUser = getAuthUser();
   const {
@@ -394,17 +409,15 @@ export default function AccountPage() {
     <Box maxW="1200px" mx="auto">
       <Box mb={10}>
         <Text fontSize="sm" fontWeight="semibold" color="gray.500" mb={2}>
-          ACCOUNT
+          {headingEyebrow}
         </Text>
         <Heading size="xl" mb={3}>
-          계정과 서비스 연결
+          {headingTitle}
         </Heading>
-        <Text color="gray.600">
-          현재 로그인 정보와 외부 서비스 연결 상태를 한 번에 확인할 수 있습니다.
-        </Text>
+        <Text color="gray.600">{headingDescription}</Text>
       </Box>
 
-      <SimpleGrid columns={{ base: 1, xl: 2 }} gap={6}>
+      <SimpleGrid columns={{ base: 1, xl: showQuickLinks ? 2 : 1 }} gap={6}>
         <Box
           p={8}
           bg="white"
@@ -445,44 +458,46 @@ export default function AccountPage() {
           </VStack>
         </Box>
 
-        <Box
-          p={8}
-          bg="white"
-          border="1px solid"
-          borderColor="gray.200"
-          borderRadius="28px"
-          boxShadow="0 10px 30px rgba(15, 23, 42, 0.04)"
-        >
-          <Text fontSize="sm" fontWeight="semibold" color="gray.500" mb={3}>
-            QUICK LINKS
-          </Text>
-          <Heading size="md" mb={4}>
-            자주 여는 화면
-          </Heading>
-          <VStack align="stretch" gap={3}>
-            <Button
-              justifyContent="flex-start"
-              variant="outline"
-              onClick={() => navigate(ROUTE_PATHS.WORKFLOWS)}
-            >
-              워크플로우 목록
-            </Button>
-            <Button
-              justifyContent="flex-start"
-              variant="outline"
-              onClick={() => navigate(ROUTE_PATHS.TEMPLATES)}
-            >
-              템플릿 목록
-            </Button>
-            <Button
-              justifyContent="flex-start"
-              variant="outline"
-              onClick={() => navigate(ROUTE_PATHS.SETTINGS)}
-            >
-              설정 화면
-            </Button>
-          </VStack>
-        </Box>
+        {showQuickLinks ? (
+          <Box
+            p={8}
+            bg="white"
+            border="1px solid"
+            borderColor="gray.200"
+            borderRadius="28px"
+            boxShadow="0 10px 30px rgba(15, 23, 42, 0.04)"
+          >
+            <Text fontSize="sm" fontWeight="semibold" color="gray.500" mb={3}>
+              QUICK LINKS
+            </Text>
+            <Heading size="md" mb={4}>
+              자주 여는 화면
+            </Heading>
+            <VStack align="stretch" gap={3}>
+              <Button
+                justifyContent="flex-start"
+                variant="outline"
+                onClick={() => navigate(ROUTE_PATHS.WORKFLOWS)}
+              >
+                워크플로우 목록
+              </Button>
+              <Button
+                justifyContent="flex-start"
+                variant="outline"
+                onClick={() => navigate(ROUTE_PATHS.TEMPLATES)}
+              >
+                템플릿 목록
+              </Button>
+              <Button
+                justifyContent="flex-start"
+                variant="outline"
+                onClick={() => navigate(ROUTE_PATHS.SETTINGS)}
+              >
+                설정 화면
+              </Button>
+            </VStack>
+          </Box>
+        ) : null}
       </SimpleGrid>
 
       <Box
@@ -623,14 +638,17 @@ export default function AccountPage() {
                 직접 발급한 토큰을 저장하는 서비스
               </Heading>
               <Text color="gray.600" fontSize="sm" mb={4}>
-                Notion, GitHub, Canvas LMS는 계정 페이지에서 토큰을 직접 저장한
-                뒤 사용합니다.
+                Notion, GitHub, Canvas LMS는 {manualTokenLocationLabel}에서
+                토큰을 직접 저장한 뒤 사용합니다.
               </Text>
 
               <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>
                 {manualServices.map((service) => {
                   const token = tokenMap.get(service.key);
-                  const state = getManualTokenCardState(token);
+                  const state = getManualTokenCardState(
+                    token,
+                    manualTokenLocationLabel,
+                  );
                   const toneStyle = CONNECTION_TONE_STYLES[state.tone];
                   const canDisconnect =
                     Boolean(token) && token?.disconnectable !== false;
