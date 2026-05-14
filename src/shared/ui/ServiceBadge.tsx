@@ -74,7 +74,6 @@ export const ServiceBadge = ({ type }: Props) => {
             boxSize="30px"
             align="center"
             justify="center"
-            bg="bg.overlay"
             borderRadius="lg"
           >
             <Icon as={fallbackIcon} boxSize={4.5} color="text.primary" />
