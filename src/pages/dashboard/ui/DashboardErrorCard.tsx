@@ -8,6 +8,7 @@ import {
 
 import {
   Box,
+  Button,
   Flex,
   HStack,
   IconButton,
@@ -71,17 +72,18 @@ export const DashboardErrorCard = ({
         direction={{ base: "column", md: "row" }}
         gap={3}
       >
-        <Flex
-          as="button"
+        <Button
           type="button"
-          align="center"
+          variant="ghost"
+          alignItems="center"
+          justifyContent="flex-start"
           gap={3}
           minW={0}
           flex={1}
           w="full"
+          h="auto"
           p={0}
           bg="transparent"
-          border={0}
           borderRadius="8px"
           color="inherit"
           textAlign="left"
@@ -127,7 +129,7 @@ export const DashboardErrorCard = ({
               <Text fontSize="xs">{issue.buildProgressLabel}</Text>
             </HStack>
           </Box>
-        </Flex>
+        </Button>
 
         <HStack
           gap={1}
