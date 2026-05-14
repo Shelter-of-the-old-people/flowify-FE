@@ -1,5 +1,10 @@
-import { type KeyboardEvent, type MouseEvent } from "react";
-import { MdPlayArrow, MdStop } from "react-icons/md";
+import { type MouseEvent, useId } from "react";
+import {
+  MdKeyboardArrowDown,
+  MdKeyboardArrowUp,
+  MdPlayArrow,
+  MdStop,
+} from "react-icons/md";
 
 import {
   Box,
@@ -21,6 +26,8 @@ type Props = {
   executionActionLabel: string;
   isExecutionActionPending: boolean;
   isExpanded: boolean;
+  canOpenWorkflow: boolean;
+  onOpenWorkflow: () => void;
   onToggle: () => void;
   onExecutionAction: () => void;
 };
@@ -31,19 +38,21 @@ export const DashboardErrorCard = ({
   executionActionLabel,
   isExecutionActionPending,
   isExpanded,
+  canOpenWorkflow,
+  onOpenWorkflow,
   onToggle,
   onExecutionAction,
 }: Props) => {
-  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      onToggle();
-    }
-  };
+  const detailsId = useId();
 
   const handleExecutionActionClick = (event: MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
     onExecutionAction();
+  };
+
+  const handleToggleClick = (event: MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    onToggle();
   };
 
   return (
@@ -54,20 +63,42 @@ export const DashboardErrorCard = ({
       borderRadius="10px"
       boxShadow="0 0 4px rgba(239, 61, 61, 0.24)"
       p={4}
-      cursor="pointer"
-      onClick={onToggle}
-      onKeyDown={handleKeyDown}
-      role="button"
-      tabIndex={0}
-      aria-expanded={isExpanded}
     >
       <Flex
-        align={{ base: "flex-start", md: "center" }}
+        align={{ base: "stretch", md: "center" }}
         justify="space-between"
         direction={{ base: "column", md: "row" }}
         gap={3}
       >
-        <HStack gap={3} minW={0} flex={1} align="center">
+        <Flex
+          as="button"
+          type="button"
+          align="center"
+          gap={3}
+          minW={0}
+          flex={1}
+          w="full"
+          p={0}
+          bg="transparent"
+          border={0}
+          borderRadius="8px"
+          color="inherit"
+          textAlign="left"
+          cursor={canOpenWorkflow ? "pointer" : "default"}
+          disabled={!canOpenWorkflow}
+          aria-label={`${issue.name} 워크플로우 편집 화면 열기`}
+          onClick={onOpenWorkflow}
+          _hover={canOpenWorkflow ? { bg: "bg.muted" } : undefined}
+          _focusVisible={{
+            outline: "2px solid",
+            outlineColor: "neutral.950",
+            outlineOffset: "2px",
+          }}
+          _disabled={{
+            cursor: "default",
+            opacity: 1,
+          }}
+        >
           <HStack gap={1.5} flexShrink={0}>
             <ServiceBadge type={issue.startBadgeKey} />
             <Text fontSize="sm" fontWeight="bold" color="text.primary">
@@ -91,28 +122,45 @@ export const DashboardErrorCard = ({
               <Text fontSize="xs">{issue.buildProgressLabel}</Text>
             </HStack>
           </Box>
-        </HStack>
+        </Flex>
 
-        <IconButton
-          aria-label={executionActionLabel}
-          variant="ghost"
-          size="sm"
+        <HStack
+          gap={1}
           flexShrink={0}
-          disabled={isExecutionActionPending}
-          onClick={handleExecutionActionClick}
+          alignSelf={{ base: "flex-end", md: "center" }}
         >
-          {isExecutionActionPending ? (
-            <Spinner size="xs" />
-          ) : executionActionKind === "stop" ? (
-            <MdStop />
-          ) : (
-            <MdPlayArrow />
-          )}
-        </IconButton>
+          <IconButton
+            aria-label={executionActionLabel}
+            variant="ghost"
+            size="sm"
+            flexShrink={0}
+            disabled={isExecutionActionPending}
+            onClick={handleExecutionActionClick}
+          >
+            {isExecutionActionPending ? (
+              <Spinner size="xs" />
+            ) : executionActionKind === "stop" ? (
+              <MdStop />
+            ) : (
+              <MdPlayArrow />
+            )}
+          </IconButton>
+          <IconButton
+            aria-label={isExpanded ? "에러 상세 접기" : "에러 상세 펼치기"}
+            aria-expanded={isExpanded}
+            aria-controls={detailsId}
+            variant="ghost"
+            size="sm"
+            flexShrink={0}
+            onClick={handleToggleClick}
+          >
+            {isExpanded ? <MdKeyboardArrowUp /> : <MdKeyboardArrowDown />}
+          </IconButton>
+        </HStack>
       </Flex>
 
       {isExpanded ? (
-        <VStack align="stretch" gap={2} mt={4}>
+        <VStack id={detailsId} align="stretch" gap={2} mt={4}>
           {issue.items.map((item) => (
             <HStack
               key={item.id}
