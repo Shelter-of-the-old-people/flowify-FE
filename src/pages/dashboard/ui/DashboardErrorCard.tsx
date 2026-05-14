@@ -249,7 +249,6 @@ export const DashboardErrorCard = ({
       title={canOpenWorkflow ? undefined : "연결된 워크플로우 정보가 없습니다."}
       onClick={handleCardClick}
       onKeyDown={handleCardKeyDown}
-      _hover={canOpenWorkflow ? { bg: "bg.muted" } : undefined}
       _focusVisible={{
         outline: "2px solid",
         outlineColor: "neutral.950",
