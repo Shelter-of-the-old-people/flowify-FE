@@ -843,6 +843,10 @@ export const ServiceSelectionPanel = () => {
       return;
     }
 
+    if (!wrapperElement) {
+      return;
+    }
+
     if (activePlaceholderKind === "sink") {
       wrapperElement.style.left = "";
       wrapperElement.style.top = "";
@@ -851,7 +855,7 @@ export const ServiceSelectionPanel = () => {
     }
 
     const overlayElement = overlayRef.current;
-    if (!overlayElement || !wrapperElement) {
+    if (!overlayElement) {
       return;
     }
 
