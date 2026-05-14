@@ -49,6 +49,7 @@ import {
   getCurrentRelativeUrl,
   getLeafNodeIds,
   storeOAuthConnectReturnPath,
+  useDualPanelLayout,
 } from "@/shared";
 
 import { isSinkServiceInRollout } from "../model/sink-rollout";
@@ -81,10 +82,12 @@ const WizardCard = ({
   children,
   maxWidth,
   minWidth = "520px",
+  padding = 12,
 }: {
   children: ReactNode;
   minWidth?: string;
   maxWidth?: string;
+  padding?: number;
 }) => (
   <Box
     bg="white"
@@ -95,7 +98,7 @@ const WizardCard = ({
     maxW={maxWidth}
     minW={minWidth}
     overflow="hidden"
-    p={12}
+    p={padding}
   >
     {children}
   </Box>
@@ -117,9 +120,11 @@ const CatalogServiceGrid = ({
   searchQuery,
   services,
   setSearchQuery,
+  isPanelLayout = false,
 }: {
   connectedServiceKeys: Set<string>;
   emptyMessage: string;
+  isPanelLayout?: boolean;
   isAuthStatusError: boolean;
   isAuthStatusLoading: boolean;
   isLoading: boolean;
@@ -128,7 +133,11 @@ const CatalogServiceGrid = ({
   services: CatalogService[];
   setSearchQuery: (query: string) => void;
 }) => (
-  <WizardCard minWidth="820px" maxWidth="820px">
+  <WizardCard
+    maxWidth={isPanelLayout ? "100%" : "820px"}
+    minWidth={isPanelLayout ? "0" : "820px"}
+    padding={isPanelLayout ? 6 : 12}
+  >
     <Box position="relative" mb={6}>
       <Input
         bg="white"
@@ -164,7 +173,15 @@ const CatalogServiceGrid = ({
         {emptyMessage}
       </Text>
     ) : (
-      <Grid gap={8} p={6} templateColumns="repeat(5, 1fr)">
+      <Grid
+        gap={isPanelLayout ? 5 : 8}
+        p={isPanelLayout ? 3 : 6}
+        templateColumns={
+          isPanelLayout
+            ? "repeat(auto-fit, minmax(96px, 1fr))"
+            : "repeat(5, 1fr)"
+        }
+      >
         {services.map((service) => {
           const connected = connectedServiceKeys.has(service.key);
           const authState = getOAuthConnectionUiState({
@@ -644,6 +661,7 @@ export const ServiceSelectionPanel = () => {
   const navigate = useNavigate();
   const { flowToScreenPosition } = useReactFlow();
   const viewport = useViewport();
+  const layout = useDualPanelLayout();
   const activePlaceholderKind = activePlaceholder?.kind ?? null;
   const activePlaceholderRouting = activePlaceholder?.routing ?? null;
   const activeSinkSourceNodeId = activePlaceholder?.sourceNodeId ?? null;
@@ -812,6 +830,13 @@ export const ServiceSelectionPanel = () => {
       return;
     }
 
+    if (activePlaceholderKind === "sink") {
+      wrapperElement.style.left = "";
+      wrapperElement.style.top = "";
+      wrapperElement.style.visibility = "visible";
+      return;
+    }
+
     const overlayElement = overlayRef.current;
     if (!overlayElement || !wrapperElement) {
       return;
@@ -840,6 +865,7 @@ export const ServiceSelectionPanel = () => {
     wrapperElement.style.visibility = "visible";
   }, [
     activePlaceholder,
+    activePlaceholderKind,
     flowToScreenPosition,
     viewport.x,
     viewport.y,
@@ -1110,13 +1136,16 @@ export const ServiceSelectionPanel = () => {
       onClick={handleOverlayClose}
     >
       <Box
-        left={0}
+        h={isEndPlaceholder ? `${layout.panelHeight}px` : undefined}
+        left={isEndPlaceholder ? `${layout.outputPanelLeft}px` : 0}
         onClick={(event) => event.stopPropagation()}
+        overflowY={isEndPlaceholder ? "auto" : undefined}
         pointerEvents="auto"
         position="absolute"
         ref={wrapperRef}
-        top={0}
+        top={isEndPlaceholder ? `${layout.outputPanelTop}px` : 0}
         visibility="hidden"
+        w={isEndPlaceholder ? `${layout.panelWidth}px` : undefined}
       >
         <Text
           fontSize="24px"
@@ -1224,6 +1253,7 @@ export const ServiceSelectionPanel = () => {
                   isAuthStatusError={isOAuthTokensError}
                   isAuthStatusLoading={isOAuthTokensLoading}
                   isLoading={isSinkCatalogLoading}
+                  isPanelLayout={isEndPlaceholder}
                   searchQuery={searchQuery}
                   services={filteredCatalogServices}
                   setSearchQuery={setSearchQuery}
