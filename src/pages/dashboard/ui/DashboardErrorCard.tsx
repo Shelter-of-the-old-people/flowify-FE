@@ -11,7 +11,7 @@ import {
   VStack,
 } from "@chakra-ui/react";
 
-import { ServiceBadge } from "@/shared";
+import { ServiceBadge, type ServiceBadgeKey } from "@/shared";
 
 import { type DashboardIssue } from "../model";
 
@@ -24,17 +24,76 @@ type Props = {
 };
 
 const LATIN_TEXT_PATTERN = /[A-Za-z]/;
-const UNKNOWN_ERROR_DETAIL_MESSAGE = "오류 상세를 확인해 주세요.";
+const KOREAN_TEXT_PATTERN = /[가-힣]/;
+const EMPTY_ERROR_DETAIL_MESSAGE = "에러 메시지가 비어 있습니다.";
 
-const getLocalizedDashboardIssueMessage = (message: string) => {
+const DASHBOARD_ISSUE_SERVICE_LABELS: Record<ServiceBadgeKey, string> = {
+  calendar: "Google Calendar",
+  "canvas-lms": "Canvas LMS",
+  discord: "Discord",
+  gmail: "Gmail",
+  "google-drive": "Google Drive",
+  "google-sheets": "Google Sheets",
+  github: "GitHub",
+  "naver-news": "Naver News",
+  notion: "Notion",
+  seboard: "SE Board",
+  slack: "Slack",
+  communication: "커뮤니케이션 서비스",
+  storage: "저장소 서비스",
+  spreadsheet: "스프레드시트 서비스",
+  "web-scraping": "웹 수집 서비스",
+  notification: "알림 서비스",
+  llm: "AI 서비스",
+  trigger: "트리거",
+  processing: "처리 노드",
+  unknown: "워크플로우",
+};
+
+const DASHBOARD_ISSUE_SERVICE_PATTERNS: Array<[RegExp, string]> = [
+  [/\bgmail\b/, "Gmail"],
+  [/\bslack\b/, "Slack"],
+  [/\bnotion\b/, "Notion"],
+  [/\bgithub\b/, "GitHub"],
+  [/\bdiscord\b/, "Discord"],
+  [/\bcanvas(?:[-_\s]?lms)?\b/, "Canvas LMS"],
+  [/\bgoogle[-_\s]?drive\b/, "Google Drive"],
+  [/\bgoogle[-_\s]?sheets?\b/, "Google Sheets"],
+  [/\bgoogle[-_\s]?calendar\b|\bcalendar\b/, "Google Calendar"],
+  [/\bnaver(?:[-_\s]?news)?\b/, "Naver News"],
+  [/\bseboard\b|\bse[-_\s]?board\b/, "SE Board"],
+];
+
+const includesAny = (value: string, keywords: string[]) =>
+  keywords.some((keyword) => value.includes(keyword));
+
+const getDashboardIssueServiceLabel = (
+  normalizedMessage: string,
+  badgeKey: ServiceBadgeKey,
+) => {
+  const matchedService = DASHBOARD_ISSUE_SERVICE_PATTERNS.find(([pattern]) =>
+    pattern.test(normalizedMessage),
+  );
+
+  return matchedService?.[1] ?? DASHBOARD_ISSUE_SERVICE_LABELS[badgeKey];
+};
+
+const getLocalizedDashboardIssueMessage = (
+  message: string,
+  badgeKey: ServiceBadgeKey,
+) => {
   const trimmedMessage = message.trim();
 
   if (trimmedMessage.length === 0) {
-    return UNKNOWN_ERROR_DETAIL_MESSAGE;
+    return EMPTY_ERROR_DETAIL_MESSAGE;
   }
 
   const messageCode = trimmedMessage.toUpperCase();
   const normalizedMessage = trimmedMessage.toLowerCase();
+  const serviceLabel = getDashboardIssueServiceLabel(
+    normalizedMessage,
+    badgeKey,
+  );
 
   if (messageCode === "EXECUTION_FAILED") {
     return "워크플로우 실행 중 오류가 발생했습니다.";
@@ -44,30 +103,101 @@ const getLocalizedDashboardIssueMessage = (message: string) => {
     return "워크플로우 실행에 필요한 설정을 확인해 주세요.";
   }
 
-  if (normalizedMessage.includes("gmail auth failed")) {
-    return "Gmail 인증에 실패했습니다.";
-  }
-
-  if (normalizedMessage.includes("gmail node execution failed")) {
-    return "Gmail 노드 실행 중 오류가 발생했습니다.";
+  if (
+    includesAny(normalizedMessage, [
+      "auth",
+      "oauth",
+      "token",
+      "credential",
+      "unauthorized",
+      "forbidden",
+      "permission",
+      "access denied",
+    ])
+  ) {
+    return `${serviceLabel} 인증 또는 권한 확인이 필요합니다.`;
   }
 
   if (
-    normalizedMessage.includes("auth") ||
-    normalizedMessage.includes("unauthorized")
+    includesAny(normalizedMessage, [
+      "not executable",
+      "config",
+      "configuration",
+      "validation",
+      "invalid",
+      "missing",
+      "required",
+      "bad request",
+    ])
   ) {
-    return "서비스 인증에 실패했습니다. 연결 상태를 다시 확인해 주세요.";
+    return `${serviceLabel} 노드 설정값을 확인해 주세요.`;
+  }
+
+  if (includesAny(normalizedMessage, ["rate limit", "quota", "too many"])) {
+    return `${serviceLabel} 요청 한도 초과로 실행에 실패했습니다.`;
+  }
+
+  if (includesAny(normalizedMessage, ["timeout", "timed out"])) {
+    return `${serviceLabel} 응답 시간이 초과되어 실행에 실패했습니다.`;
+  }
+
+  if (includesAny(normalizedMessage, ["not found", "404"])) {
+    return `${serviceLabel}에서 필요한 대상을 찾지 못했습니다.`;
+  }
+
+  if (includesAny(normalizedMessage, ["parse", "json", "format"])) {
+    return `${serviceLabel} 응답 형식을 처리하지 못했습니다.`;
   }
 
   if (
-    normalizedMessage.includes("execution failed") ||
-    normalizedMessage.includes("failed")
+    includesAny(normalizedMessage, [
+      "fetch",
+      "load",
+      "read",
+      "get ",
+      "list",
+      "retrieve",
+      "message",
+    ])
   ) {
-    return "워크플로우 실행 중 오류가 발생했습니다.";
+    return `${serviceLabel} 데이터를 가져오는 중 오류가 발생했습니다.`;
+  }
+
+  if (
+    includesAny(normalizedMessage, [
+      "send",
+      "post",
+      "create",
+      "upload",
+      "write",
+      "publish",
+    ])
+  ) {
+    return `${serviceLabel}로 데이터를 보내는 중 오류가 발생했습니다.`;
+  }
+
+  if (includesAny(normalizedMessage, ["network", "connect", "request"])) {
+    return `${serviceLabel} 연결 요청 중 오류가 발생했습니다.`;
+  }
+
+  if (
+    includesAny(normalizedMessage, [
+      "node execution failed",
+      "execution failed",
+      "failed",
+      "error",
+      "exception",
+    ])
+  ) {
+    return `${serviceLabel} 노드 실행 중 오류가 발생했습니다.`;
+  }
+
+  if (KOREAN_TEXT_PATTERN.test(trimmedMessage)) {
+    return trimmedMessage;
   }
 
   if (LATIN_TEXT_PATTERN.test(trimmedMessage)) {
-    return UNKNOWN_ERROR_DETAIL_MESSAGE;
+    return `${serviceLabel} 처리 중 오류가 발생했습니다.`;
   }
 
   return trimmedMessage;
@@ -82,6 +212,10 @@ export const DashboardErrorCard = ({
 }: Props) => {
   const detailsId = useId();
   const hasIssueItems = issue.items.length > 0;
+  const localizedBuildProgressLabel = getLocalizedDashboardIssueMessage(
+    issue.buildProgressLabel,
+    issue.startBadgeKey,
+  );
 
   const handleToggleClick = (event: MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
@@ -153,7 +287,16 @@ export const DashboardErrorCard = ({
             <HStack gap={2} mt={0.5} color="text.secondary" flexWrap="wrap">
               <Text fontSize="xs">{issue.relativeUpdateLabel}</Text>
               <Box w="1px" h="10px" bg="text.secondary" flexShrink={0} />
-              <Text fontSize="xs">{issue.buildProgressLabel}</Text>
+              <Text
+                fontSize="xs"
+                title={
+                  localizedBuildProgressLabel === issue.buildProgressLabel
+                    ? undefined
+                    : issue.buildProgressLabel
+                }
+              >
+                {localizedBuildProgressLabel}
+              </Text>
             </HStack>
           </Box>
         </Button>
@@ -179,6 +322,7 @@ export const DashboardErrorCard = ({
             issue.items.map((item) => {
               const localizedMessage = getLocalizedDashboardIssueMessage(
                 item.message,
+                item.badgeKey,
               );
 
               return (
