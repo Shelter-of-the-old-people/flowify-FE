@@ -1,15 +1,7 @@
-import { type MouseEvent, useId } from "react";
+import { type KeyboardEvent, type MouseEvent, useId } from "react";
 import { MdKeyboardArrowDown, MdKeyboardArrowUp } from "react-icons/md";
 
-import {
-  Box,
-  Button,
-  Flex,
-  HStack,
-  IconButton,
-  Text,
-  VStack,
-} from "@chakra-ui/react";
+import { Box, Flex, HStack, IconButton, Text, VStack } from "@chakra-ui/react";
 
 import { ServiceBadge, type ServiceBadgeKey } from "@/shared";
 
@@ -217,6 +209,25 @@ export const DashboardErrorCard = ({
     issue.startBadgeKey,
   );
 
+  const handleCardClick = () => {
+    if (!canOpenWorkflow) {
+      return;
+    }
+
+    onOpenWorkflow();
+  };
+
+  const handleCardKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (!canOpenWorkflow || event.target !== event.currentTarget) {
+      return;
+    }
+
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      onOpenWorkflow();
+    }
+  };
+
   const handleToggleClick = (event: MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
     onToggle();
@@ -229,43 +240,31 @@ export const DashboardErrorCard = ({
       borderColor="border.default"
       borderRadius="10px"
       boxShadow="0 0 4px rgba(239, 61, 61, 0.24)"
+      cursor={canOpenWorkflow ? "pointer" : "default"}
       p={4}
+      role={canOpenWorkflow ? "button" : undefined}
+      tabIndex={canOpenWorkflow ? 0 : undefined}
+      aria-disabled={!canOpenWorkflow}
+      aria-label={`${issue.name} 워크플로우 편집 화면 열기`}
+      title={canOpenWorkflow ? undefined : "연결된 워크플로우 정보가 없습니다."}
+      onClick={handleCardClick}
+      onKeyDown={handleCardKeyDown}
+      _hover={canOpenWorkflow ? { bg: "bg.muted" } : undefined}
+      _focusVisible={{
+        outline: "2px solid",
+        outlineColor: "neutral.950",
+        outlineOffset: "2px",
+      }}
     >
       <Flex align="center" justify="space-between" gap={3}>
-        <Button
-          type="button"
-          variant="ghost"
+        <Flex
           alignItems="center"
           justifyContent="flex-start"
           gap={3}
           minW={0}
           flex={1}
           w="full"
-          h="auto"
-          p={0}
           overflow="hidden"
-          bg="transparent"
-          borderRadius="8px"
-          color="inherit"
-          textAlign="left"
-          cursor={canOpenWorkflow ? "pointer" : "default"}
-          disabled={!canOpenWorkflow}
-          aria-disabled={!canOpenWorkflow}
-          aria-label={`${issue.name} 워크플로우 편집 화면 열기`}
-          title={
-            canOpenWorkflow ? undefined : "연결된 워크플로우 정보가 없습니다."
-          }
-          onClick={onOpenWorkflow}
-          _hover={canOpenWorkflow ? { bg: "bg.muted" } : undefined}
-          _focusVisible={{
-            outline: "2px solid",
-            outlineColor: "neutral.950",
-            outlineOffset: "2px",
-          }}
-          _disabled={{
-            cursor: "default",
-            opacity: 1,
-          }}
         >
           <HStack gap={1.5} flexShrink={0}>
             <ServiceBadge type={issue.startBadgeKey} />
@@ -299,7 +298,7 @@ export const DashboardErrorCard = ({
               </Text>
             </HStack>
           </Box>
-        </Button>
+        </Flex>
 
         <HStack gap={1} flexWrap="nowrap" flexShrink={0} alignSelf="center">
           <IconButton
