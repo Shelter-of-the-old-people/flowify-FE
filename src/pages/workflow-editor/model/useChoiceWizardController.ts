@@ -654,6 +654,10 @@ export const useChoiceWizardController = () => {
           targetNodeId: stagingNode.id,
         });
 
+        const shouldPersistProcessingChoice =
+          selectionIntent.hasFollowUp ||
+          selectionIntent.nextChoiceNodeType === "PASSTHROUGH";
+
         const updatedNodeId = await updatePersistedNode({
           node: stagingNode,
           type: selectionIntent.nextNodeType,
@@ -661,7 +665,7 @@ export const useChoiceWizardController = () => {
             type: selectionIntent.nextNodeType,
             isConfigured: selectionIntent.isConfigured,
             overrides: {
-              ...(selectionIntent.hasFollowUp
+              ...(shouldPersistProcessingChoice
                 ? {
                     choiceActionId: option.id,
                     choiceSelections: null,
