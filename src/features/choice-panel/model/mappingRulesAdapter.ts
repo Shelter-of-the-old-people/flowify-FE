@@ -33,7 +33,6 @@ const SUPPORTED_MAPPING_NODE_TYPES = [
   "AI",
   "DATA_FILTER",
   "AI_FILTER",
-  "PASSTHROUGH",
 ] as const satisfies readonly MappingNodeType[];
 
 type MappingRuleProcessingMethodResponse = NonNullable<
@@ -113,21 +112,29 @@ const toProcessingMethodOption = (
   option: MappingRuleProcessingMethodOptionResponse,
   fallback: ProcessingMethodOption | undefined,
   defaultOutputDataType: MappingDataTypeKey,
-): ProcessingMethodOption => ({
-  id: option.id,
-  label: option.label,
-  node_type: isMappingNodeType(option.node_type)
+): ProcessingMethodOption | null => {
+  const nodeType = isMappingNodeType(option.node_type)
     ? option.node_type
-    : (fallback?.node_type ?? null),
-  output_data_type: isMappingDataTypeKey(option.output_data_type)
-    ? option.output_data_type
-    : (fallback?.output_data_type ?? defaultOutputDataType),
-  priority: option.priority ?? fallback?.priority ?? 99,
-  branch_config:
-    (toFollowUp(option.branch_config ?? undefined) as
-      | BranchConfig
-      | undefined) ?? fallback?.branch_config,
-});
+    : (fallback?.node_type ?? null);
+
+  if (!nodeType) {
+    return null;
+  }
+
+  return {
+    id: option.id,
+    label: option.label,
+    node_type: nodeType,
+    output_data_type: isMappingDataTypeKey(option.output_data_type)
+      ? option.output_data_type
+      : (fallback?.output_data_type ?? defaultOutputDataType),
+    priority: option.priority ?? fallback?.priority ?? 99,
+    branch_config:
+      (toFollowUp(option.branch_config ?? undefined) as
+        | BranchConfig
+        | undefined) ?? fallback?.branch_config,
+  };
+};
 
 const toProcessingMethod = (
   dataTypeKey: MappingDataTypeKey,
@@ -143,13 +150,15 @@ const toProcessingMethod = (
   const fallbackOptionsById = new Map(
     (fallback?.options ?? []).map((option) => [option.id, option]),
   );
-  const options = processingMethod.options.map((option) =>
-    toProcessingMethodOption(
-      option,
-      fallbackOptionsById.get(option.id),
-      dataTypeKey,
-    ),
-  );
+  const options = processingMethod.options
+    .map((option) =>
+      toProcessingMethodOption(
+        option,
+        fallbackOptionsById.get(option.id),
+        dataTypeKey,
+      ),
+    )
+    .filter((option): option is ProcessingMethodOption => option !== null);
 
   if (options.length === 0) {
     return fallback;
@@ -165,25 +174,33 @@ const toAction = (
   dataTypeKey: MappingDataTypeKey,
   action: MappingRulesResponse["data_types"][string]["actions"][number],
   fallback: MappingAction | undefined,
-): MappingAction => ({
-  id: action.id,
-  label: action.label,
-  node_type: isMappingNodeType(action.node_type)
+): MappingAction | null => {
+  const nodeType = isMappingNodeType(action.node_type)
     ? action.node_type
-    : (fallback?.node_type ?? "PASSTHROUGH"),
-  output_data_type: isMappingDataTypeKey(action.output_data_type)
-    ? action.output_data_type
-    : (fallback?.output_data_type ?? dataTypeKey),
-  priority: action.priority ?? fallback?.priority ?? 99,
-  description: action.description ?? fallback?.description,
-  applicable_when: toApplicableWhen(action.applicable_when),
-  follow_up:
-    (toFollowUp(action.follow_up) as FollowUp | undefined) ??
-    fallback?.follow_up,
-  branch_config:
-    (toFollowUp(action.branch_config) as BranchConfig | undefined) ??
-    fallback?.branch_config,
-});
+    : fallback?.node_type;
+
+  if (!nodeType) {
+    return null;
+  }
+
+  return {
+    id: action.id,
+    label: action.label,
+    node_type: nodeType,
+    output_data_type: isMappingDataTypeKey(action.output_data_type)
+      ? action.output_data_type
+      : (fallback?.output_data_type ?? dataTypeKey),
+    priority: action.priority ?? fallback?.priority ?? 99,
+    description: action.description ?? fallback?.description,
+    applicable_when: toApplicableWhen(action.applicable_when),
+    follow_up:
+      (toFollowUp(action.follow_up) as FollowUp | undefined) ??
+      fallback?.follow_up,
+    branch_config:
+      (toFollowUp(action.branch_config) as BranchConfig | undefined) ??
+      fallback?.branch_config,
+  };
+};
 
 const toDataTypeMapping = (
   dataTypeKey: MappingDataTypeKey,
@@ -198,9 +215,11 @@ const toDataTypeMapping = (
   const fallbackActionsById = new Map(
     fallback.actions.map((action) => [action.id, action]),
   );
-  const actions = dataType.actions.map((action) =>
-    toAction(dataTypeKey, action, fallbackActionsById.get(action.id)),
-  );
+  const actions = dataType.actions
+    .map((action) =>
+      toAction(dataTypeKey, action, fallbackActionsById.get(action.id)),
+    )
+    .filter((action): action is MappingAction => action !== null);
 
   return {
     label: dataType.label || fallback.label,
@@ -267,8 +286,6 @@ export const toChoiceMappingRules = (
         response.node_types.DATA_FILTER ?? MAPPING_RULES.node_types.DATA_FILTER,
       AI_FILTER:
         response.node_types.AI_FILTER ?? MAPPING_RULES.node_types.AI_FILTER,
-      PASSTHROUGH:
-        response.node_types.PASSTHROUGH ?? MAPPING_RULES.node_types.PASSTHROUGH,
     },
     service_fields:
       Object.keys(response.service_fields ?? {}).length > 0

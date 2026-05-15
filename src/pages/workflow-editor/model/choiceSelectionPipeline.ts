@@ -44,7 +44,7 @@ const toChoiceSemanticNodeType = ({
     return option.node_type;
   }
 
-  return "PASSTHROUGH";
+  throw new Error("Unsupported choice node type");
 };
 
 export type ProcessingMethodSelectionIntent = {
@@ -100,19 +100,15 @@ export const deriveProcessingMethodSelectionIntent = ({
     option,
     selectionResult,
   });
-  const isPassthrough = nextChoiceNodeType === "PASSTHROUGH";
-  const nextBranchConfig = isPassthrough ? null : branchConfig;
-  const hasFollowUp = Boolean(nextBranchConfig);
-  const nextStep = isPassthrough
-    ? "complete"
-    : hasFollowUp
-      ? "follow-up"
-      : nextActionChoice.options.length > 0
-        ? "action"
-        : "complete";
+  const hasFollowUp = Boolean(branchConfig);
+  const nextStep = hasFollowUp
+    ? "follow-up"
+    : nextActionChoice.options.length > 0
+      ? "action"
+      : "complete";
 
   return {
-    branchConfig: nextBranchConfig,
+    branchConfig,
     hasFollowUp,
     isConfigured: nextStep === "complete",
     nextActionChoice,

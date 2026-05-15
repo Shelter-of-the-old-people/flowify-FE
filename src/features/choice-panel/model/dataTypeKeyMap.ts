@@ -43,5 +43,4 @@ export const MAPPING_NODE_TYPE_MAP: Record<MappingNodeType, NodeType> = {
   AI: "llm",
   DATA_FILTER: "filter",
   AI_FILTER: "filter",
-  PASSTHROUGH: "data-process",
 };

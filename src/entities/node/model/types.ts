@@ -31,8 +31,7 @@ export type ChoiceNodeType =
   | "CONDITION_BRANCH"
   | "AI"
   | "DATA_FILTER"
-  | "AI_FILTER"
-  | "PASSTHROUGH";
+  | "AI_FILTER";
 
 export type WorkflowNodeRole = "start" | "middle" | "end";
 
