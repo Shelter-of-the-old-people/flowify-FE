@@ -1,66 +1,65 @@
-import { MdKeyboardArrowDown, MdPlayArrow, MdStop } from "react-icons/md";
+import { MdPlayArrow, MdScience, MdStop } from "react-icons/md";
 
-import {
-  Box,
-  Button,
-  Icon,
-  Menu,
-  Portal,
-  Spinner,
-  Text,
-} from "@chakra-ui/react";
+import { Box, Button, Icon, Spinner, Text } from "@chakra-ui/react";
+
+export type PrimaryRunActionKind =
+  | "run"
+  | "stop"
+  | "enable-auto-run"
+  | "disable-auto-run"
+  | "disable-auto-run-and-stop";
 
 type RunStopSplitButtonProps = {
-  isRunning: boolean;
-  isRunPending: boolean;
-  isStopPending: boolean;
-  canRun: boolean;
-  canStop: boolean;
-  canOpenMenu: boolean;
-  onRun: () => void;
-  onStop: () => void;
-  onOpenMenu?: () => void;
-  onOpenTriggerSettings: () => void;
-  onCheckBeforeRun: () => void;
+  primaryActionKind: PrimaryRunActionKind;
+  primaryLabel: string;
+  isPrimaryPending: boolean;
+  canPrimaryAction: boolean;
+  showTestButton: boolean;
+  isTestPending: boolean;
+  canTestRun: boolean;
+  onPrimaryAction: () => void;
+  onTestRun: () => void;
 };
 
+const STOP_ACTIONS: PrimaryRunActionKind[] = [
+  "stop",
+  "disable-auto-run",
+  "disable-auto-run-and-stop",
+];
+
 export const RunStopSplitButton = ({
-  isRunning,
-  isRunPending,
-  isStopPending,
-  canRun,
-  canStop,
-  canOpenMenu,
-  onRun,
-  onStop,
-  onOpenMenu,
-  onOpenTriggerSettings,
-  onCheckBeforeRun,
+  primaryActionKind,
+  primaryLabel,
+  isPrimaryPending,
+  canPrimaryAction,
+  showTestButton,
+  isTestPending,
+  canTestRun,
+  onPrimaryAction,
+  onTestRun,
 }: RunStopSplitButtonProps) => {
-  const runSideDisabled = isRunning
-    ? !canStop || isStopPending
-    : !canRun || isRunPending;
-  const runSideLoading = isRunning ? isStopPending : isRunPending;
-  const runSideLabel = isRunning ? "중지" : "실행";
-  const runSideIcon = isRunning ? MdStop : MdPlayArrow;
-  const handleRunSideClick = isRunning ? onStop : onRun;
+  const primaryIcon = STOP_ACTIONS.includes(primaryActionKind)
+    ? MdStop
+    : MdPlayArrow;
+  const primaryDisabled = !canPrimaryAction || isPrimaryPending;
+  const testDisabled = !canTestRun || isTestPending;
 
   return (
     <Box display="flex" height="30px" alignItems="center" flexShrink={0}>
       <Button
         type="button"
-        aria-label={runSideLabel}
-        title={runSideLabel}
-        onClick={handleRunSideClick}
-        disabled={runSideDisabled}
+        aria-label={primaryLabel}
+        title={primaryLabel}
+        onClick={onPrimaryAction}
+        disabled={primaryDisabled}
         height="100%"
-        px={{ base: 0, "2xl": 2 }}
+        px={{ base: 1.5, "2xl": 2.5 }}
         bg="neutral.900"
         color="text.inverse"
         borderTopLeftRadius="lg"
         borderBottomLeftRadius="lg"
-        borderTopRightRadius={0}
-        borderBottomRightRadius={0}
+        borderTopRightRadius={showTestButton ? 0 : "lg"}
+        borderBottomRightRadius={showTestButton ? 0 : "lg"}
         _hover={{ bg: "neutral.800" }}
         _active={{ bg: "neutral.950" }}
         gap={1}
@@ -70,80 +69,49 @@ export const RunStopSplitButton = ({
           _hover: { bg: "neutral.900" },
         }}
       >
-        {runSideLoading ? (
+        {isPrimaryPending ? (
           <Spinner size="xs" color="currentColor" />
         ) : (
-          <Icon as={runSideIcon} boxSize={4.5} />
+          <Icon as={primaryIcon} boxSize={4.5} />
         )}
         <Text as="span" display={{ base: "none", "2xl": "inline" }}>
-          {runSideLabel}
+          {primaryLabel}
         </Text>
       </Button>
 
-      <Menu.Root
-        lazyMount
-        unmountOnExit
-        positioning={{ placement: "top-end" }}
-        onOpenChange={(details) => {
-          if (details.open) {
-            onOpenMenu?.();
-          }
-        }}
-      >
-        <Menu.Trigger asChild>
-          <Button
-            type="button"
-            aria-label="실행 메뉴 열기"
-            title="실행 메뉴"
-            disabled={!canOpenMenu}
-            height="100%"
-            minW="28px"
-            px={0}
-            bg="neutral.900"
-            color="text.inverse"
-            borderTopRightRadius="lg"
-            borderBottomRightRadius="lg"
-            borderTopLeftRadius={0}
-            borderBottomLeftRadius={0}
-            borderLeft="1px solid"
-            borderLeftColor="neutral.700"
-            _hover={{ bg: "neutral.800" }}
-            _active={{ bg: "neutral.950" }}
-            _expanded={{ bg: "neutral.950" }}
-            _disabled={{
-              opacity: 0.5,
-              cursor: "not-allowed",
-              _hover: { bg: "neutral.900" },
-            }}
-          >
-            <Icon as={MdKeyboardArrowDown} boxSize={4.5} />
-          </Button>
-        </Menu.Trigger>
-
-        <Portal>
-          <Menu.Positioner zIndex={20}>
-            <Menu.Content
-              minW="168px"
-              p={1.5}
-              bg="bg.surface"
-              border="1px solid"
-              borderRadius="xl"
-              borderColor="border.default"
-              boxShadow="lg"
-            >
-              <Menu.Item
-                value="trigger-settings"
-                onSelect={onOpenTriggerSettings}
-              >
-                자동 실행 설정
-              </Menu.Item>
-              <Menu.Item value="preflight-check" onSelect={onCheckBeforeRun}>
-                현재 설정 확인
-              </Menu.Item>
-            </Menu.Content>
-          </Menu.Positioner>
-        </Portal>
-      </Menu.Root>
+      {showTestButton ? (
+        <Button
+          type="button"
+          aria-label="테스트 실행"
+          title="테스트 실행"
+          onClick={onTestRun}
+          disabled={testDisabled}
+          height="100%"
+          minW="30px"
+          px={0}
+          bg="neutral.900"
+          color="text.inverse"
+          borderTopRightRadius="lg"
+          borderBottomRightRadius="lg"
+          borderTopLeftRadius={0}
+          borderBottomLeftRadius={0}
+          borderLeft="1px solid"
+          borderLeftColor="neutral.700"
+          _hover={{ bg: "neutral.800" }}
+          _active={{ bg: "neutral.950" }}
+          _disabled={{
+            opacity: 0.5,
+            cursor: "not-allowed",
+            _hover: { bg: "neutral.900" },
+          }}
+        >
+          {isTestPending ? (
+            <Spinner size="xs" color="currentColor" />
+          ) : (
+            <Icon as={MdScience} boxSize={4.5} />
+          )}
+        </Button>
+      ) : null}
     </Box>
   );
 };

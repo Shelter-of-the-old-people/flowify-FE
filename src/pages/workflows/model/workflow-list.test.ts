@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import { type WorkflowResponse } from "@/entities/workflow";
 
-import { getWorkflowAutoRunState } from "./workflow-list";
+import {
+  canToggleWorkflowAutoRun,
+  getWorkflowListPrimaryActionKind,
+  getWorkflowListTriggerDisplayLabel,
+} from "./workflow-list";
 
 const createWorkflow = (
   overrides: Partial<WorkflowResponse>,
@@ -25,20 +29,16 @@ const createWorkflow = (
 });
 
 describe("workflow list helpers", () => {
-  it("treats manual workflows as read-only auto-run state", () => {
+  it("displays manual workflows as manual execution", () => {
     const workflow = createWorkflow({
       trigger: { type: "manual", config: {} },
     });
 
-    expect(getWorkflowAutoRunState(workflow, "owner-1")).toEqual({
-      kind: "manual",
-      label: "수동 실행",
-      canToggle: false,
-      nextActive: null,
-    });
+    expect(getWorkflowListTriggerDisplayLabel(workflow)).toBe("수동 실행");
+    expect(getWorkflowListPrimaryActionKind(workflow, false)).toBe("run");
   });
 
-  it("allows the owner to disable an enabled schedule", () => {
+  it("shows schedule settings independently of active state", () => {
     const workflow = createWorkflow({
       trigger: {
         type: "schedule",
@@ -52,12 +52,48 @@ describe("workflow list helpers", () => {
       active: true,
     });
 
-    expect(getWorkflowAutoRunState(workflow, "owner-1")).toEqual({
-      kind: "enabled",
-      label: "자동 실행 켜짐",
-      canToggle: true,
-      nextActive: false,
+    expect(getWorkflowListTriggerDisplayLabel(workflow)).toBe("4시간마다 확인");
+    expect(getWorkflowListPrimaryActionKind(workflow, false)).toBe(
+      "disable-auto-run",
+    );
+  });
+
+  it("uses the primary action to enable inactive schedules", () => {
+    const workflow = createWorkflow({
+      trigger: {
+        type: "schedule",
+        config: {
+          schedule_mode: "interval",
+          cron: "0 0 */4 * * *",
+          timezone: "Asia/Seoul",
+          interval_hours: 4,
+        },
+      },
+      active: false,
     });
+
+    expect(getWorkflowListPrimaryActionKind(workflow, false)).toBe(
+      "enable-auto-run",
+    );
+  });
+
+  it("uses stop semantics when an active schedule is running", () => {
+    const workflow = createWorkflow({
+      trigger: {
+        type: "schedule",
+        config: {
+          schedule_mode: "interval",
+          cron: "0 0 */4 * * *",
+          timezone: "Asia/Seoul",
+          interval_hours: 4,
+        },
+      },
+      active: true,
+    });
+
+    expect(getWorkflowListPrimaryActionKind(workflow, true)).toBe(
+      "disable-auto-run-and-stop",
+    );
   });
 
   it("prevents shared viewers from toggling schedule auto-run", () => {
@@ -74,11 +110,6 @@ describe("workflow list helpers", () => {
       active: false,
     });
 
-    expect(getWorkflowAutoRunState(workflow, "viewer-2")).toEqual({
-      kind: "disabled",
-      label: "자동 실행 꺼짐",
-      canToggle: false,
-      nextActive: true,
-    });
+    expect(canToggleWorkflowAutoRun(workflow, "viewer-2")).toBe(false);
   });
 });

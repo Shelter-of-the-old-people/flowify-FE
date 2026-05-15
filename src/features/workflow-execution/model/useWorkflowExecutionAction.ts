@@ -14,7 +14,7 @@ type UseWorkflowExecutionActionResult = {
   actionLabel: string;
   isActionPending: boolean;
   isRunning: boolean;
-  handleAction: () => Promise<void>;
+  handleAction: () => Promise<boolean>;
 };
 
 export const useWorkflowExecutionAction = (
@@ -48,7 +48,7 @@ export const useWorkflowExecutionAction = (
 
   const handleAction = async () => {
     if (!workflowId || isActionPending) {
-      return;
+      return false;
     }
 
     if (isExecutionInFlight(latestExecution?.state)) {
@@ -58,7 +58,7 @@ export const useWorkflowExecutionAction = (
           description: "중지할 실행이 없습니다.",
           type: "error",
         });
-        return;
+        return false;
       }
 
       try {
@@ -68,27 +68,29 @@ export const useWorkflowExecutionAction = (
         });
         await latestExecutionQuery.refetch();
         await invalidateWorkflowLists();
+        return true;
       } catch (error) {
         toaster.create({
           title: "중지 실패",
           description: getApiErrorMessage(error),
           type: "error",
         });
+        return false;
       }
-
-      return;
     }
 
     try {
       await executeWorkflow(workflowId);
       await latestExecutionQuery.refetch();
       await invalidateWorkflowLists();
+      return true;
     } catch (error) {
       toaster.create({
         title: "실행 실패",
         description: getApiErrorMessage(error),
         type: "error",
       });
+      return false;
     }
   };
 

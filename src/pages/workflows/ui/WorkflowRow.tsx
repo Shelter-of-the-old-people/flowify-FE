@@ -13,7 +13,6 @@ import {
 
 import {
   Box,
-  Button,
   Flex,
   HStack,
   Icon,
@@ -28,7 +27,7 @@ import {
 import { type WorkflowResponse } from "@/entities/workflow";
 
 import {
-  type WorkflowAutoRunState,
+  type WorkflowListPrimaryActionKind,
   getBuildProgressLabel,
   getEndpointNodes,
   getRelativeUpdateLabel,
@@ -40,64 +39,35 @@ import { ServiceBadge } from "./ServiceBadge";
 
 type Props = {
   workflow: WorkflowResponse;
-  autoRunKind: WorkflowAutoRunState["kind"];
-  autoRunLabel: string;
-  isAutoRunToggleable: boolean;
-  isAutoRunPending: boolean;
-  executionActionKind: "run" | "stop";
-  executionActionLabel: string;
-  isExecutionActionPending: boolean;
+  triggerDisplayLabel: string;
+  primaryActionKind: WorkflowListPrimaryActionKind;
+  primaryActionLabel: string;
+  isPrimaryActionPending: boolean;
+  canUsePrimaryAction: boolean;
   canDelete: boolean;
   isDeletePending: boolean;
   onOpen: () => void;
-  onAutoRunToggle: () => void;
-  onExecutionAction: () => void;
+  onPrimaryAction: () => void;
   onDelete: () => void;
 };
 
-const AUTO_RUN_BUTTON_STYLES: Record<
-  WorkflowAutoRunState["kind"],
-  {
-    bg: string;
-    color: string;
-    border: string;
-    hoverBg: string;
-  }
-> = {
-  manual: {
-    bg: "#f8f8f8",
-    color: "#5b5b5b",
-    border: "1px solid #d8d8d8",
-    hoverBg: "#f3f3f3",
-  },
-  enabled: {
-    bg: "#272727",
-    color: "#f7f7f7",
-    border: "1px solid #272727",
-    hoverBg: "#333333",
-  },
-  disabled: {
-    bg: "#f5f5f5",
-    color: "#5b5b5b",
-    border: "1px solid #d8d8d8",
-    hoverBg: "#efefef",
-  },
-};
+const STOP_PRIMARY_ACTIONS: WorkflowListPrimaryActionKind[] = [
+  "stop",
+  "disable-auto-run",
+  "disable-auto-run-and-stop",
+];
 
 export const WorkflowRow = ({
   workflow,
-  autoRunKind,
-  autoRunLabel,
-  isAutoRunToggleable,
-  isAutoRunPending,
-  executionActionKind,
-  executionActionLabel,
-  isExecutionActionPending,
+  triggerDisplayLabel,
+  primaryActionKind,
+  primaryActionLabel,
+  isPrimaryActionPending,
+  canUsePrimaryAction,
   canDelete,
   isDeletePending,
   onOpen,
-  onAutoRunToggle,
-  onExecutionAction,
+  onPrimaryAction,
   onDelete,
 }: Props) => {
   const { startNode, endNode } = getEndpointNodes(workflow);
@@ -106,10 +76,11 @@ export const WorkflowRow = ({
   const relativeUpdate = getRelativeUpdateLabel(workflow.updatedAt);
   const buildProgress = getBuildProgressLabel(workflow);
   const warningMessages = getWorkflowWarningMessages(workflow);
-  const autoRunButtonStyle = AUTO_RUN_BUTTON_STYLES[autoRunKind];
-  const shouldShowAutoRunButton = autoRunKind !== "manual";
-  const isAutoRunActionDisabled = isDeletePending || isAutoRunPending;
-  const isExecutionButtonDisabled = isDeletePending || isExecutionActionPending;
+  const isPrimaryActionDisabled =
+    isDeletePending || isPrimaryActionPending || !canUsePrimaryAction;
+  const primaryActionIcon = STOP_PRIMARY_ACTIONS.includes(primaryActionKind)
+    ? MdStop
+    : MdPlayArrow;
 
   const handleRowKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "Enter" || event.key === " ") {
@@ -184,54 +155,29 @@ export const WorkflowRow = ({
         </HStack>
 
         <HStack gap={2} flexShrink={0}>
-          {shouldShowAutoRunButton ? (
-            <Button
-              type="button"
-              size="xs"
-              minW="auto"
-              px={3}
-              py={1.5}
-              borderRadius="999px"
+          <Box maxW={{ base: "120px", md: "180px" }} px={3} py={1.5}>
+            <Text
               fontSize="11px"
               fontWeight="semibold"
-              bg={autoRunButtonStyle.bg}
-              color={autoRunButtonStyle.color}
-              border={autoRunButtonStyle.border}
-              opacity={isAutoRunToggleable || isAutoRunPending ? 1 : 0.72}
-              disabled={isAutoRunActionDisabled}
-              cursor={
-                isAutoRunToggleable && !isAutoRunActionDisabled
-                  ? "pointer"
-                  : "default"
-              }
-              _hover={{
-                bg:
-                  isAutoRunToggleable && !isAutoRunActionDisabled
-                    ? autoRunButtonStyle.hoverBg
-                    : autoRunButtonStyle.bg,
-              }}
-              _active={{
-                bg: autoRunButtonStyle.hoverBg,
-              }}
-              onClick={(event) => handleInnerAction(event, onAutoRunToggle)}
+              color="text.secondary"
+              lineClamp={1}
             >
-              {isAutoRunPending ? <Spinner size="xs" /> : autoRunLabel}
-            </Button>
-          ) : null}
+              {triggerDisplayLabel}
+            </Text>
+          </Box>
 
           <IconButton
-            aria-label={executionActionLabel}
+            aria-label={primaryActionLabel}
+            title={primaryActionLabel}
             variant="ghost"
             size="sm"
-            disabled={isExecutionButtonDisabled}
-            onClick={(event) => handleInnerAction(event, onExecutionAction)}
+            disabled={isPrimaryActionDisabled}
+            onClick={(event) => handleInnerAction(event, onPrimaryAction)}
           >
-            {isExecutionActionPending ? (
+            {isPrimaryActionPending ? (
               <Spinner size="xs" />
-            ) : executionActionKind === "stop" ? (
-              <MdStop />
             ) : (
-              <MdPlayArrow />
+              <Icon as={primaryActionIcon} boxSize={5} />
             )}
           </IconButton>
           <Menu.Root

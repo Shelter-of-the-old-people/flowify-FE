@@ -17,8 +17,10 @@ import {
 } from "@/entities";
 import {
   type WorkflowNodeStatusResponse,
-  getWorkflowTriggerSummary,
+  getWorkflowTriggerDisplayLabel,
+  normalizeWorkflowTrigger,
   useDeleteWorkflowMutation,
+  useToggleWorkflowActiveMutation,
   workflowMutationKeys,
 } from "@/entities/workflow";
 import {
@@ -32,7 +34,10 @@ import { toaster } from "@/shared/utils/toaster/toaster";
 import { DeleteConfirmDialog } from "./DeleteConfirmDialog";
 import { ExecutionStatusBadge } from "./ExecutionStatusBadge";
 import { RollbackActionButton } from "./RollbackActionButton";
-import { RunStopSplitButton } from "./RunStopSplitButton";
+import {
+  type PrimaryRunActionKind,
+  RunStopSplitButton,
+} from "./RunStopSplitButton";
 import { TriggerControlButton } from "./TriggerControlButton";
 import { TriggerSettingsPanel } from "./TriggerSettingsPanel";
 import { WorkflowHeaderControls } from "./WorkflowHeaderControls";
@@ -76,6 +81,14 @@ export const EditorRemoteBar = () => {
     useRollbackExecutionMutation();
   const { mutateAsync: deleteWorkflow, isPending: isDeletePending } =
     useDeleteWorkflowMutation();
+  const {
+    mutateAsync: toggleWorkflowActive,
+    isPending: isToggleWorkflowActivePending,
+  } = useToggleWorkflowActiveMutation({
+    onSuccess: (workflow) => {
+      useWorkflowStore.getState().syncWorkflowActive(workflow.active);
+    },
+  });
   const structureMutationCount = useIsMutating({
     mutationKey: workflowMutationKeys.structure,
   });
@@ -136,12 +149,16 @@ export const EditorRemoteBar = () => {
     () => getExecutableBlockers(Object.values(nodeStatuses)),
     [nodeStatuses],
   );
-  const triggerSummary = useMemo(
-    () => getWorkflowTriggerSummary(workflowTrigger, workflowActive),
-    [workflowActive, workflowTrigger],
+  const normalizedWorkflowTrigger = useMemo(
+    () => normalizeWorkflowTrigger(workflowTrigger),
+    [workflowTrigger],
   );
-  const triggerControlActive =
-    workflowActive && workflowTrigger.type !== "manual";
+  const isScheduledTrigger = normalizedWorkflowTrigger.type === "schedule";
+  const triggerSummary = useMemo(
+    () => getWorkflowTriggerDisplayLabel(workflowTrigger),
+    [workflowTrigger],
+  );
+  const triggerControlActive = workflowActive && isScheduledTrigger;
   const hasExecutableBlock = !isDirty && executableBlockers.length > 0;
   const executionStatusLabel =
     effectiveRunPhase === "auto-saving"
@@ -191,17 +208,56 @@ export const EditorRemoteBar = () => {
     !isRemoteExecutionInFlight &&
     !isDeletePending &&
     blockingWorkflowMutationCount === 0;
-  const canOpenRunMenu =
+  const canToggleWorkflowActive =
     Boolean(workflowId) &&
+    canSaveWorkflow &&
     !isDeletePending &&
-    !isRunning &&
-    blockingWorkflowMutationCount === 0;
+    blockingWorkflowMutationCount === 0 &&
+    !isToggleWorkflowActivePending;
   const canRollback =
     Boolean(workflowId) &&
     canRunWorkflow &&
     Boolean(activeExecution) &&
     activeExecutionStatus === "failed" &&
     !isRunning;
+  const primaryActionKind: PrimaryRunActionKind = isScheduledTrigger
+    ? isRunning
+      ? workflowActive
+        ? "disable-auto-run-and-stop"
+        : "stop"
+      : workflowActive
+        ? "disable-auto-run"
+        : "enable-auto-run"
+    : isRunning
+      ? "stop"
+      : "run";
+  const primaryLabel =
+    primaryActionKind === "run"
+      ? "실행"
+      : primaryActionKind === "stop"
+        ? "중지"
+        : primaryActionKind === "enable-auto-run"
+          ? "자동실행 켜기"
+          : primaryActionKind === "disable-auto-run-and-stop"
+            ? "자동실행 끄고 중지"
+            : "자동실행 끄기";
+  const isPrimaryPending =
+    primaryActionKind === "run"
+      ? isExecutePending || isStarting
+      : primaryActionKind === "stop"
+        ? isStopPending
+        : primaryActionKind === "disable-auto-run-and-stop"
+          ? isToggleWorkflowActivePending || isStopPending
+          : isToggleWorkflowActivePending;
+  const canPrimaryAction =
+    primaryActionKind === "run"
+      ? canRun
+      : primaryActionKind === "stop"
+        ? canStop
+        : primaryActionKind === "disable-auto-run-and-stop"
+          ? canToggleWorkflowActive && canStop
+          : canToggleWorkflowActive && effectiveRunPhase === "idle";
+  const showTestButton = isScheduledTrigger;
 
   useEffect(() => {
     if (
@@ -221,11 +277,7 @@ export const EditorRemoteBar = () => {
     return () => window.clearTimeout(timeoutId);
   }, [refetchExecutions, trackedExecution, trackedExecutionId]);
 
-  const handleRun = async () => {
-    if (!workflowId || !canRun) {
-      return;
-    }
-
+  const ensureWorkflowReadyForExecution = async () => {
     const shouldFlushBeforeRun =
       isDirty || saveStatus === "scheduled" || saveStatus === "saving";
 
@@ -241,7 +293,7 @@ export const EditorRemoteBar = () => {
             "워크플로우 저장에 실패했습니다. 저장 후 다시 실행해 주세요.",
           type: "error",
         });
-        return;
+        return false;
       }
 
       const latestNodeStatuses =
@@ -259,8 +311,34 @@ export const EditorRemoteBar = () => {
           ),
           type: "error",
         });
-        return;
+        return false;
       }
+
+      setRunPhase("idle");
+      return true;
+    }
+
+    if (executableBlockers.length > 0) {
+      toaster.create({
+        title: "실행 전 설정 확인",
+        description: getExecutionBlockerMessage(executableBlockers.length),
+        type: "error",
+      });
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleRun = async () => {
+    if (!workflowId || !canRun) {
+      return;
+    }
+
+    const readyForExecution = await ensureWorkflowReadyForExecution();
+    if (!readyForExecution) {
+      setRunPhase("idle");
+      return;
     }
 
     try {
@@ -281,7 +359,7 @@ export const EditorRemoteBar = () => {
 
   const handleStop = async () => {
     if (!workflowId || !activeExecution) {
-      return;
+      return false;
     }
 
     try {
@@ -289,21 +367,95 @@ export const EditorRemoteBar = () => {
         workflowId,
         executionId: activeExecution.id,
       });
+      return true;
     } catch {
       toaster.create({
         title: "중지 실패",
         description: "실행 중지를 요청하지 못했습니다.",
         type: "error",
       });
+      return false;
     }
   };
 
-  const handleOpenTriggerSettings = () => {
+  const handleToggleWorkflowActive = async (
+    active: boolean,
+    options?: { silentSuccess?: boolean },
+  ) => {
     if (!workflowId) {
+      return false;
+    }
+
+    try {
+      const workflow = await toggleWorkflowActive({ workflowId, active });
+      useWorkflowStore.getState().syncWorkflowActive(workflow.active);
+
+      if (!options?.silentSuccess) {
+        toaster.create({
+          title: active ? "자동실행 켜짐" : "자동실행 꺼짐",
+          description: active
+            ? "설정한 주기대로 워크플로우를 실행합니다."
+            : "예약된 자동실행을 중지했습니다.",
+        });
+      }
+
+      return true;
+    } catch (error) {
+      toaster.create({
+        title: "자동실행 변경 실패",
+        description: getApiErrorMessage(error),
+        type: "error",
+      });
+      return false;
+    }
+  };
+
+  const handlePrimaryAction = async () => {
+    if (!canPrimaryAction) {
       return;
     }
 
-    setTriggerSettingsOpen(true);
+    if (primaryActionKind === "run") {
+      await handleRun();
+      return;
+    }
+
+    if (primaryActionKind === "stop") {
+      await handleStop();
+      return;
+    }
+
+    if (primaryActionKind === "enable-auto-run") {
+      const readyForExecution = await ensureWorkflowReadyForExecution();
+      if (!readyForExecution) {
+        setRunPhase("idle");
+        return;
+      }
+
+      await handleToggleWorkflowActive(true);
+      return;
+    }
+
+    if (primaryActionKind === "disable-auto-run-and-stop") {
+      const disabled = await handleToggleWorkflowActive(false, {
+        silentSuccess: true,
+      });
+      if (!disabled) {
+        return;
+      }
+
+      const stopped = await handleStop();
+      toaster.create({
+        title: stopped ? "자동실행 중지 완료" : "자동실행 꺼짐",
+        description: stopped
+          ? "자동실행을 끄고 현재 실행을 중지했습니다."
+          : "자동실행은 꺼졌지만 현재 실행 중지는 실패했습니다.",
+        type: stopped ? "success" : "warning",
+      });
+      return;
+    }
+
+    await handleToggleWorkflowActive(false);
   };
 
   const handleToggleTriggerSettings = () => {
@@ -316,76 +468,6 @@ export const EditorRemoteBar = () => {
 
   const handleCloseTriggerSettings = () => {
     setTriggerSettingsOpen(false);
-  };
-
-  const handleCheckBeforeRun = () => {
-    if (!workflowId) {
-      toaster.create({
-        title: "워크플로우 정보 없음",
-        description: "워크플로우 정보를 불러온 뒤 다시 확인해 주세요.",
-        type: "error",
-      });
-      return;
-    }
-
-    if (!canRunWorkflow) {
-      toaster.create({
-        title: "실행 권한 없음",
-        description: "이 워크플로우를 실행할 권한이 없습니다.",
-        type: "error",
-      });
-      return;
-    }
-
-    if (isRunning) {
-      toaster.create({
-        title: "실행 중입니다",
-        description: "실행이 끝난 뒤 현재 설정을 확인할 수 있습니다.",
-      });
-      return;
-    }
-
-    if (blockingWorkflowMutationCount > 0) {
-      toaster.create({
-        title: "변경사항 처리 중",
-        description: "노드 변경사항이 반영된 뒤 다시 확인해 주세요.",
-      });
-      return;
-    }
-
-    if (isDirty || saveStatus === "scheduled" || saveStatus === "saving") {
-      toaster.create({
-        title: "자동 저장 중",
-        description:
-          "변경사항을 저장하고 있습니다. 저장 완료 후 다시 확인해 주세요.",
-      });
-      return;
-    }
-
-    if (saveStatus === "error") {
-      toaster.create({
-        title: "저장 상태 확인 필요",
-        description:
-          saveErrorMessage ??
-          "최근 변경사항 저장에 실패했습니다. 수정 후 다시 확인해 주세요.",
-        type: "error",
-      });
-      return;
-    }
-
-    if (executableBlockers.length > 0) {
-      toaster.create({
-        title: "설정 확인 필요",
-        description: getExecutionBlockerMessage(executableBlockers.length),
-        type: "error",
-      });
-      return;
-    }
-
-    toaster.create({
-      title: "실행 준비 완료",
-      description: "현재 저장된 설정으로 워크플로우를 실행할 수 있습니다.",
-    });
   };
 
   const handleRollback = async () => {
@@ -502,17 +584,15 @@ export const EditorRemoteBar = () => {
             />
 
             <RunStopSplitButton
-              isRunning={isRunning}
-              isRunPending={isExecutePending || isStarting}
-              isStopPending={isStopPending}
-              canRun={canRun}
-              canStop={canStop}
-              canOpenMenu={canOpenRunMenu}
-              onRun={() => void handleRun()}
-              onStop={() => void handleStop()}
-              onOpenMenu={handleCloseTriggerSettings}
-              onOpenTriggerSettings={handleOpenTriggerSettings}
-              onCheckBeforeRun={handleCheckBeforeRun}
+              primaryActionKind={primaryActionKind}
+              primaryLabel={primaryLabel}
+              isPrimaryPending={isPrimaryPending}
+              canPrimaryAction={canPrimaryAction}
+              showTestButton={showTestButton}
+              isTestPending={isExecutePending || isStarting}
+              canTestRun={canRun}
+              onPrimaryAction={() => void handlePrimaryAction()}
+              onTestRun={() => void handleRun()}
             />
           </Box>
         </Box>
