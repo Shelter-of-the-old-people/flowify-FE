@@ -2,7 +2,7 @@ import {
   type DashboardIssueResponse,
   type DashboardMetricsResponse,
 } from "@/entities/dashboard";
-import { isOAuthConnectSupported } from "@/entities/oauth-token";
+import { getServiceConnectionKind } from "@/entities/oauth-token";
 import {
   type ServiceBadgeKey,
   getRelativeTimeLabel,
@@ -22,6 +22,7 @@ type SupportedServiceKey =
   | "canvas-lms"
   | "discord"
   | "gmail"
+  | "github"
   | "google-drive"
   | "google-sheets"
   | "notion"
@@ -54,6 +55,7 @@ const DASHBOARD_SERVICE_LABELS: Record<SupportedServiceKey, string> = {
   "canvas-lms": "Canvas LMS",
   discord: "Discord",
   gmail: "Gmail",
+  github: "GitHub",
   "google-drive": "Google Drive",
   "google-sheets": "Google Sheets",
   notion: "Notion",
@@ -70,6 +72,11 @@ const RECOMMENDED_DASHBOARD_SERVICES: RecommendedDashboardService[] = [
     serviceKey: "gmail",
     badgeKey: "gmail",
     label: "Gmail",
+  },
+  {
+    serviceKey: "github",
+    badgeKey: "github",
+    label: "GitHub",
   },
   {
     serviceKey: "google_drive",
@@ -241,17 +248,25 @@ export const getRecommendedServiceCards = (
   );
 
   return RECOMMENDED_DASHBOARD_SERVICES.filter(({ serviceKey }) => {
+    const connectionKind = getServiceConnectionKind(serviceKey);
+
     return (
-      isOAuthConnectSupported(serviceKey) &&
+      connectionKind !== "unsupported" &&
       !connectedServiceKeys.has(serviceKey)
     );
-  }).map<DashboardServiceCard>(({ serviceKey, badgeKey, label }) => ({
-    id: `recommended-${serviceKey}`,
-    label,
-    badgeKey,
-    serviceKey,
-    statusLabel: "인증 필요",
-    actionKind: "connect",
-    actionLabel: "연결 시작",
-  }));
+  }).map<DashboardServiceCard>(({ serviceKey, badgeKey, label }) => {
+    const connectionKind = getServiceConnectionKind(serviceKey);
+
+    return {
+      id: `recommended-${serviceKey}`,
+      label,
+      badgeKey,
+      serviceKey,
+      statusLabel:
+        connectionKind === "manual_token" ? "토큰 입력 필요" : "인증 필요",
+      actionKind: "connect",
+      actionLabel:
+        connectionKind === "manual_token" ? "토큰 입력" : "연결 시작",
+    };
+  });
 };

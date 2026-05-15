@@ -1,13 +1,18 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router";
 
 import {
-  isOAuthConnectSupported,
+  getServiceConnectionKind,
   useConnectOAuthTokenMutation,
   useDashboardSummaryQuery,
   useDisconnectOAuthTokenMutation,
   useOAuthTokensQuery,
 } from "@/entities";
-import { getCurrentRelativeUrl, storeOAuthConnectReturnPath } from "@/shared";
+import {
+  ROUTE_PATHS,
+  getCurrentRelativeUrl,
+  storeOAuthConnectReturnPath,
+} from "@/shared";
 
 import {
   getConnectedServiceCards,
@@ -17,6 +22,7 @@ import {
 } from "./dashboard";
 
 export const useDashboardData = () => {
+  const navigate = useNavigate();
   const summaryQuery = useDashboardSummaryQuery();
   const oauthTokensQuery = useOAuthTokensQuery();
   const { mutateAsync: connectToken, isPending: isConnectPending } =
@@ -56,7 +62,16 @@ export const useDashboardData = () => {
   };
 
   const handleConnectService = async (serviceKey: string) => {
-    if (!isOAuthConnectSupported(serviceKey)) {
+    const connectionKind = getServiceConnectionKind(serviceKey);
+
+    if (connectionKind === "unsupported") {
+      return;
+    }
+
+    if (connectionKind === "manual_token") {
+      navigate(
+        `${ROUTE_PATHS.ACCOUNT}?connectService=${encodeURIComponent(serviceKey)}`,
+      );
       return;
     }
 
