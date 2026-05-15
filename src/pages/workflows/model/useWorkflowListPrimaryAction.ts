@@ -61,10 +61,14 @@ export const useWorkflowListPrimaryAction = (workflow: WorkflowResponse) => {
 
       return true;
     } catch (error) {
+      const errorMessage = getApiErrorMessage(error);
+
       toaster.create({
         type: "error",
-        title: "자동실행 상태 변경 실패",
-        description: getApiErrorMessage(error),
+        title: active ? "자동실행을 켤 수 없습니다" : "자동실행 상태 변경 실패",
+        description: active
+          ? `${errorMessage} 필수 설정을 확인한 뒤 다시 시도해주세요.`
+          : errorMessage,
       });
       return false;
     }
