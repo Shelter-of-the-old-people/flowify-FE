@@ -36,24 +36,7 @@ const createSelectionResult = (
 });
 
 describe("choice selection pipeline", () => {
-  it("marks passthrough processing methods complete immediately", () => {
-    const option = getProcessingMethodOption("SPREADSHEET_DATA", "all_at_once");
-
-    const result = deriveProcessingMethodSelectionIntent({
-      currentDataTypeKey: "SPREADSHEET_DATA",
-      mappingRules: MAPPING_RULES,
-      option,
-      selectionResult: createSelectionResult(option),
-    });
-
-    expect(result.nextChoiceNodeType).toBe("PASSTHROUGH");
-    expect(result.nextNodeType).toBe("data-process");
-    expect(result.nextStep).toBe("complete");
-    expect(result.isConfigured).toBe(true);
-    expect(result.hasFollowUp).toBe(false);
-  });
-
-  it("keeps non-passthrough processing methods in the existing action flow", () => {
+  it("keeps processing methods in the existing action flow", () => {
     const option = getProcessingMethodOption("SPREADSHEET_DATA", "one_by_one");
 
     const result = deriveProcessingMethodSelectionIntent({

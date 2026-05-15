@@ -205,11 +205,7 @@ export const ProcessingMethodSummaryBlock = ({
   outputType: string | null | undefined;
 }) => {
   const methodLabel =
-    choiceNodeType === "LOOP"
-      ? "하나씩 처리"
-      : choiceNodeType === "PASSTHROUGH"
-        ? "그대로 전달"
-        : "처리 방식 선택 완료";
+    choiceNodeType === "LOOP" ? "하나씩 처리" : "처리 방식 선택 완료";
   const outputLabel =
     getDataTypeDisplayLabel(outputType) ?? outputType ?? "출력 데이터";
 
