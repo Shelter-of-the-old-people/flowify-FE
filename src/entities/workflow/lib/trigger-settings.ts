@@ -250,6 +250,32 @@ export const buildTriggerStateFromDraft = (draft: WorkflowTriggerDraft) => {
   };
 };
 
+export const getWorkflowTriggerDisplayLabel = (
+  trigger: TriggerConfig | null | undefined,
+) => {
+  const normalizedTrigger = normalizeWorkflowTrigger(trigger);
+
+  if (normalizedTrigger.type === "manual") {
+    return "수동 실행";
+  }
+
+  switch (normalizedTrigger.config.schedule_mode) {
+    case "interval":
+      return `${normalizedTrigger.config.interval_hours ?? DEFAULT_INTERVAL_HOURS}시간마다 확인`;
+    case "daily":
+      return `매일 ${normalizedTrigger.config.time_of_day ?? DEFAULT_TIME_OF_DAY} 실행`;
+    case "weekly": {
+      const weekdays =
+        normalizedTrigger.config.weekdays
+          ?.map((weekday) => WEEKDAY_LABELS[weekday])
+          .join(", ") ?? WEEKDAY_LABELS.MON;
+      return `매주 ${weekdays} ${normalizedTrigger.config.time_of_day ?? DEFAULT_TIME_OF_DAY}`;
+    }
+    default:
+      return `${normalizedTrigger.config.interval_hours ?? DEFAULT_INTERVAL_HOURS}시간마다 확인`;
+  }
+};
+
 export const getWorkflowTriggerSummary = (
   trigger: TriggerConfig | null | undefined,
   active: boolean | null | undefined,

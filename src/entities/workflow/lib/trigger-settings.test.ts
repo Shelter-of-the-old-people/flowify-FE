@@ -4,6 +4,7 @@ import {
   buildTriggerStateFromDraft,
   createManualTrigger,
   createTriggerDraft,
+  getWorkflowTriggerDisplayLabel,
   getWorkflowTriggerSummary,
   hasTriggerDraftChanges,
   normalizeWorkflowActive,
@@ -81,6 +82,51 @@ describe("trigger settings helpers", () => {
         false,
       ),
     ).toBe("자동 실행 꺼짐");
+  });
+
+  it("displays the schedule label even when auto-run is inactive", () => {
+    expect(
+      getWorkflowTriggerDisplayLabel({
+        type: "schedule",
+        config: {
+          schedule_mode: "interval",
+          cron: "0 0 */4 * * *",
+          timezone: "Asia/Seoul",
+          interval_hours: 4,
+        },
+      }),
+    ).toBe("4시간마다 확인");
+  });
+
+  it("displays manual, daily, and weekly trigger labels", () => {
+    expect(getWorkflowTriggerDisplayLabel(createManualTrigger())).toBe(
+      "수동 실행",
+    );
+
+    expect(
+      getWorkflowTriggerDisplayLabel({
+        type: "schedule",
+        config: {
+          schedule_mode: "daily",
+          cron: "0 0 9 * * *",
+          timezone: "Asia/Seoul",
+          time_of_day: "09:00",
+        },
+      }),
+    ).toBe("매일 09:00 실행");
+
+    expect(
+      getWorkflowTriggerDisplayLabel({
+        type: "schedule",
+        config: {
+          schedule_mode: "weekly",
+          cron: "0 0 9 * * MON,WED",
+          timezone: "Asia/Seoul",
+          time_of_day: "09:00",
+          weekdays: ["MON", "WED"],
+        },
+      }),
+    ).toBe("매주 월, 수 09:00");
   });
 
   it("detects unsaved trigger draft changes", () => {

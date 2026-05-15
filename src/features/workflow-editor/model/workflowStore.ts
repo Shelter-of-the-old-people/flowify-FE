@@ -82,6 +82,7 @@ interface WorkflowEditorActions {
   closePanel: () => void;
   setWorkflowMeta: (id: string, name: string) => void;
   setWorkflowTriggerState: (trigger: TriggerConfig, active: boolean) => void;
+  syncWorkflowActive: (active: boolean) => void;
   hydrateWorkflow: (payload: WorkflowHydratedState) => void;
   syncWorkflowGraph: (
     payload: WorkflowHydratedState,
@@ -351,6 +352,11 @@ export const useWorkflowStore = create<
         state.workflowTrigger = trigger;
         state.workflowActive = active;
         markDirty(state);
+      }),
+
+    syncWorkflowActive: (active) =>
+      set((state) => {
+        state.workflowActive = active;
       }),
 
     hydrateWorkflow: (payload) =>
