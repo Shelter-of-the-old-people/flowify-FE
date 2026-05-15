@@ -1,5 +1,7 @@
 import { type SVGProps } from "react";
 
+import { getServiceBrandIconStyle } from "./serviceBrandIconStyle";
+
 type Props = Omit<SVGProps<SVGSVGElement>, "height" | "width"> & {
   size?: number | string;
 };
@@ -9,7 +11,8 @@ export const NaverIcon = ({ size = 24, style, ...props }: Props) => {
     <svg
       aria-hidden="true"
       focusable="false"
-      style={{ height: "auto", width: size, ...style }}
+      preserveAspectRatio="xMidYMid meet"
+      style={getServiceBrandIconStyle(size, style)}
       viewBox="0 0 120 120"
       xmlns="http://www.w3.org/2000/svg"
       {...props}

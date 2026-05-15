@@ -1,5 +1,7 @@
 import { type SVGProps } from "react";
 
+import { getServiceBrandIconStyle } from "./serviceBrandIconStyle";
+
 type Props = Omit<SVGProps<SVGSVGElement>, "height" | "width"> & {
   size?: number | string;
 };
@@ -14,7 +16,8 @@ export const SeBoardIcon = ({
     <svg
       aria-hidden="true"
       focusable="false"
-      style={{ color, height: "auto", width: size, ...style }}
+      preserveAspectRatio="xMidYMid meet"
+      style={getServiceBrandIconStyle(size, { color, ...style })}
       viewBox="0 0 300 300"
       xmlns="http://www.w3.org/2000/svg"
       {...props}
