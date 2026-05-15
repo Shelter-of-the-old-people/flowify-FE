@@ -155,15 +155,7 @@ export const WorkflowRow = ({
         </HStack>
 
         <HStack gap={2} flexShrink={0}>
-          <Box
-            maxW={{ base: "120px", md: "180px" }}
-            px={3}
-            py={1.5}
-            bg="bg.overlay"
-            border="1px solid"
-            borderColor="border.default"
-            borderRadius="999px"
-          >
+          <Box maxW={{ base: "120px", md: "180px" }} px={3} py={1.5}>
             <Text
               fontSize="11px"
               fontWeight="semibold"
