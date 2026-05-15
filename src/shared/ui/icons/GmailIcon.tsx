@@ -1,5 +1,7 @@
 import { type SVGProps } from "react";
 
+import { getServiceBrandIconStyle } from "./serviceBrandIconStyle";
+
 type Props = Omit<SVGProps<SVGSVGElement>, "height" | "width"> & {
   size?: number | string;
 };
@@ -10,7 +12,8 @@ export const GmailIcon = ({ size = 24, style, ...props }: Props) => {
       aria-hidden="true"
       fill="none"
       focusable="false"
-      style={{ height: "auto", width: size, ...style }}
+      preserveAspectRatio="xMidYMid meet"
+      style={getServiceBrandIconStyle(size, style)}
       viewBox="0 0 60 45"
       xmlns="http://www.w3.org/2000/svg"
       {...props}
