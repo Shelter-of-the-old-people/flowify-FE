@@ -9,24 +9,18 @@ type TriggerControlButtonProps = {
   onClick: () => void;
 };
 
-const getTriggerButtonLabel = (summary: string, active: boolean) =>
-  active ? summary : "자동 실행 꺼짐";
-
 export const TriggerControlButton = forwardRef<
   HTMLButtonElement,
   TriggerControlButtonProps
 >(({ summary, active, onClick }, ref) => {
-  const label = getTriggerButtonLabel(summary, active);
-  const maxWidth = active
-    ? { base: "32px", xl: "180px", "2xl": "220px" }
-    : { base: "48px", xl: "180px", "2xl": "220px" };
+  const maxWidth = { base: "96px", xl: "180px", "2xl": "220px" };
 
   return (
     <Button
       ref={ref}
       type="button"
-      aria-label={label}
-      title={label}
+      aria-label={summary}
+      title={summary}
       onClick={onClick}
       height="30px"
       minW="30px"
@@ -51,19 +45,14 @@ export const TriggerControlButton = forwardRef<
       _active={{ bg: "neutral.200" }}
     >
       {active ? <Icon as={MdSchedule} boxSize={4} flexShrink={0} /> : null}
-      {!active ? (
-        <Text as="span" display={{ base: "inline", xl: "none" }} minW={0}>
-          꺼짐
-        </Text>
-      ) : null}
       <Text
         as="span"
-        display={{ base: "none", xl: "inline" }}
+        display="inline"
         minW={0}
         overflow="hidden"
         textOverflow="ellipsis"
       >
-        {label}
+        {summary}
       </Text>
     </Button>
   );
