@@ -99,6 +99,33 @@ describe("dashboard summary mappers", () => {
     ).not.toContain("gmail");
   });
 
+  it("includes manual token services in recommendations", () => {
+    const recommendedServices = getRecommendedServiceCards([]);
+
+    expect(recommendedServices).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          serviceKey: "canvas_lms",
+          badgeKey: "canvas-lms",
+          statusLabel: "토큰 입력 필요",
+          actionLabel: "토큰 입력",
+        }),
+        expect.objectContaining({
+          serviceKey: "github",
+          badgeKey: "github",
+          statusLabel: "토큰 입력 필요",
+          actionLabel: "토큰 입력",
+        }),
+        expect.objectContaining({
+          serviceKey: "notion",
+          badgeKey: "notion",
+          statusLabel: "토큰 입력 필요",
+          actionLabel: "토큰 입력",
+        }),
+      ]),
+    );
+  });
+
   it("maps oauth token service summaries without dashboard-only fields", () => {
     const services = [
       {

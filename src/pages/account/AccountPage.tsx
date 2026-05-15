@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { useNavigate } from "react-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router";
 
 import {
   Box,
@@ -243,6 +243,7 @@ export default function AccountPage({
   showQuickLinks = true,
 }: AccountPageProps = {}) {
   const navigate = useNavigate();
+  const location = useLocation();
   const authUser = getAuthUser();
   const {
     data: tokens,
@@ -314,6 +315,32 @@ export default function AccountPage({
   const isConnectionSectionError =
     isOAuthTokensError || isSourceCatalogError || isSinkCatalogError;
 
+  const openManualTokenDialogByServiceKey = useCallback(
+    (serviceKey: string, fallbackLabel?: string) => {
+      const manualServiceKey = toManualTokenServiceKey(serviceKey);
+      if (!manualServiceKey) {
+        return false;
+      }
+
+      const matchedService = managedServices.find(
+        (service) => service.key === serviceKey,
+      );
+
+      setSelectedManualServiceKey(manualServiceKey);
+      setSelectedManualServiceLabel(
+        matchedService?.label ??
+          fallbackLabel ??
+          DEFAULT_SERVICE_LABELS[serviceKey] ??
+          serviceKey,
+      );
+      setManualDialogErrorMessage(null);
+      setIsTokenDialogOpen(true);
+
+      return true;
+    },
+    [managedServices],
+  );
+
   const handleConnect = async (service: string) => {
     if (!isOAuthConnectSupported(service)) {
       return;
@@ -351,16 +378,37 @@ export default function AccountPage({
   };
 
   const openManualTokenDialog = (service: ManagedServiceItem) => {
-    const manualServiceKey = toManualTokenServiceKey(service.key);
-    if (!manualServiceKey) {
+    openManualTokenDialogByServiceKey(service.key, service.label);
+  };
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const connectService = searchParams.get("connectService");
+    if (!connectService) {
       return;
     }
 
-    setSelectedManualServiceKey(manualServiceKey);
-    setSelectedManualServiceLabel(service.label);
-    setManualDialogErrorMessage(null);
-    setIsTokenDialogOpen(true);
-  };
+    const opened = openManualTokenDialogByServiceKey(connectService);
+    if (!opened) {
+      return;
+    }
+
+    searchParams.delete("connectService");
+
+    navigate(
+      {
+        pathname: location.pathname,
+        search: searchParams.toString() ? `?${searchParams.toString()}` : "",
+      },
+      { replace: true },
+    );
+  }, [
+    location.pathname,
+    location.search,
+    managedServices,
+    navigate,
+    openManualTokenDialogByServiceKey,
+  ]);
 
   const openManualHelpDialog = (service: ManagedServiceItem) => {
     const manualServiceKey = toManualTokenServiceKey(service.key);
