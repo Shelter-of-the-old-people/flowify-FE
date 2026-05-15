@@ -1,4 +1,5 @@
 import { type ElementType } from "react";
+import { GrShareOption } from "react-icons/gr";
 import {
   MdAdd,
   MdHelpOutline,
@@ -7,10 +8,9 @@ import {
   MdOutlinePerson,
   MdOutlineSettings,
 } from "react-icons/md";
+import { TbLayoutSidebarFilled } from "react-icons/tb";
 
 import { ROUTE_PATHS } from "@/shared";
-
-import { SidebarPanelIcon, SidebarWorkflowIcon } from "./sidebarIcons";
 
 export type SidebarItemKind = "action" | "route" | "placeholder" | "user";
 
@@ -25,7 +25,7 @@ export type SidebarItem = {
 export const sidebarControlItem: SidebarItem = {
   id: "toggle",
   label: "접기",
-  icon: SidebarPanelIcon,
+  icon: TbLayoutSidebarFilled,
   kind: "action",
 };
 
@@ -46,7 +46,7 @@ export const sidebarPrimaryItems: SidebarItem[] = [
   {
     id: "workflows",
     label: "워크플로우",
-    icon: SidebarWorkflowIcon,
+    icon: GrShareOption,
     kind: "route",
     path: ROUTE_PATHS.WORKFLOWS,
   },
