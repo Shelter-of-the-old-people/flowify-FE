@@ -2,11 +2,10 @@ import {
   type WorkflowResponse,
   useDeleteWorkflowMutation,
 } from "@/entities/workflow";
-import { useWorkflowExecutionAction } from "@/features/workflow-execution";
 import { getAuthUser } from "@/shared";
 import { getApiErrorMessage, toaster } from "@/shared/utils";
 
-import { useWorkflowListAutoRunAction } from "../model";
+import { useWorkflowListPrimaryAction } from "../model";
 
 import { WorkflowRow } from "./WorkflowRow";
 
@@ -20,19 +19,18 @@ export const WorkflowRowItem = ({ workflow, onOpen }: Props) => {
   const canDeleteWorkflow = Boolean(
     viewerUserId && workflow.userId === viewerUserId,
   );
-  const { actionKind, actionLabel, isActionPending, handleAction } =
-    useWorkflowExecutionAction(workflow.id);
+  const {
+    primaryActionKind,
+    primaryActionLabel,
+    triggerDisplayLabel,
+    isPrimaryActionPending,
+    canUsePrimaryAction,
+    handlePrimaryAction,
+  } = useWorkflowListPrimaryAction(workflow);
   const { mutateAsync: deleteWorkflow, isPending: isDeletePending } =
     useDeleteWorkflowMutation({
       showErrorToast: false,
     });
-  const {
-    autoRunKind,
-    autoRunLabel,
-    isAutoRunToggleable,
-    isAutoRunPending,
-    handleToggleAutoRun,
-  } = useWorkflowListAutoRunAction(workflow);
 
   const handleDeleteWorkflow = async () => {
     if (!canDeleteWorkflow || isDeletePending) {
@@ -58,18 +56,15 @@ export const WorkflowRowItem = ({ workflow, onOpen }: Props) => {
   return (
     <WorkflowRow
       workflow={workflow}
-      autoRunKind={autoRunKind}
-      autoRunLabel={autoRunLabel}
-      isAutoRunToggleable={isAutoRunToggleable}
-      isAutoRunPending={isAutoRunPending}
-      executionActionKind={actionKind}
-      executionActionLabel={actionLabel}
-      isExecutionActionPending={isActionPending}
+      triggerDisplayLabel={triggerDisplayLabel}
+      primaryActionKind={primaryActionKind}
+      primaryActionLabel={primaryActionLabel}
+      isPrimaryActionPending={isPrimaryActionPending}
+      canUsePrimaryAction={canUsePrimaryAction}
       canDelete={canDeleteWorkflow}
       isDeletePending={isDeletePending}
       onOpen={onOpen}
-      onAutoRunToggle={() => void handleToggleAutoRun()}
-      onExecutionAction={() => void handleAction()}
+      onPrimaryAction={() => void handlePrimaryAction()}
       onDelete={() => void handleDeleteWorkflow()}
     />
   );

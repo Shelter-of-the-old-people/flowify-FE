@@ -2,6 +2,7 @@ import {
   type NodeDefinitionResponse,
   type WorkflowListResponse,
   type WorkflowResponse,
+  getWorkflowTriggerDisplayLabel,
   normalizeWorkflowTrigger,
 } from "@/entities/workflow";
 import {
@@ -24,63 +25,61 @@ export const sortWorkflowsByUpdatedAtDesc = (workflows: WorkflowResponse[]) =>
       getDateTimestamp(leftWorkflow.updatedAt),
   );
 
-export type WorkflowAutoRunState =
-  | {
-      kind: "manual";
-      label: "수동 실행";
-      canToggle: false;
-      nextActive: null;
-    }
-  | {
-      kind: "enabled";
-      label: "자동 실행 켜짐";
-      canToggle: boolean;
-      nextActive: false;
-    }
-  | {
-      kind: "disabled";
-      label: "자동 실행 꺼짐";
-      canToggle: boolean;
-      nextActive: true;
-    };
+export type WorkflowListPrimaryActionKind =
+  | "run"
+  | "stop"
+  | "enable-auto-run"
+  | "disable-auto-run"
+  | "disable-auto-run-and-stop";
 
 const isWorkflowOwner = (
   workflow: WorkflowResponse,
   viewerUserId: string | null,
 ) => Boolean(viewerUserId && workflow.userId === viewerUserId);
 
-export const getWorkflowAutoRunState = (
+export const canToggleWorkflowAutoRun = (
   workflow: WorkflowResponse,
   viewerUserId: string | null,
-): WorkflowAutoRunState => {
+) =>
+  normalizeWorkflowTrigger(workflow.trigger).type === "schedule" &&
+  isWorkflowOwner(workflow, viewerUserId);
+
+export const getWorkflowListTriggerDisplayLabel = (
+  workflow: WorkflowResponse,
+) => getWorkflowTriggerDisplayLabel(workflow.trigger);
+
+export const getWorkflowListPrimaryActionKind = (
+  workflow: WorkflowResponse,
+  isRunning: boolean,
+): WorkflowListPrimaryActionKind => {
   const trigger = normalizeWorkflowTrigger(workflow.trigger);
 
   if (trigger.type !== "schedule") {
-    return {
-      kind: "manual",
-      label: "수동 실행",
-      canToggle: false,
-      nextActive: null,
-    };
+    return isRunning ? "stop" : "run";
   }
 
-  const canToggle = isWorkflowOwner(workflow, viewerUserId);
-
-  if (workflow.active) {
-    return {
-      kind: "enabled",
-      label: "자동 실행 켜짐",
-      canToggle,
-      nextActive: false,
-    };
+  if (isRunning) {
+    return workflow.active ? "disable-auto-run-and-stop" : "stop";
   }
 
-  return {
-    kind: "disabled",
-    label: "자동 실행 꺼짐",
-    canToggle,
-    nextActive: true,
-  };
+  return workflow.active ? "disable-auto-run" : "enable-auto-run";
+};
+
+export const getWorkflowListPrimaryActionLabel = (
+  kind: WorkflowListPrimaryActionKind,
+) => {
+  switch (kind) {
+    case "run":
+      return "워크플로우 실행";
+    case "stop":
+      return "워크플로우 중지";
+    case "enable-auto-run":
+      return "자동실행 켜기";
+    case "disable-auto-run":
+      return "자동실행 끄기";
+    case "disable-auto-run-and-stop":
+      return "자동실행 끄고 중지";
+  }
 };
 
 export const getRelativeUpdateLabel = (updatedAt: string) =>
