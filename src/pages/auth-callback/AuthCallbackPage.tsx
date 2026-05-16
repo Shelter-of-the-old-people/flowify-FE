@@ -5,6 +5,10 @@ import { Box, Button, Spinner, Text, VStack } from "@chakra-ui/react";
 
 import { authApi } from "@/entities";
 import {
+  consumePendingOAuthNodeStatusRefresh,
+  refreshWorkflowNodeStatuses,
+} from "@/features/workflow-editor";
+import {
   ROUTE_PATHS,
   clearAuthSession,
   consumeOAuthConnectReturnPath,
@@ -37,7 +41,21 @@ export default function AuthCallbackPage() {
     const finalizeLogin = async () => {
       if (service) {
         if (connected === "true") {
-          navigate(consumeOAuthConnectReturnPath(), { replace: true });
+          const returnPath = consumeOAuthConnectReturnPath();
+          const refreshContext = consumePendingOAuthNodeStatusRefresh();
+
+          if (refreshContext) {
+            try {
+              await refreshWorkflowNodeStatuses({
+                ...refreshContext,
+                clearCachedPreviews: true,
+              });
+            } catch {
+              // OAuth connection succeeded, so return to the editor even if status refresh fails.
+            }
+          }
+
+          navigate(returnPath, { replace: true });
           return;
         }
 
