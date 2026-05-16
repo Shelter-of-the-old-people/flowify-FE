@@ -92,6 +92,7 @@ interface WorkflowEditorActions {
       preserveDirty?: boolean;
     },
   ) => void;
+  syncNodeStatuses: (nodeStatuses: WorkflowNodeStatusMap) => void;
   setWorkflowName: (name: string) => void;
   setEditorCapabilities: (capabilities: WorkflowEditorCapabilities) => void;
   setStartNodeId: (id: string | null) => void;
@@ -429,6 +430,11 @@ export const useWorkflowStore = create<
         state.isDirty = preserveDirty ? state.isDirty : false;
         state.dirtyRevision = preserveDirty ? state.dirtyRevision : 0;
         state._isSyncing = false;
+      }),
+
+    syncNodeStatuses: (nodeStatuses) =>
+      set((state) => {
+        state.nodeStatuses = nodeStatuses;
       }),
 
     setWorkflowName: (name) =>

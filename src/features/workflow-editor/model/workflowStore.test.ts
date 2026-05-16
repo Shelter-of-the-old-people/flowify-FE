@@ -60,4 +60,26 @@ describe("workflowStore dirty revision", () => {
     expect(useWorkflowStore.getState().isDirty).toBe(false);
     expect(useWorkflowStore.getState().dirtyRevision).toBe(0);
   });
+
+  it("syncs node statuses without marking workflow dirty", () => {
+    useWorkflowStore.getState().hydrateWorkflow(createHydratedWorkflow());
+
+    useWorkflowStore.getState().syncNodeStatuses({
+      "node-1": {
+        nodeId: "node-1",
+        configured: true,
+        saveable: true,
+        choiceable: true,
+        executable: false,
+        missingFields: ["oauth_token"],
+      },
+    });
+
+    expect(useWorkflowStore.getState().nodeStatuses["node-1"]).toMatchObject({
+      executable: false,
+      missingFields: ["oauth_token"],
+    });
+    expect(useWorkflowStore.getState().isDirty).toBe(false);
+    expect(useWorkflowStore.getState().dirtyRevision).toBe(0);
+  });
 });

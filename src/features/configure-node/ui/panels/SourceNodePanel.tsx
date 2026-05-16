@@ -18,7 +18,11 @@ import {
   useSourceCatalogQuery,
 } from "@/entities/workflow";
 import { buildGoogleSheetsSheetOptionId } from "@/entities/workflow/lib/google-sheets-target-option";
-import { useWorkflowStore } from "@/features/workflow-editor";
+import {
+  refreshWorkflowNodeStatuses,
+  storePendingOAuthNodeStatusRefresh,
+  useWorkflowStore,
+} from "@/features/workflow-editor";
 import {
   ROUTE_PATHS,
   getApiErrorMessage,
@@ -153,6 +157,7 @@ export const SourceNodePanel = ({
   readOnly = false,
 }: NodePanelProps) => {
   const navigate = useNavigate();
+  const workflowId = useWorkflowStore((state) => state.workflowId);
   const updateNodeConfig = useWorkflowStore((state) => state.updateNodeConfig);
   const { data: sourceCatalog, isLoading: isSourceCatalogLoading } =
     useSourceCatalogQuery();
@@ -271,11 +276,15 @@ export const SourceNodePanel = ({
         const result = await connectOAuthMutation.mutateAsync(targetServiceKey);
         if (result.kind === "redirect") {
           storeOAuthConnectReturnPath(getCurrentRelativeUrl());
+          storePendingOAuthNodeStatusRefresh({ nodeId, workflowId });
           window.location.assign(result.authUrl);
           return;
         }
 
         await refetchOAuthTokens();
+        await refreshWorkflowNodeStatuses({ nodeId, workflowId }).catch(
+          () => undefined,
+        );
       } catch (error) {
         setAuthErrorMessage(getApiErrorMessage(error));
       }

@@ -47,7 +47,7 @@ export interface WorkflowHydratedState {
   endNodeId: string | null;
 }
 
-const toNodeStatusMap = (
+export const toNodeStatusMap = (
   nodeStatuses: WorkflowNodeStatusResponse[] | undefined,
 ): WorkflowNodeStatusMap =>
   Object.fromEntries(
