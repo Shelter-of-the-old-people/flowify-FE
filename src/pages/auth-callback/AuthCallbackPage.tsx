@@ -40,9 +40,10 @@ export default function AuthCallbackPage() {
 
     const finalizeLogin = async () => {
       if (service) {
+        const refreshContext = consumePendingOAuthNodeStatusRefresh();
+
         if (connected === "true") {
           const returnPath = consumeOAuthConnectReturnPath();
-          const refreshContext = consumePendingOAuthNodeStatusRefresh();
 
           if (refreshContext) {
             clearWorkflowNodeStatusCaches(refreshContext);
