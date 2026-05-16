@@ -11,7 +11,6 @@ import { useWorkflowStore } from "./workflowStore";
 const OAUTH_NODE_STATUS_REFRESH_KEY = "oauthNodeStatusRefresh";
 
 type RefreshWorkflowNodeStatusesParams = {
-  clearCachedPreviews?: boolean;
   nodeId?: string | null;
   workflowId: string | null | undefined;
 };
@@ -96,7 +95,6 @@ export const clearWorkflowNodeStatusCaches = ({
 };
 
 export const refreshWorkflowNodeStatuses = async ({
-  clearCachedPreviews = false,
   nodeId,
   workflowId,
 }: RefreshWorkflowNodeStatusesParams) => {
@@ -121,22 +119,6 @@ export const refreshWorkflowNodeStatuses = async ({
 
   if (store.workflowId === workflowId) {
     store.syncNodeStatuses(nodeStatuses);
-  }
-
-  if (clearCachedPreviews) {
-    queryClient.removeQueries({
-      exact: true,
-      queryKey: workflowKeys.schemaPreview(workflowId),
-    });
-
-    if (nodeId) {
-      queryClient.removeQueries({
-        exact: true,
-        queryKey: workflowKeys.nodeSchemaPreview(workflowId, nodeId),
-      });
-    }
-
-    return;
   }
 
   await Promise.all([
