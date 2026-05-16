@@ -69,6 +69,32 @@ export const consumePendingOAuthNodeStatusRefresh = () => {
   }
 };
 
+export const clearWorkflowNodeStatusCaches = ({
+  nodeId,
+  workflowId,
+}: RefreshWorkflowNodeStatusesParams) => {
+  if (!workflowId) {
+    return;
+  }
+
+  queryClient.removeQueries({
+    exact: true,
+    queryKey: workflowKeys.detail(workflowId),
+  });
+
+  queryClient.removeQueries({
+    exact: true,
+    queryKey: workflowKeys.schemaPreview(workflowId),
+  });
+
+  if (nodeId) {
+    queryClient.removeQueries({
+      exact: true,
+      queryKey: workflowKeys.nodeSchemaPreview(workflowId, nodeId),
+    });
+  }
+};
+
 export const refreshWorkflowNodeStatuses = async ({
   clearCachedPreviews = false,
   nodeId,
