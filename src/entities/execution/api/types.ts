@@ -6,6 +6,7 @@ export interface ExecutionErrorDetail {
   code: string | null;
   message: string | null;
   stackTrace: string | null;
+  context?: Record<string, unknown> | null;
 }
 
 export interface ExecutionSnapshot {

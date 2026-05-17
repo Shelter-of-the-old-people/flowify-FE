@@ -7,9 +7,53 @@ const DEFAULT_RUNTIME_ISSUE_MESSAGE = "이 단계 실행 중 문제가 발생했
 const includesAny = (value: string, keywords: string[]) =>
   keywords.some((keyword) => value.includes(keyword));
 
+const getContextString = (
+  context: Record<string, unknown> | null | undefined,
+  keys: readonly string[],
+) => {
+  if (!context) {
+    return "";
+  }
+
+  for (const key of keys) {
+    const value = context[key];
+    if (typeof value === "string" && value.trim()) {
+      return value.trim().toLowerCase();
+    }
+  }
+
+  return "";
+};
+
+const getDocumentContentStatusMessage = (status: string) => {
+  switch (status) {
+    case "empty":
+      return "읽을 수 있는 텍스트를 찾지 못했습니다.";
+    case "unsupported":
+      return "현재 이 파일의 본문 추출을 지원하지 않습니다.";
+    case "too_large":
+      return "파일이 현재 처리 가능한 크기나 페이지 수를 초과했습니다.";
+    case "failed":
+      return "본문을 추출하는 중 문제가 발생했습니다.";
+    case "not_requested":
+      return "본문이 필요한 작업이지만 본문 추출이 수행되지 않았습니다.";
+    default:
+      return "";
+  }
+};
+
 export const getExecutionErrorDisplayMessage = (
   error: ExecutionErrorDetail | null | undefined,
 ) => {
+  const contentStatus = getContextString(error?.context, [
+    "content_status",
+    "contentStatus",
+  ]);
+  const contentStatusMessage = getDocumentContentStatusMessage(contentStatus);
+  if (contentStatusMessage) {
+    return contentStatusMessage;
+  }
+
   const code = error?.code?.toLowerCase() ?? "";
   const message = error?.message?.toLowerCase() ?? "";
   const text = `${code} ${message}`;
@@ -23,7 +67,7 @@ export const getExecutionErrorDisplayMessage = (
       "본문 없음",
     ])
   ) {
-    return "파일에서 읽을 수 있는 본문을 찾지 못했습니다.";
+    return "읽을 수 있는 텍스트를 찾지 못했습니다.";
   }
 
   if (
@@ -36,7 +80,7 @@ export const getExecutionErrorDisplayMessage = (
       "지원하지 않는 형식",
     ])
   ) {
-    return "현재 지원하지 않는 파일 형식입니다.";
+    return "현재 이 파일의 본문 추출을 지원하지 않습니다.";
   }
 
   if (
@@ -46,11 +90,16 @@ export const getExecutionErrorDisplayMessage = (
       "content_too_large",
       "max_download_bytes",
       "max_extracted_chars",
+      "max_ocr_pages",
+      "max_image_pixels",
+      "page limit",
+      "pixel limit",
       "크기 제한",
       "용량 제한",
+      "페이지 수",
     ])
   ) {
-    return "파일이 현재 처리 가능한 크기 제한을 초과했습니다.";
+    return "파일이 현재 처리 가능한 크기나 페이지 수를 초과했습니다.";
   }
 
   if (
@@ -76,7 +125,7 @@ export const getExecutionErrorDisplayMessage = (
       "본문 읽기 실패",
     ])
   ) {
-    return "파일 본문을 읽는 중 문제가 발생했습니다.";
+    return "본문을 추출하는 중 문제가 발생했습니다.";
   }
 
   if (

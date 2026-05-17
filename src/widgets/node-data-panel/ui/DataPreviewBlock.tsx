@@ -249,7 +249,7 @@ const DocumentContentInlinePreview = ({
 const FileItemCard = ({
   item,
   index,
-  contentLabel = "본문",
+  contentLabel = "본문 미리보기",
 }: {
   item: DataRecord;
   index: number;
@@ -498,7 +498,7 @@ const SingleEmailPreview = ({ data }: { data: DataRecord }) => {
               key={`${getString(item.filename)}-${index}`}
               item={item}
               index={index}
-              contentLabel="첨부 본문"
+              contentLabel="첨부 본문 미리보기"
             />
           ))}
         </Box>

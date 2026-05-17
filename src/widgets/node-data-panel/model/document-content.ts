@@ -25,10 +25,21 @@ export type DocumentContentMetadata = {
   originalCharCount: number | null;
   storedContentTruncated: boolean;
   storedCharCount: number | null;
+  sourceService: string | null;
+  messageId: string | null;
+  attachmentId: string | null;
+  mimeType: string | null;
+  inline: boolean;
+  pageCount: number | null;
+  ocrPageCount: number | null;
+  imageWidth: number | null;
+  imageHeight: number | null;
   limits: {
     maxDownloadBytes: number | null;
     maxExtractedChars: number | null;
     maxLlmInputChars: number | null;
+    maxOcrPages: number | null;
+    maxImagePixels: number | null;
   };
 };
 
@@ -81,8 +92,23 @@ const getNestedRecord = (record: DataRecord, ...keys: string[]) => {
 const getString = (value: unknown) =>
   typeof value === "string" && value.trim().length > 0 ? value.trim() : "";
 
-const getBoolean = (value: unknown) =>
-  typeof value === "boolean" ? value : null;
+const getBoolean = (value: unknown) => {
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    const normalizedValue = value.trim().toLowerCase();
+    if (normalizedValue === "true") {
+      return true;
+    }
+    if (normalizedValue === "false") {
+      return false;
+    }
+  }
+
+  return null;
+};
 
 const getNumber = (value: unknown) => {
   if (typeof value === "number" && Number.isFinite(value)) {
@@ -163,6 +189,7 @@ export const getDocumentContentText = (value: unknown) => {
 export const getDocumentContentMetadata = (
   value: unknown,
 ): DocumentContentMetadata => {
+  const source = isRecord(value) ? value : {};
   const metadata = isRecord(value)
     ? (getNestedRecord(value, "content_metadata", "contentMetadata") ?? {})
     : {};
@@ -188,6 +215,29 @@ export const getDocumentContentMetadata = (
       "stored_char_count",
       "storedCharCount",
     ]),
+    sourceService:
+      getFirstString(metadata, ["source_service", "sourceService"]) ||
+      getFirstString(source, ["source_service", "sourceService", "source"]) ||
+      null,
+    messageId:
+      getFirstString(metadata, ["message_id", "messageId"]) ||
+      getFirstString(source, ["message_id", "messageId"]) ||
+      null,
+    attachmentId:
+      getFirstString(metadata, ["attachment_id", "attachmentId"]) ||
+      getFirstString(source, ["attachment_id", "attachmentId"]) ||
+      null,
+    mimeType:
+      getFirstString(metadata, ["mime_type", "mimeType"]) ||
+      getFirstString(source, ["mime_type", "mimeType"]) ||
+      null,
+    inline:
+      getFirstBoolean(metadata, ["inline"]) ||
+      getFirstBoolean(source, ["inline"]),
+    pageCount: getFirstNumber(metadata, ["page_count", "pageCount"]),
+    ocrPageCount: getFirstNumber(metadata, ["ocr_page_count", "ocrPageCount"]),
+    imageWidth: getFirstNumber(metadata, ["image_width", "imageWidth"]),
+    imageHeight: getFirstNumber(metadata, ["image_height", "imageHeight"]),
     limits: {
       maxDownloadBytes: getFirstNumber(limits, [
         "max_download_bytes",
@@ -201,6 +251,11 @@ export const getDocumentContentMetadata = (
         "max_llm_input_chars",
         "maxLlmInputChars",
       ]),
+      maxOcrPages: getFirstNumber(limits, ["max_ocr_pages", "maxOcrPages"]),
+      maxImagePixels: getFirstNumber(limits, [
+        "max_image_pixels",
+        "maxImagePixels",
+      ]),
     },
   };
 };
@@ -210,17 +265,17 @@ export const getDocumentContentStatusLabel = (
 ) => {
   switch (status) {
     case "available":
-      return "본문 읽기 완료";
+      return "본문 추출 성공";
     case "empty":
-      return "읽을 수 있는 본문 없음";
+      return "텍스트 없음";
     case "unsupported":
-      return "지원하지 않는 파일 형식";
+      return "본문 추출 미지원";
     case "too_large":
-      return "파일 크기 제한 초과";
+      return "처리 제한 초과";
     case "failed":
-      return "본문 읽기 실패";
+      return "본문 추출 실패";
     case "not_requested":
-      return "본문 미포함";
+      return "본문 미요청";
     default:
       return "";
   }
@@ -235,23 +290,32 @@ export const getDocumentContentStatusDescription = ({
   metadata: DocumentContentMetadata;
   status: DocumentContentStatus | null;
 }) => {
-  if (error) {
-    return error;
-  }
+  switch (status) {
+    case "available":
+      if (metadata.storedContentTruncated) {
+        return "실행 로그에는 일부 본문만 저장되었습니다.";
+      }
 
-  if (status === "too_large") {
-    return "현재 처리 가능한 크기를 초과했습니다.";
-  }
+      if (metadata.truncated) {
+        return "본문 일부만 표시됩니다.";
+      }
 
-  if (metadata.storedContentTruncated) {
-    return "실행 로그에는 일부 본문만 저장되었습니다.";
+      return "";
+    case "not_requested":
+      return "본문은 아직 불러오지 않았습니다.";
+    case "unsupported":
+      return metadata.inline
+        ? "inline image는 본문 추출 대상이 아닙니다."
+        : "현재 이 파일의 본문 추출을 지원하지 않습니다.";
+    case "too_large":
+      return "파일이 현재 처리 가능한 크기나 페이지 수를 초과했습니다.";
+    case "empty":
+      return "읽을 수 있는 텍스트를 찾지 못했습니다.";
+    case "failed":
+      return "본문을 추출하는 중 문제가 발생했습니다.";
+    default:
+      return error ?? "";
   }
-
-  if (metadata.truncated) {
-    return "본문 일부만 표시됩니다.";
-  }
-
-  return "";
 };
 
 export const isDocumentContentProblem = (

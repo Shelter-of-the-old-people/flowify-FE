@@ -104,7 +104,7 @@ describe("node runtime issue", () => {
         message: "max_download_bytes exceeded",
         stackTrace: null,
       }),
-    ).toBe("파일이 현재 처리 가능한 크기 제한을 초과했습니다.");
+    ).toBe("파일이 현재 처리 가능한 크기나 페이지 수를 초과했습니다.");
 
     expect(
       getExecutionErrorDisplayMessage({
@@ -113,5 +113,19 @@ describe("node runtime issue", () => {
         stackTrace: null,
       }),
     ).toBe("본문이 필요한 작업이지만 본문 추출이 수행되지 않았습니다.");
+  });
+
+  it("prefers document content status in error context", () => {
+    expect(
+      getExecutionErrorDisplayMessage({
+        code: "DOCUMENT_CONTENT_EXTRACTION_FAILED",
+        message: "provider returned a custom error",
+        stackTrace: null,
+        context: {
+          content_status: "unsupported",
+          content_error: "provider disabled",
+        },
+      }),
+    ).toBe("현재 이 파일의 본문 추출을 지원하지 않습니다.");
   });
 });
