@@ -76,6 +76,8 @@ const PLACEHOLDER_NODE_WIDTH = 100;
 const PLACEHOLDER_NODE_HEIGHT = 134;
 const NEXT_STEP_CHOICE_NODE_WIDTH = 244;
 const NEXT_STEP_CHOICE_NODE_HEIGHT = 148;
+const NODE_FOCUS_ZOOM = 1;
+const NODE_FOCUS_DURATION_MS = 300;
 
 type ActiveNextStep = {
   centerY: number;
@@ -95,9 +97,6 @@ const getCenterYFromTop = (topY: number, height: number) => topY + height / 2;
 
 const getNodeWidth = (node: Node, fallbackWidth = DEFAULT_FLOW_NODE_WIDTH) =>
   node.measured?.width ?? fallbackWidth;
-
-const getNodeHeight = (node: Node, fallbackHeight = DEFAULT_FLOW_NODE_HEIGHT) =>
-  node.measured?.height ?? fallbackHeight;
 
 const getNodeFallbackWidth = (node: Node) => {
   if (node.type === "placeholder") return PLACEHOLDER_NODE_WIDTH;
@@ -119,50 +118,6 @@ const getNodeCenterY = (
   fallbackHeight = DEFAULT_FLOW_NODE_HEIGHT,
 ) =>
   getCenterYFromTop(node.position.y, node.measured?.height ?? fallbackHeight);
-
-const getNodeBounds = (node: Node) => {
-  const width = getNodeWidth(node, getNodeFallbackWidth(node));
-  const height = getNodeHeight(node, getNodeFallbackHeight(node));
-
-  return {
-    minX: node.position.x,
-    maxX: node.position.x + width,
-    minY: node.position.y,
-    maxY: node.position.y + height,
-  };
-};
-
-const getNodesBoundsCenter = (chainNodes: Node[]) => {
-  const bounds = chainNodes.map((node) => getNodeBounds(node));
-  const minX = Math.min(...bounds.map((bound) => bound.minX));
-  const maxX = Math.max(...bounds.map((bound) => bound.maxX));
-  const minY = Math.min(...bounds.map((bound) => bound.minY));
-  const maxY = Math.max(...bounds.map((bound) => bound.maxY));
-
-  return {
-    centerX: (minX + maxX) / 2,
-    centerY: (minY + maxY) / 2,
-  };
-};
-
-const createVirtualPlaceholderNode = (
-  id: string,
-  x: number,
-  centerY: number,
-): Node => ({
-  id,
-  type: "placeholder",
-  position: {
-    x,
-    y: getTopYFromCenter(centerY, PLACEHOLDER_NODE_HEIGHT),
-  },
-  data: { label: "" },
-  initialWidth: PLACEHOLDER_NODE_WIDTH,
-  initialHeight: PLACEHOLDER_NODE_HEIGHT,
-  selectable: false,
-  draggable: false,
-  hidden: true,
-});
 
 const toPlaceholderRoutingMeta = (
   value: unknown,
@@ -388,7 +343,25 @@ export const Canvas = () => {
     [onNodesChange],
   );
 
-  const { fitView, getZoom, setCenter } = useReactFlow();
+  const { fitView, setCenter } = useReactFlow();
+  const focusCanvasPoint = useCallback(
+    (centerX: number, centerY: number) => {
+      setCenter(centerX, centerY, {
+        zoom: NODE_FOCUS_ZOOM,
+        duration: NODE_FOCUS_DURATION_MS,
+      });
+    },
+    [setCenter],
+  );
+  const focusNode = useCallback(
+    (node: Node) => {
+      focusCanvasPoint(
+        getNodeCenterX(node, getNodeFallbackWidth(node)),
+        getNodeCenterY(node, getNodeFallbackHeight(node)),
+      );
+    },
+    [focusCanvasPoint],
+  );
   const reactFlowStore = useStoreApi();
   const isInteractive = useStore(
     (state) =>
@@ -519,12 +492,7 @@ export const Canvas = () => {
             position: panelNodePosition,
           });
 
-          const viewportWidth = window.innerWidth;
-          const offsetX = viewportWidth * 0.2;
-          setCenter(node.position.x + offsetX, centerY, {
-            zoom: 1,
-            duration: 300,
-          });
+          focusNode(node);
           return;
         }
 
@@ -549,7 +517,7 @@ export const Canvas = () => {
         openPanel(node.id, { mode: "view" });
       }
     },
-    [canEditNodes, closePanel, openPanel, setActivePlaceholder, setCenter],
+    [canEditNodes, closePanel, focusNode, openPanel, setActivePlaceholder],
   );
 
   const handlePaneClick = useCallback(() => {
@@ -624,13 +592,11 @@ export const Canvas = () => {
     });
     setActiveNextStep(null);
 
-    const sinkPreviewCenterX =
-      activeNextStep.position.x + PLACEHOLDER_NODE_WIDTH / 2;
-    setCenter(sinkPreviewCenterX, activeNextStep.centerY, {
-      zoom: 1,
-      duration: 300,
-    });
-  }, [activeNextStep, closePanel, setActivePlaceholder, setCenter]);
+    focusCanvasPoint(
+      activeNextStep.position.x + PLACEHOLDER_NODE_WIDTH / 2,
+      activeNextStep.centerY,
+    );
+  }, [activeNextStep, closePanel, focusCanvasPoint, setActivePlaceholder]);
 
   const isAutoLayoutDisabled =
     !canEditNodes ||
@@ -937,101 +903,6 @@ export const Canvas = () => {
     );
   }, [edgesWithVirtualBranches, visibleNodeIds]);
 
-  const getChainNodes = useCallback(
-    (nodeId: string) => {
-      const activeNode =
-        nodesWithDragControl.find((node) => node.id === nodeId) ?? null;
-
-      if (!activeNode) return [];
-
-      const chainNodes: Node[] = [activeNode];
-      const incomingEdges = edgesWithVirtualBranches.filter(
-        (edge) => edge.target === nodeId,
-      );
-      const outgoingEdges = edgesWithVirtualBranches.filter(
-        (edge) => edge.source === nodeId,
-      );
-      const placeholderNodes = nodesWithDragControl.filter(
-        (node) =>
-          node.type === "placeholder" && node.data?.sourceNodeId === nodeId,
-      );
-      const activeNodeCenterY = getNodeCenterY(
-        activeNode,
-        getNodeFallbackHeight(activeNode),
-      );
-
-      if (incomingEdges.length > 0) {
-        for (const incomingEdge of incomingEdges) {
-          const previousNode = nodesWithDragControl.find(
-            (node) => node.id === incomingEdge.source,
-          );
-
-          if (previousNode) {
-            chainNodes.unshift(previousNode);
-          }
-        }
-      } else {
-        chainNodes.unshift(
-          createVirtualPlaceholderNode(
-            `virtual-placeholder-before-${nodeId}`,
-            activeNode.position.x - NODE_GAP_X - PLACEHOLDER_NODE_WIDTH,
-            activeNodeCenterY,
-          ),
-        );
-      }
-
-      const nextNodeIds = new Set<string>();
-
-      for (const outgoingEdge of outgoingEdges) {
-        if (nextNodeIds.has(outgoingEdge.target)) {
-          continue;
-        }
-
-        const nextNode = nodesWithDragControl.find(
-          (node) => node.id === outgoingEdge.target,
-        );
-
-        if (nextNode) {
-          chainNodes.push(nextNode);
-          nextNodeIds.add(outgoingEdge.target);
-        }
-      }
-
-      for (const placeholderNode of placeholderNodes) {
-        if (nextNodeIds.has(placeholderNode.id)) {
-          continue;
-        }
-
-        chainNodes.push(placeholderNode);
-        nextNodeIds.add(placeholderNode.id);
-      }
-
-      if (nextNodeIds.size === 0) {
-        const nextPlaceholder =
-          nodesWithDragControl.find(
-            (node) => node.id === getNextStepPlaceholderId(nodeId),
-          ) ?? null;
-
-        if (nextPlaceholder) {
-          chainNodes.push(nextPlaceholder);
-        } else {
-          chainNodes.push(
-            createVirtualPlaceholderNode(
-              `virtual-placeholder-after-${nodeId}`,
-              activeNode.position.x +
-                getNodeWidth(activeNode, getNodeFallbackWidth(activeNode)) +
-                NODE_GAP_X,
-              activeNodeCenterY,
-            ),
-          );
-        }
-      }
-
-      return chainNodes;
-    },
-    [edgesWithVirtualBranches, nodesWithDragControl],
-  );
-
   useEffect(() => {
     if (!activePanelNodeId) return;
 
@@ -1039,35 +910,10 @@ export const Canvas = () => {
       nodesWithDragControl.find((node) => node.id === activePanelNodeId) ??
       null;
 
-    if (activeNode && isEndWorkflowNodeId(activeNode.id, endNodeIds)) {
-      setCenter(
-        getNodeCenterX(activeNode, getNodeFallbackWidth(activeNode)),
-        getNodeCenterY(activeNode, getNodeFallbackHeight(activeNode)),
-        {
-          duration: 300,
-          zoom: getZoom(),
-        },
-      );
-      return;
-    }
+    if (!activeNode) return;
 
-    const chainNodes = getChainNodes(activePanelNodeId);
-    if (chainNodes.length === 0) return;
-
-    const { centerX, centerY } = getNodesBoundsCenter(chainNodes);
-
-    setCenter(centerX, centerY, {
-      duration: 300,
-      zoom: getZoom(),
-    });
-  }, [
-    activePanelNodeId,
-    endNodeIds,
-    getChainNodes,
-    getZoom,
-    nodesWithDragControl,
-    setCenter,
-  ]);
+    focusNode(activeNode);
+  }, [activePanelNodeId, focusNode, nodesWithDragControl]);
 
   useEffect(() => {
     if (!pendingAutoLayoutFit) {
