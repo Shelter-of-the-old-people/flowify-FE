@@ -25,8 +25,7 @@ type SupportedServiceKey =
   | "github"
   | "google-drive"
   | "google-sheets"
-  | "notion"
-  | "slack";
+  | "notion";
 
 type RecommendedDashboardService = {
   serviceKey: string;
@@ -59,7 +58,6 @@ const DASHBOARD_SERVICE_LABELS: Record<SupportedServiceKey, string> = {
   "google-drive": "Google Drive",
   "google-sheets": "Google Sheets",
   notion: "Notion",
-  slack: "Slack",
 };
 
 const RECOMMENDED_DASHBOARD_SERVICES: RecommendedDashboardService[] = [
@@ -87,11 +85,6 @@ const RECOMMENDED_DASHBOARD_SERVICES: RecommendedDashboardService[] = [
     serviceKey: "notion",
     badgeKey: "notion",
     label: "Notion",
-  },
-  {
-    serviceKey: "slack",
-    badgeKey: "slack",
-    label: "Slack",
   },
 ];
 
@@ -251,8 +244,7 @@ export const getRecommendedServiceCards = (
     const connectionKind = getServiceConnectionKind(serviceKey);
 
     return (
-      connectionKind !== "unsupported" &&
-      !connectedServiceKeys.has(serviceKey)
+      connectionKind !== "unsupported" && !connectedServiceKeys.has(serviceKey)
     );
   }).map<DashboardServiceCard>(({ serviceKey, badgeKey, label }) => {
     const connectionKind = getServiceConnectionKind(serviceKey);

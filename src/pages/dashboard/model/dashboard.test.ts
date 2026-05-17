@@ -43,7 +43,7 @@ describe("dashboard summary mappers", () => {
         workflowName: "Mail summary",
         isActive: true,
         startService: "gmail",
-        endService: "slack",
+        endService: "notion",
         occurredAt: "2026-05-12T10:15:00Z",
         message: "Gmail node execution failed",
         items: [
@@ -62,7 +62,7 @@ describe("dashboard summary mappers", () => {
       name: "Mail summary",
       isActive: true,
       startBadgeKey: "gmail",
-      endBadgeKey: "slack",
+      endBadgeKey: "notion",
       buildProgressLabel: "Gmail node execution failed",
     });
     expect(issues[0]?.items[0]).toMatchObject({

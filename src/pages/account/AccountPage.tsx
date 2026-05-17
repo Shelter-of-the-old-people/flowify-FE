@@ -67,7 +67,6 @@ type AccountPageProps = {
 };
 
 const DEFAULT_SERVICE_LABELS: Record<string, string> = {
-  slack: "Slack",
   gmail: "Gmail",
   google_drive: "Google Drive",
   notion: "Notion",
@@ -594,7 +593,7 @@ export default function AccountPage({
                 바로 인증해 연결하는 서비스
               </Heading>
               <Text color="gray.600" fontSize="sm" mb={4}>
-                Gmail, Google Drive, Slack은 OAuth 인증으로 바로 연결합니다.
+                Gmail과 Google Drive는 OAuth 인증으로 바로 연결합니다.
               </Text>
 
               <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>

@@ -1,7 +1,7 @@
 // ─── 노드 타입 분류 ──────────────────────────────────────────
 /** 도메인 서비스 노드 */
 type DomainNodeType =
-  | "communication" // Gmail, Slack, Discord
+  | "communication" // Gmail, Discord
   | "storage" // Google Drive, Notion
   | "spreadsheet" // Google Sheets
   | "web-scraping" // 쿠팡, 원티드, 네이버 뉴스 등
@@ -65,7 +65,7 @@ interface BaseNodeConfig {
 
 // ─── 도메인 서비스 노드 Config ───────────────────────────────
 export interface CommunicationNodeConfig extends BaseNodeConfig {
-  service: "gmail" | "slack" | "discord" | null;
+  service: "gmail" | "discord" | null;
   account: string | null;
   channel: string | null;
   action: "send" | "receive" | null;
@@ -201,7 +201,7 @@ export interface EarlyExitNodeConfig extends BaseNodeConfig {
 }
 
 export interface NotificationNodeConfig extends BaseNodeConfig {
-  channel: "email" | "slack" | "webhook" | null;
+  channel: "email" | "webhook" | null;
   recipient: string | null;
   messageTemplate: string | null;
 }

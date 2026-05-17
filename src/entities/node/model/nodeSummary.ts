@@ -8,7 +8,6 @@ import {
 const COMMUNICATION_SERVICE_LABEL: Record<string, string> = {
   discord: "Discord",
   gmail: "Gmail",
-  slack: "Slack",
 };
 
 const STORAGE_SERVICE_LABEL: Record<string, string> = {

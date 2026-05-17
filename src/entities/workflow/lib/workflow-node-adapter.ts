@@ -72,6 +72,10 @@ const SERVICE_KEY_TO_NODE_TYPE = {
   youtube: "web-scraping",
 } as const satisfies Record<string, NodeType>;
 
+const REMOVED_SERVICE_FALLBACK_LABELS: Record<string, string> = {
+  slack: "지원 중단된 서비스",
+};
+
 const NODE_TYPES_WITH_SERVICE_CONFIG = new Set<NodeType>([
   "calendar",
   "communication",
@@ -129,6 +133,10 @@ const getServiceKeyFromConfig = (
 
 const getStringValue = (value: unknown) =>
   typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
+
+const getRemovedServiceFallbackLabel = (
+  serviceKey: string | null | undefined,
+) => (serviceKey ? REMOVED_SERVICE_FALLBACK_LABELS[serviceKey] : undefined);
 
 const toRoutingEdgeKey = (value: unknown): RoutingEdgeKey | null => {
   const stringValue = getStringValue(value);
@@ -329,6 +337,7 @@ export const toFlowNode = (
 ): Node<FlowNodeData> => {
   const nodeType = toFrontendNodeType(node.type);
   const meta = NODE_REGISTRY[nodeType];
+  const removedServiceFallbackLabel = getRemovedServiceFallbackLabel(node.type);
   const config = {
     ...meta.defaultConfig,
     ...(node.config as Record<string, unknown>),
@@ -348,7 +357,7 @@ export const toFlowNode = (
     position: node.position,
     data: {
       type: nodeType,
-      label: node.label ?? meta.label,
+      label: removedServiceFallbackLabel ?? node.label ?? meta.label,
       config,
       workflowRole: node.role,
       inputTypes: node.dataType

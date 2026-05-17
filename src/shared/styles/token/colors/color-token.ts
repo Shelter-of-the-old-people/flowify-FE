@@ -26,7 +26,7 @@ export const colorToken = {
   },
 
   // --- 노드 타입 컬러 ---
-  // communication (Gmail, Slack)
+  // communication
   blue: {
     50: { value: "#EFF6FF" },
     100: { value: "#DBEAFE" },

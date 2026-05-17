@@ -221,7 +221,6 @@ sink catalog와 sink schema 계약을 backend public contract로 제공한다.
       "label": "Slack",
       "authRequired": true,
       "acceptedInputTypes": ["TEXT"],
-      "configSchemaRef": "/api/editor-catalog/sinks/slack/schema?inputType=TEXT"
     }
   ]
 }

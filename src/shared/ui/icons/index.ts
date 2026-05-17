@@ -8,4 +8,3 @@ export * from "./GoogleSheetsIcon";
 export * from "./NaverIcon";
 export * from "./NotionIcon";
 export * from "./SeBoardIcon";
-export * from "./SlackIcon";

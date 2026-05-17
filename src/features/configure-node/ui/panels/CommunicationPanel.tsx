@@ -13,7 +13,6 @@ import { NodePanelShell } from "./NodePanelShell";
 
 const COMMUNICATION_SERVICE_OPTIONS = [
   { value: "gmail", label: "Gmail" },
-  { value: "slack", label: "Slack" },
 ] as const satisfies ReadonlyArray<{
   value: NonNullable<CommunicationNodeConfig["service"]>;
   label: string;

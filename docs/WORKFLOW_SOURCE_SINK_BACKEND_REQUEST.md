@@ -229,7 +229,6 @@ GET /api/editor-catalog/sinks
       "label": "Slack",
       "authRequired": true,
       "acceptedInputTypes": ["TEXT"],
-      "configSchemaRef": "/api/editor-catalog/sinks/slack/schema?inputType=TEXT"
     }
   ]
 }

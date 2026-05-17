@@ -11,7 +11,6 @@ describe("service icon registry", () => {
     ["naver_news", null, "naver-news"],
     ["discord", null, "discord"],
     ["notion", null, "notion"],
-    ["slack", null, "slack"],
     ["github", null, "github"],
     ["web_news", "seboard_posts", "seboard"],
     ["web_news", "seboard_new_posts", "seboard"],
@@ -27,7 +26,7 @@ describe("service icon registry", () => {
     },
   );
 
-  it.each(["youtube", "coupang"])(
+  it.each(["youtube", "coupang", "slack"])(
     "keeps future service %s out of the V1 registry",
     (serviceKey) => {
       expect(getServiceIconMetaFromService(serviceKey).key).toBe("unknown");
