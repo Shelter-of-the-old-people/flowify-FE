@@ -50,6 +50,7 @@ import {
   storeOAuthConnectReturnPath,
   useDualPanelLayout,
 } from "@/shared";
+import { dualPanelLayoutSpec } from "@/shared/styles";
 
 import { isSinkServiceInRollout } from "../model/sink-rollout";
 import { isSourceModeInRollout } from "../model/source-rollout";
@@ -80,11 +81,14 @@ const START_END_PANEL_GAP = 48;
 const PLACEHOLDER_NODE_WIDTH = 100;
 const START_END_NODE_HEIGHT = 176;
 const EMPTY_TARGET_SENTINEL = "";
+const OVERLAY_SAFE_PADDING_X = dualPanelLayoutSpec.safePaddingX;
+const OVERLAY_SAFE_PADDING_Y = dualPanelLayoutSpec.safePaddingY;
+const START_WIZARD_MAX_WIDTH = `calc(100vw - ${OVERLAY_SAFE_PADDING_X * 2}px)`;
 
 const WizardCard = ({
   children,
   maxWidth,
-  minWidth = "520px",
+  minWidth = `min(520px, ${START_WIZARD_MAX_WIDTH})`,
   padding = 12,
   unstyled = false,
 }: {
@@ -145,8 +149,8 @@ const CatalogServiceGrid = ({
   setSearchQuery: (query: string) => void;
 }) => (
   <WizardCard
-    maxWidth={isPanelLayout ? "100%" : "820px"}
-    minWidth={isPanelLayout ? "0" : "820px"}
+    maxWidth={isPanelLayout ? "100%" : START_WIZARD_MAX_WIDTH}
+    minWidth={isPanelLayout ? "0" : `min(820px, ${START_WIZARD_MAX_WIDTH})`}
     padding={isPanelLayout ? 6 : 12}
     unstyled={isPanelLayout}
   >
@@ -870,12 +874,21 @@ export const ServiceSelectionPanel = () => {
 
     const centeredLeft =
       anchorScreenPosition.x - overlayRect.left + START_END_PANEL_GAP;
-    const maxLeft = Math.max(24, overlayRect.width - wrapperRect.width - 24);
-    const left = Math.min(Math.max(24, centeredLeft), maxLeft);
+    const maxLeft = Math.max(
+      OVERLAY_SAFE_PADDING_X,
+      overlayRect.width - wrapperRect.width - OVERLAY_SAFE_PADDING_X,
+    );
+    const left = Math.min(
+      Math.max(OVERLAY_SAFE_PADDING_X, centeredLeft),
+      maxLeft,
+    );
     const centeredTop =
       anchorScreenPosition.y - overlayRect.top - wrapperRect.height / 2;
-    const maxTop = Math.max(24, overlayRect.height - wrapperRect.height - 24);
-    const top = Math.min(Math.max(24, centeredTop), maxTop);
+    const maxTop = Math.max(
+      OVERLAY_SAFE_PADDING_Y,
+      overlayRect.height - wrapperRect.height - OVERLAY_SAFE_PADDING_Y,
+    );
+    const top = Math.min(Math.max(OVERLAY_SAFE_PADDING_Y, centeredTop), maxTop);
 
     wrapperElement.style.left = `${left}px`;
     wrapperElement.style.top = `${top}px`;
@@ -1163,8 +1176,19 @@ export const ServiceSelectionPanel = () => {
         gap={isEndPlaceholder ? 3 : undefined}
         h={isEndPlaceholder ? `${layout.panelHeight}px` : undefined}
         left={isEndPlaceholder ? `${layout.outputPanelLeft}px` : 0}
+        maxH={
+          isEndPlaceholder
+            ? `${layout.panelHeight}px`
+            : `calc(100% - ${OVERLAY_SAFE_PADDING_Y * 2}px)`
+        }
+        maxW={
+          isEndPlaceholder
+            ? `${layout.panelWidth}px`
+            : `calc(100% - ${OVERLAY_SAFE_PADDING_X * 2}px)`
+        }
+        minH={0}
         onClick={(event) => event.stopPropagation()}
-        overflow={isEndPlaceholder ? "hidden" : undefined}
+        overflow={isEndPlaceholder ? "hidden" : "auto"}
         pointerEvents="auto"
         position="absolute"
         px={isEndPlaceholder ? 3 : undefined}
@@ -1202,6 +1226,7 @@ export const ServiceSelectionPanel = () => {
 
         <Box
           flex={isEndPlaceholder ? 1 : undefined}
+          minH={isEndPlaceholder ? 0 : undefined}
           overflow={isEndPlaceholder ? "auto" : undefined}
           p={isEndPlaceholder ? 3 : undefined}
           position="relative"

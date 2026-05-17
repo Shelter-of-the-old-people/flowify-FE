@@ -297,7 +297,8 @@ export const OutputPanel = ({ wizardController }: Props) => {
       borderColor="#f2f2f2"
       borderRadius="20px"
       boxShadow="0 4px 4px rgba(0,0,0,0.25)"
-      overflowY="auto"
+      minH={0}
+      overflow="hidden"
       px={3}
       py={6}
       zIndex={5}
@@ -327,7 +328,7 @@ export const OutputPanel = ({ wizardController }: Props) => {
             </Box>
           </Box>
 
-          <Box flex={1} overflow="auto" p={3}>
+          <Box flex={1} minH={0} overflow="auto" p={3}>
             {!canEditNodes ? (
               <Box
                 p={4}
@@ -442,7 +443,7 @@ export const OutputPanel = ({ wizardController }: Props) => {
             </Box>
           </Box>
 
-          <Box flex={1} overflow="auto" p={3}>
+          <Box flex={1} minH={0} overflow="auto" p={3}>
             <SourceNodePanel
               data={activeNode.data}
               nodeId={activeNode.id}
@@ -470,7 +471,14 @@ export const OutputPanel = ({ wizardController }: Props) => {
             </Box>
           </Box>
 
-          <VStack align="stretch" flex={1} overflow="auto" p={3} gap={6}>
+          <VStack
+            align="stretch"
+            flex={1}
+            minH={0}
+            overflow="auto"
+            p={3}
+            gap={6}
+          >
             <SourceSetupSummaryBlock
               canEdit={canEditNodes}
               config={activeNode.data.config}
@@ -497,7 +505,7 @@ export const OutputPanel = ({ wizardController }: Props) => {
             </Box>
           </Box>
 
-          <Box flex={1} overflow="auto" p={3}>
+          <Box flex={1} minH={0} overflow="auto" p={3}>
             <PanelRenderer
               readOnly={!canEditNodes}
               onCancel={() => setActivePanelMode("view")}
@@ -521,7 +529,7 @@ export const OutputPanel = ({ wizardController }: Props) => {
             </Box>
           </Box>
 
-          <Box flex={1} overflow="auto" p={3}>
+          <Box flex={1} minH={0} overflow="auto" p={3}>
             <PanelRenderer
               readOnly={!canEditNodes}
               onCancel={() => setActivePanelMode("view")}
@@ -548,7 +556,14 @@ export const OutputPanel = ({ wizardController }: Props) => {
             </Box>
           </Box>
 
-          <VStack align="stretch" flex={1} overflow="auto" p={3} gap={6}>
+          <VStack
+            align="stretch"
+            flex={1}
+            minH={0}
+            overflow="auto"
+            p={3}
+            gap={6}
+          >
             <SinkSetupSummaryBlock
               canEdit={canEditNodes}
               config={activeNode.data.config}
@@ -584,7 +599,14 @@ export const OutputPanel = ({ wizardController }: Props) => {
             </Box>
           </Box>
 
-          <VStack align="stretch" flex={1} overflow="auto" p={3} gap={6}>
+          <VStack
+            align="stretch"
+            flex={1}
+            minH={0}
+            overflow="auto"
+            p={3}
+            gap={6}
+          >
             <ProcessingMethodSummaryBlock
               choiceNodeType={choiceNodeType}
               outputType={activeNode.data.outputTypes[0] ?? null}
@@ -610,7 +632,14 @@ export const OutputPanel = ({ wizardController }: Props) => {
             </Box>
           </Box>
 
-          <VStack align="stretch" flex={1} overflow="auto" p={3} gap={6}>
+          <VStack
+            align="stretch"
+            flex={1}
+            minH={0}
+            overflow="auto"
+            p={3}
+            gap={6}
+          >
             <BranchSetupSummaryBlock
               branchStates={branchPathStates}
               canEdit={canEditNodes}
@@ -639,7 +668,14 @@ export const OutputPanel = ({ wizardController }: Props) => {
             </Box>
           </Box>
 
-          <VStack align="stretch" flex={1} overflow="auto" p={3} gap={6}>
+          <VStack
+            align="stretch"
+            flex={1}
+            minH={0}
+            overflow="auto"
+            p={3}
+            gap={6}
+          >
             <Box>
               <Text fontSize="lg" fontWeight="bold" mb={2}>
                 {outputDataLabel}
@@ -756,7 +792,14 @@ export const OutputPanel = ({ wizardController }: Props) => {
             </Box>
           </Box>
 
-          <VStack align="stretch" flex={1} overflow="auto" p={3} gap={6}>
+          <VStack
+            align="stretch"
+            flex={1}
+            minH={0}
+            overflow="auto"
+            p={3}
+            gap={6}
+          >
             <FallbackNodeSummaryBlock
               canEdit={canEditNodes && !isProcessingMethodOnlyNode}
               hasConfigIssue={hasConfigIssue}
@@ -782,7 +825,7 @@ export const OutputPanel = ({ wizardController }: Props) => {
             </Box>
           </Box>
 
-          <Box flex={1} overflow="auto" p={3}>
+          <Box flex={1} minH={0} overflow="auto" p={3}>
             <Text color="text.secondary" fontSize="sm">
               노드를 선택하면 설정과 출력 정보를 확인할 수 있습니다.
             </Text>

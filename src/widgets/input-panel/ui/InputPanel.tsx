@@ -152,7 +152,8 @@ export const InputPanel = () => {
       borderColor="#f2f2f2"
       borderRadius="20px"
       boxShadow="0 4px 4px rgba(0,0,0,0.25)"
-      overflowY="auto"
+      minH={0}
+      overflow="hidden"
       px={3}
       py={6}
       zIndex={5}
@@ -191,7 +192,7 @@ export const InputPanel = () => {
         </Box>
       </Box>
 
-      <Box flex={1} overflow="auto" p={3}>
+      <Box flex={1} minH={0} overflow="auto" p={3}>
         {activeNode ? (
           <Box display="flex" flexDirection="column" gap={6}>
             <Box>
