@@ -29,7 +29,6 @@ import {
   NaverIcon,
   NotionIcon,
   SeBoardIcon,
-  SlackIcon,
 } from "./icons";
 
 export type ServiceIconKind = "brand" | "domain" | "category" | "unknown";
@@ -121,13 +120,6 @@ const SERVICE_ICON_META = {
     kind: "brand",
     fallbackIcon: MdLanguage,
     BrandIcon: SeBoardIcon,
-  },
-  slack: {
-    key: "slack",
-    label: "Slack",
-    kind: "brand",
-    fallbackIcon: MdNotifications,
-    BrandIcon: SlackIcon,
   },
   communication: {
     key: "communication",

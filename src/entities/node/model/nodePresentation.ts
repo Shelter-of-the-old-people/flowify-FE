@@ -49,7 +49,6 @@ const COMMUNICATION_SERVICE_TITLE: Record<
 > = {
   discord: "Discord",
   gmail: "Gmail",
-  slack: "Slack",
 };
 
 const WEB_SCRAPING_SERVICE_TITLE: Record<

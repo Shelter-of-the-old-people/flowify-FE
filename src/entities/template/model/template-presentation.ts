@@ -17,8 +17,9 @@ const TEMPLATE_SERVICE_LABELS: Record<string, string> = {
   google_drive: "Google Drive",
   google_sheets: "Google Sheets",
   notion: "Notion",
-  slack: "Slack",
 };
+
+const REMOVED_TEMPLATE_SERVICE_KEYS = new Set(["slack"]);
 
 type TemplatePresentationInput = {
   category?: string | null;
@@ -27,20 +28,14 @@ type TemplatePresentationInput = {
 };
 
 const TEMPLATE_DESCRIPTION_OVERRIDES: Record<string, string> = {
-  "읽지 않은 메일 목록 요약 후 Slack 공유":
-    "읽지 않은 메일 목록을 정해진 형식으로 요약해 Slack 채널에 공유합니다.",
   "중요 메일 목록 요약 후 Notion 저장":
     "중요 메일 목록을 정해진 형식으로 요약해 Notion 페이지에 저장합니다.",
   "중요 메일 목록에서 할 일 추출 후 Notion 저장":
     "중요 메일 목록에서 해야 할 일을 추출해 Notion 페이지에 정리합니다.",
-  "신규 문서 요약 후 Slack 공유":
-    "지정한 Google Drive 폴더의 문서를 읽어 핵심 내용을 요약하고 Slack 채널에 공유합니다.",
   "신규 문서 요약 후 Gmail 전달":
     "지정한 Google Drive 폴더의 문서를 읽어 핵심 내용을 요약하고 이메일로 전달합니다.",
   "문서 요약 결과를 Google Sheets에 저장":
     "지정한 Google Drive 폴더의 문서를 읽어 요약한 뒤 Google Sheets에 기록합니다.",
-  "업로드 문서 요약 후 Slack 공유":
-    "지정한 Google Drive 폴더의 새 파일을 확인해 핵심 내용을 요약하고 Slack 채널에 공유합니다.",
   "새 파일 업로드 알림 메일 발송":
     "지정한 Google Drive 폴더의 새 파일 정보를 정리해 이메일 알림을 발송합니다.",
   "새 파일 업로드 후 Notion 기록":
@@ -60,6 +55,12 @@ export const getTemplateCategoryLabel = (
 export const getTemplateServiceLabel = (service: string) =>
   TEMPLATE_SERVICE_LABELS[service] ?? service;
 
+export const isRemovedTemplateService = (service: string) =>
+  REMOVED_TEMPLATE_SERVICE_KEYS.has(service);
+
+export const isRemovedServiceTemplate = (requiredServices: readonly string[]) =>
+  requiredServices.some(isRemovedTemplateService);
+
 export const getTemplateCategorySummary = (
   category: string | null | undefined,
 ) => {
@@ -69,7 +70,7 @@ export const getTemplateCategorySummary = (
     case "folder_document_summary":
       return "Google Drive 폴더 안의 문서나 파일을 읽어 요약하고, 정리된 결과를 다른 서비스로 공유하거나 저장하는 자동화입니다.";
     case "mail_summary_forward":
-      return "Gmail 메일 목록을 정리해 Slack, Notion, Gmail 같은 다른 서비스로 전달하는 자동화입니다.";
+      return "Gmail 메일 목록을 정리해 Notion 또는 Gmail 같은 다른 서비스로 전달하는 자동화입니다.";
     case "storage":
       return "파일과 문서를 읽고 정리한 뒤 다른 서비스로 전달하거나 저장하는 자동화입니다.";
     case "spreadsheet":
@@ -115,7 +116,7 @@ export const getTemplateRuntimeNote = ({
   }
 
   if (category === "file_upload_auto_share") {
-    return "현재 Drive 기반 업로드 템플릿은 1차 구현 기준으로 folder_new_file 모드를 중심으로 동작하며, 선택한 폴더의 최신 파일 1건을 기준으로 공유/기록하는 흐름에 가깝습니다. Slack은 기존 공개 채널 선택, Notion은 기존 공유 페이지 선택을 기준으로 설명됩니다.";
+    return "현재 Drive 기반 업로드 템플릿은 1차 구현 기준으로 folder_new_file 모드를 중심으로 동작하며, 선택한 폴더의 최신 파일 1건을 기준으로 공유/기록하는 흐름에 가깝습니다. Notion은 기존 공유 페이지 선택을 기준으로 설명됩니다.";
   }
 
   return null;

@@ -1,6 +1,9 @@
 import { Box, HStack, Text, VStack } from "@chakra-ui/react";
 
-import { getTemplateServiceLabel } from "@/entities/template";
+import {
+  getTemplateServiceLabel,
+  isRemovedTemplateService,
+} from "@/entities/template";
 import { ServiceBadge, getServiceBadgeKeyFromService } from "@/shared";
 
 type Props = {
@@ -8,7 +11,11 @@ type Props = {
 };
 
 export const TemplateRequiredServices = ({ services }: Props) => {
-  if (services.length === 0) {
+  const visibleServices = services.filter(
+    (service) => !isRemovedTemplateService(service),
+  );
+
+  if (visibleServices.length === 0) {
     return (
       <Text fontSize="sm" color="text.secondary">
         연결이 필요한 서비스가 아직 정의되지 않았습니다.
@@ -18,7 +25,7 @@ export const TemplateRequiredServices = ({ services }: Props) => {
 
   return (
     <HStack align="stretch" gap={3} wrap="wrap">
-      {services.map((service) => {
+      {visibleServices.map((service) => {
         return (
           <Box
             key={service}

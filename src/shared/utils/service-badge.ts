@@ -9,7 +9,6 @@ export type ServiceBadgeKey =
   | "naver-news"
   | "notion"
   | "seboard"
-  | "slack"
   | "communication"
   | "storage"
   | "spreadsheet"
@@ -52,8 +51,6 @@ export const getServiceBadgeKeyFromService = (
     case "seboard_new_posts":
     case "seboard_posts":
       return "seboard";
-    case "slack":
-      return "slack";
     case "web":
     case "web-news":
     case "web_news":

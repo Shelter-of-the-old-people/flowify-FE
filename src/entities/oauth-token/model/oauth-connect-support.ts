@@ -1,5 +1,4 @@
 export const OAUTH_CONNECT_SUPPORTED_SERVICES = [
-  "slack",
   "gmail",
   "google_drive",
 ] as const;

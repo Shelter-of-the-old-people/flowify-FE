@@ -33,7 +33,6 @@ const DASHBOARD_ISSUE_SERVICE_LABELS: Record<ServiceBadgeKey, string> = {
   "naver-news": "Naver News",
   notion: "Notion",
   seboard: "SE Board",
-  slack: "Slack",
   communication: "커뮤니케이션 서비스",
   storage: "저장소 서비스",
   spreadsheet: "스프레드시트 서비스",
@@ -47,7 +46,6 @@ const DASHBOARD_ISSUE_SERVICE_LABELS: Record<ServiceBadgeKey, string> = {
 
 const DASHBOARD_ISSUE_SERVICE_PATTERNS: Array<[RegExp, string]> = [
   [/\bgmail\b/, "Gmail"],
-  [/\bslack\b/, "Slack"],
   [/\bnotion\b/, "Notion"],
   [/\bgithub\b/, "GitHub"],
   [/\bdiscord\b/, "Discord"],

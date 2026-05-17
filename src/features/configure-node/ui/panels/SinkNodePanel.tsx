@@ -299,10 +299,6 @@ const getSinkTargetOptionIcon = (option: RemoteOptionPickerItem) => {
 };
 
 const getSinkPickerHint = (serviceKey: string, optionType: string) => {
-  if (serviceKey === "slack" && optionType === "channel") {
-    return "공개 채널을 우선 지원합니다.";
-  }
-
   if (serviceKey === "notion" && optionType === "page") {
     return "연결된 통합이 접근 가능한 공유 페이지가 표시됩니다.";
   }
