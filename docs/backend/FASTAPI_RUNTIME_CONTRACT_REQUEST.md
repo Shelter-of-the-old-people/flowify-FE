@@ -103,7 +103,6 @@ service_tokens는 별도 파라미터로 전달:
 ```json
 {
   "google_drive": "ya29.encrypted_token...",
-  "slack": "xoxb-encrypted_token..."
 }
 ```
 
