@@ -43,6 +43,8 @@ interface BaseNodeConfig {
   source_mode?: string | null;
   /** start node target value */
   target?: string | null;
+  /** start node target values */
+  targets?: string[] | null;
   /** start node canonical input type */
   canonical_input_type?: string | null;
   /** start node trigger type */

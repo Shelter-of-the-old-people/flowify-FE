@@ -7,6 +7,8 @@ import {
 export type SourceTargetSetupValue = {
   keyword: string;
   option: SourceTargetOptionItemResponse | null;
+  customValues?: string[];
+  selectedOptions?: SourceTargetOptionItemResponse[];
   value: string;
 };
 

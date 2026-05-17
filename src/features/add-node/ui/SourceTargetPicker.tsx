@@ -17,12 +17,12 @@ import {
   type SourceTargetOptionItemResponse,
   getWorkflowMetadataSummary,
   isGroupedSourceTargetOptionPicker,
-  isSeBoardNewPostsSourceMode,
   useCreateGoogleSheetMutation,
   useCreateGoogleSheetsSpreadsheetMutation,
   useInfiniteSourceTargetOptionsQuery,
 } from "@/entities/workflow";
 import {
+  FeedSourcePicker,
   RemoteOptionPicker,
   type RemoteOptionPickerItem,
   getApiErrorMessage,
@@ -32,10 +32,14 @@ import { toaster } from "@/shared/utils";
 import {
   DAY_PICKER_OPTIONS,
   type SourceTargetPickerValue,
+  getTargetKeywordHelperText,
+  getTargetKeywordLabel,
+  getTargetKeywordPlaceholder,
   getTargetSchemaLabel,
   getTargetSchemaPlaceholder,
   getTargetSchemaType,
   isRemoteTargetPicker,
+  isTargetKeywordSupported,
 } from "../model/source-target-picker";
 
 type Props = {
@@ -110,6 +114,7 @@ export const SourceTargetPicker = ({
 }: Props) => {
   const schemaType = getTargetSchemaType(mode.target_schema);
   const isRemotePicker = isRemoteTargetPicker(mode.target_schema);
+  const isFeedSourcePicker = schemaType === "feed_source_picker";
   const isFolderPicker = schemaType === "folder_picker";
   const isSheetPicker = schemaType === "sheet_picker";
   const isGroupedPicker = isGroupedSourceTargetOptionPicker(
@@ -118,10 +123,7 @@ export const SourceTargetPicker = ({
   );
   const isGoogleSheetsPicker = serviceKey === "google_sheets" && isSheetPicker;
   const supportsPathBrowsing = isFolderPicker || isSheetPicker;
-  const shouldShowKeywordInput = isSeBoardNewPostsSourceMode(
-    serviceKey,
-    mode.key,
-  );
+  const shouldShowKeywordInput = isTargetKeywordSupported(mode.target_schema);
   const pickerScope = `${serviceKey}:${mode.key}:${schemaType}`;
   const [pickerState, setPickerState] = useState<PickerState>(() =>
     createPickerState(pickerScope),
@@ -163,6 +165,12 @@ export const SourceTargetPicker = ({
   const items =
     targetOptions?.pages.flatMap((page) => page.items) ??
     ([] as SourceTargetOptionItemResponse[]);
+  const feedSelectedOptions = value.selectedOptions ?? [];
+  const feedCustomValues = value.customValues ?? [];
+  const feedMaxItems =
+    typeof mode.target_schema.max_items === "number"
+      ? mode.target_schema.max_items
+      : 10;
   const currentSpreadsheet =
     isGoogleSheetsPicker && path.length > 0 ? path[path.length - 1] : null;
   const [newSpreadsheetName, setNewSpreadsheetName] = useState("");
@@ -254,6 +262,78 @@ export const SourceTargetPicker = ({
     onChange({ ...value, keyword });
   };
 
+  const getFeedPrimaryValue = (
+    selectedOptions: SourceTargetOptionItemResponse[],
+    customValues: string[],
+  ) => selectedOptions[0]?.id ?? customValues[0] ?? "";
+
+  const handleSelectFeedOption = (option: RemoteOptionPickerItem) => {
+    const sourceOption = items.find((item) => item.id === option.id);
+    if (!sourceOption) {
+      return;
+    }
+
+    if (feedCustomValues.includes(sourceOption.id)) {
+      return;
+    }
+
+    const nextSelectedOptions = feedSelectedOptions.some(
+      (selectedOption) => selectedOption.id === sourceOption.id,
+    )
+      ? feedSelectedOptions
+      : [...feedSelectedOptions, sourceOption];
+
+    onChange({
+      ...value,
+      option: null,
+      selectedOptions: nextSelectedOptions,
+      value: getFeedPrimaryValue(nextSelectedOptions, feedCustomValues),
+    });
+  };
+
+  const handleRemoveFeedOption = (id: string) => {
+    const nextSelectedOptions = feedSelectedOptions.filter(
+      (option) => option.id !== id,
+    );
+
+    onChange({
+      ...value,
+      option: null,
+      selectedOptions: nextSelectedOptions,
+      value: getFeedPrimaryValue(nextSelectedOptions, feedCustomValues),
+    });
+  };
+
+  const handleAddFeedCustomValue = (customValue: string) => {
+    if (feedSelectedOptions.some((option) => option.id === customValue)) {
+      return;
+    }
+
+    const nextCustomValues = feedCustomValues.includes(customValue)
+      ? feedCustomValues
+      : [...feedCustomValues, customValue];
+
+    onChange({
+      ...value,
+      option: null,
+      customValues: nextCustomValues,
+      value: getFeedPrimaryValue(feedSelectedOptions, nextCustomValues),
+    });
+  };
+
+  const handleRemoveFeedCustomValue = (customValue: string) => {
+    const nextCustomValues = feedCustomValues.filter(
+      (value) => value !== customValue,
+    );
+
+    onChange({
+      ...value,
+      option: null,
+      customValues: nextCustomValues,
+      value: getFeedPrimaryValue(feedSelectedOptions, nextCustomValues),
+    });
+  };
+
   const handleCreateSpreadsheet = async () => {
     const trimmedName = newSpreadsheetName.trim();
     if (!isGoogleSheetsPicker || trimmedName.length === 0) {
@@ -313,15 +393,15 @@ export const SourceTargetPicker = ({
   const keywordInput = shouldShowKeywordInput ? (
     <Box mt={4}>
       <Text fontSize="sm" fontWeight="semibold" mb={2}>
-        포함 검색어
+        {getTargetKeywordLabel(mode.target_schema)}
       </Text>
       <Input
-        placeholder="예: 수강신청, 공지"
+        placeholder={getTargetKeywordPlaceholder(mode.target_schema)}
         value={value.keyword}
         onChange={(event) => handleKeywordChange(event.target.value)}
       />
       <Text color="text.secondary" fontSize="xs" mt={2}>
-        비워두면 선택한 게시판의 새 글을 모두 가져옵니다.
+        {getTargetKeywordHelperText(mode.target_schema)}
       </Text>
     </Box>
   ) : null;
@@ -354,6 +434,30 @@ export const SourceTargetPicker = ({
         onChange={(event) =>
           onChange({ ...value, option: null, value: event.target.value })
         }
+      />
+    );
+  }
+
+  if (isFeedSourcePicker) {
+    return (
+      <FeedSourcePicker
+        customValues={feedCustomValues}
+        emptyMessage="선택할 수 있는 출처가 없습니다."
+        errorMessage={isError ? getApiErrorMessage(error) : null}
+        hasMore={Boolean(hasNextPage)}
+        isLoading={isLoading}
+        isLoadingMore={isFetchingNextPage}
+        items={items}
+        maxItems={feedMaxItems}
+        searchValue={searchQuery}
+        selectedOptions={feedSelectedOptions}
+        onAddCustomValue={handleAddFeedCustomValue}
+        onLoadMore={() => void fetchNextPage()}
+        onRemoveCustomValue={handleRemoveFeedCustomValue}
+        onRemoveOption={handleRemoveFeedOption}
+        onRetry={() => void refetch()}
+        onSearchChange={setScopedSearchQuery}
+        onSelectOption={handleSelectFeedOption}
       />
     );
   }

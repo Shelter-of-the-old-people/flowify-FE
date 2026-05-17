@@ -1,19 +1,22 @@
 import { type FlowNodeData } from "@/entities/node";
 import {
-  getSourceTargetOptionDisplayLabel,
   type SourceTargetOptionItemResponse,
+  getSourceTargetOptionDisplayLabel,
 } from "@/entities/workflow";
 
 import { type SourceNodeConfigDraftParameters } from "./setup-types";
 
 const GOOGLE_SHEETS_SERVICE_KEY = "google_sheets";
+const FEED_SOURCE_PICKER_TYPE = "feed_source_picker";
 const DEFAULT_HEADER_ROW = 1;
 const DEFAULT_DATA_START_ROW = 2;
 const DEFAULT_INITIAL_SYNC_MODE = "skip_existing";
 
 export const createEmptySourceTargetSetupValue = () => ({
+  customValues: [],
   keyword: "",
   option: null,
+  selectedOptions: [],
   value: "",
 });
 
@@ -64,6 +67,86 @@ const getMetadataString = (
 const isGoogleSheetsService = (config: FlowNodeData["config"]) =>
   getStringConfigValue(config, "service") === GOOGLE_SHEETS_SERVICE_KEY;
 
+const isFeedSourceTargetSchema = (targetSchema?: Record<string, unknown>) =>
+  targetSchema
+    ? getTargetSchemaType(targetSchema) === FEED_SOURCE_PICKER_TYPE
+    : false;
+
+const uniqueValues = (values: string[]) =>
+  Array.from(
+    new Set(
+      values.map((value) => value.trim()).filter((value) => value.length > 0),
+    ),
+  );
+
+const getFeedSourceUrl = (option: SourceTargetOptionItemResponse) =>
+  option.id.trim();
+
+const getMetadataStringValue = (
+  metadata: Record<string, unknown>,
+  key: string,
+) => {
+  const value = metadata[key];
+  return typeof value === "string" && value.trim().length > 0
+    ? value.trim()
+    : null;
+};
+
+const toFeedSourceMeta = (option: SourceTargetOptionItemResponse) => {
+  const metadata = option.metadata ?? {};
+  return {
+    category: getMetadataStringValue(metadata, "category"),
+    homepage: getMetadataStringValue(metadata, "homepage"),
+    label: getSourceTargetOptionDisplayLabel(option),
+    language: getMetadataStringValue(metadata, "language"),
+    presetId: getMetadataStringValue(metadata, "presetId"),
+    region: getMetadataStringValue(metadata, "region"),
+    sourceType: getMetadataStringValue(metadata, "sourceType"),
+    tags: Array.isArray(metadata.tags) ? metadata.tags : [],
+    url: getFeedSourceUrl(option),
+  };
+};
+
+const buildFeedSourceTargetLabel = (
+  selectedOptions: SourceTargetOptionItemResponse[],
+  customValues: string[],
+) => {
+  const firstLabel =
+    selectedOptions[0] !== undefined
+      ? getSourceTargetOptionDisplayLabel(selectedOptions[0])
+      : customValues[0];
+  const count = selectedOptions.length + customValues.length;
+
+  if (!firstLabel || count === 0) {
+    return null;
+  }
+
+  return count === 1 ? firstLabel : `${firstLabel} 외 ${count - 1}개`;
+};
+
+const buildFeedSourceTargetConfig = ({
+  currentConfig,
+  targetValue,
+}: Pick<SourceNodeConfigDraftParameters, "currentConfig" | "targetValue">) => {
+  const selectedOptions = targetValue.selectedOptions ?? [];
+  const customValues = uniqueValues(targetValue.customValues ?? []);
+  const optionUrls = selectedOptions.map(getFeedSourceUrl);
+  const targets = uniqueValues([...optionUrls, ...customValues]);
+  const firstTarget = targets[0] ?? "";
+
+  return {
+    ...toConfigRecord(currentConfig),
+    target: firstTarget,
+    target_label: buildFeedSourceTargetLabel(selectedOptions, customValues),
+    target_meta: {
+      customSources: customValues.map((url) => ({ label: url, url })),
+      pickerType: "feed_source",
+      selectedSources: selectedOptions.map(toFeedSourceMeta),
+    },
+    targets,
+  } as unknown as FlowNodeData["config"];
+};
+
 const buildGoogleSheetsTargetConfig = ({
   currentConfig,
   option,
@@ -98,8 +181,15 @@ const buildGoogleSheetsTargetConfig = ({
 
 export const buildSourceTargetConfigDraft = ({
   currentConfig,
+  targetSchema,
   targetValue,
-}: Pick<SourceNodeConfigDraftParameters, "currentConfig" | "targetValue">) => {
+}: Pick<SourceNodeConfigDraftParameters, "currentConfig" | "targetValue"> & {
+  targetSchema?: Record<string, unknown>;
+}) => {
+  if (isFeedSourceTargetSchema(targetSchema)) {
+    return buildFeedSourceTargetConfig({ currentConfig, targetValue });
+  }
+
   const target = targetValue.value.trim();
   const resolvedTarget = isGoogleSheetsService(currentConfig)
     ? (getMetadataString(targetValue.option, "spreadsheetId") ?? target)
@@ -156,10 +246,16 @@ export const isSourceNodeSetupComplete = (
   const isGoogleSheets = isGoogleSheetsService(config);
 
   if (isSourceTargetRequired(targetSchema)) {
+    const hasFeedSources =
+      isFeedSourceTargetSchema(targetSchema) &&
+      Array.isArray(toConfigRecord(config).targets) &&
+      (toConfigRecord(config).targets as unknown[]).some(
+        (value) => typeof value === "string" && value.trim().length > 0,
+      );
     const hasTarget = isGoogleSheets
       ? hasStringConfigValue(config, "spreadsheet_id") ||
         hasStringConfigValue(config, "target")
-      : hasStringConfigValue(config, "target");
+      : hasStringConfigValue(config, "target") || hasFeedSources;
 
     if (!hasTarget) {
       return false;
@@ -189,6 +285,7 @@ export const buildSourceNodeConfigDraft = ({
 }: SourceNodeConfigDraftParameters): FlowNodeData["config"] => {
   const nextConfig = buildSourceTargetConfigDraft({
     currentConfig,
+    targetSchema,
     targetValue,
   }) as FlowNodeData["config"] & Record<string, unknown>;
   const keyword = targetValue.keyword.trim();

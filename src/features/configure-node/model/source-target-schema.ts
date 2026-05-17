@@ -6,6 +6,7 @@ export const SOURCE_TARGET_SCHEMA_LABELS: Record<string, string> = {
   day_picker: "요일",
   email_picker: "이메일",
   file_picker: "파일",
+  feed_source_picker: "뉴스/글 출처",
   folder_picker: "폴더",
   label_picker: "라벨",
   page_picker: "페이지",
@@ -30,6 +31,7 @@ const REMOTE_SOURCE_TARGET_SCHEMA_TYPES = new Set([
   "category_picker",
   "channel_picker",
   "course_picker",
+  "feed_source_picker",
   "file_picker",
   "folder_picker",
   "label_picker",
@@ -37,6 +39,10 @@ const REMOTE_SOURCE_TARGET_SCHEMA_TYPES = new Set([
   "sheet_picker",
   "term_picker",
 ]);
+
+const DEFAULT_KEYWORD_LABEL = "포함할 단어";
+const DEFAULT_KEYWORD_PLACEHOLDER = "예: 인공지능, 교육, 정책";
+const DEFAULT_KEYWORD_HELPER_TEXT = "비워두면 최신 글을 모두 가져옵니다.";
 
 export const getSourceTargetSchemaType = (
   targetSchema: Record<string, unknown>,
@@ -61,6 +67,29 @@ export const getSourceTargetSchemaHelperText = (
   typeof targetSchema.helper_text === "string"
     ? targetSchema.helper_text
     : null;
+
+export const isSourceKeywordSupported = (
+  targetSchema: Record<string, unknown>,
+) => targetSchema.keyword_supported === true;
+
+export const getSourceKeywordLabel = (targetSchema: Record<string, unknown>) =>
+  typeof targetSchema.keyword_label === "string"
+    ? targetSchema.keyword_label
+    : DEFAULT_KEYWORD_LABEL;
+
+export const getSourceKeywordPlaceholder = (
+  targetSchema: Record<string, unknown>,
+) =>
+  typeof targetSchema.keyword_placeholder === "string"
+    ? targetSchema.keyword_placeholder
+    : DEFAULT_KEYWORD_PLACEHOLDER;
+
+export const getSourceKeywordHelperText = (
+  targetSchema: Record<string, unknown>,
+) =>
+  typeof targetSchema.keyword_helper_text === "string"
+    ? targetSchema.keyword_helper_text
+    : DEFAULT_KEYWORD_HELPER_TEXT;
 
 export const getSourceTargetSchemaValidation = (
   targetSchema: Record<string, unknown>,

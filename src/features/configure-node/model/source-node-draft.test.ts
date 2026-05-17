@@ -205,4 +205,88 @@ describe("buildSourceNodeConfigDraft", () => {
 
     expect(nextConfig.isConfigured).toBe(true);
   });
+
+  it("stores multiple feed sources while preserving first target", () => {
+    const nextConfig = buildSourceNodeConfigDraft({
+      currentConfig: {
+        isConfigured: false,
+        service: "web_news",
+        source_mode: "website_feed",
+      } as never,
+      targetSchema: { type: "feed_source_picker", required: true },
+      targetValue: {
+        customValues: ["https://custom.example.com/feed"],
+        keyword: "",
+        option: null,
+        selectedOptions: [
+          {
+            description: "국제 뉴스",
+            id: "https://feeds.example.com/news.xml",
+            label: "Example News",
+            metadata: {
+              category: "뉴스",
+              language: "ko",
+              presetId: "example_news",
+              sourceType: "언론사",
+              tags: ["뉴스", "국제"],
+            },
+            type: "feed_source",
+          },
+        ],
+        value: "https://feeds.example.com/news.xml",
+      },
+    });
+
+    expect(nextConfig.target).toBe("https://feeds.example.com/news.xml");
+    expect(nextConfig.targets).toEqual([
+      "https://feeds.example.com/news.xml",
+      "https://custom.example.com/feed",
+    ]);
+    expect(nextConfig.target_label).toBe("Example News 외 1개");
+    expect(nextConfig.target_meta).toEqual({
+      customSources: [
+        {
+          label: "https://custom.example.com/feed",
+          url: "https://custom.example.com/feed",
+        },
+      ],
+      pickerType: "feed_source",
+      selectedSources: [
+        {
+          category: "뉴스",
+          homepage: null,
+          label: "Example News",
+          language: "ko",
+          presetId: "example_news",
+          region: null,
+          sourceType: "언론사",
+          tags: ["뉴스", "국제"],
+          url: "https://feeds.example.com/news.xml",
+        },
+      ],
+    });
+    expect(nextConfig.isConfigured).toBe(true);
+  });
+
+  it("marks feed source picker incomplete without selected targets", () => {
+    const nextConfig = buildSourceNodeConfigDraft({
+      currentConfig: {
+        isConfigured: false,
+        service: "web_news",
+        source_mode: "website_feed",
+      } as never,
+      targetSchema: { type: "feed_source_picker", required: true },
+      targetValue: {
+        customValues: [],
+        keyword: "",
+        option: null,
+        selectedOptions: [],
+        value: "",
+      },
+    });
+
+    expect(nextConfig.target).toBe("");
+    expect(nextConfig.targets).toEqual([]);
+    expect(nextConfig.isConfigured).toBe(false);
+  });
 });

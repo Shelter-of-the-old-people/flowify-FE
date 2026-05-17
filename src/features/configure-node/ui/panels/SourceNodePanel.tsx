@@ -14,7 +14,6 @@ import {
   getPrimarySourceModeLabel,
   getSourceModeTargetScopeKey,
   getTriggerKindLabel,
-  isSeBoardNewPostsSourceMode,
   useSourceCatalogQuery,
 } from "@/entities/workflow";
 import { buildGoogleSheetsSheetOptionId } from "@/entities/workflow/lib/google-sheets-target-option";
@@ -39,6 +38,7 @@ import {
   getGoogleSheetsSourceModeDescription,
   getSourceTargetSchemaValidationMessage,
   hasTargetSchema,
+  isSourceKeywordSupported,
   isSourceNodeSetupComplete,
 } from "../../model";
 
@@ -91,12 +91,84 @@ const getNumberLikeConfigValue = (
   return null;
 };
 
+const getConfigArray = (config: FlowNodeData["config"], key: string) => {
+  const value = toConfigRecord(config)[key];
+  return Array.isArray(value) ? value : [];
+};
+
+const getConfigObject = (config: FlowNodeData["config"], key: string) => {
+  const value = toConfigRecord(config)[key];
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+};
+
+const createInitialFeedSourceOptions = (config: FlowNodeData["config"]) => {
+  const targetMeta = getConfigObject(config, "target_meta");
+  const selectedSources = Array.isArray(targetMeta?.selectedSources)
+    ? targetMeta.selectedSources
+    : [];
+
+  return selectedSources
+    .filter(
+      (source): source is Record<string, unknown> =>
+        source !== null && typeof source === "object" && !Array.isArray(source),
+    )
+    .map((source) => {
+      const url = typeof source.url === "string" ? source.url : "";
+      const label = typeof source.label === "string" ? source.label : url;
+
+      return {
+        description:
+          typeof source.category === "string" ? source.category : null,
+        id: url,
+        label,
+        metadata: source,
+        type: "feed_source",
+      };
+    })
+    .filter((option) => option.id.trim().length > 0);
+};
+
+const createInitialFeedCustomValues = (config: FlowNodeData["config"]) => {
+  const targetMeta = getConfigObject(config, "target_meta");
+  const customSources = Array.isArray(targetMeta?.customSources)
+    ? targetMeta.customSources
+    : [];
+
+  return customSources
+    .map((source) => {
+      if (typeof source === "string") {
+        return source;
+      }
+
+      if (source && typeof source === "object" && !Array.isArray(source)) {
+        const value = (source as Record<string, unknown>).url;
+        return typeof value === "string" ? value : "";
+      }
+
+      return "";
+    })
+    .filter((value) => value.trim().length > 0);
+};
+
 const createInitialSourceTargetValue = (
   config: FlowNodeData["config"],
 ): SourceTargetSetupValue => ({
+  customValues: createInitialFeedCustomValues(config),
   keyword: getStringConfigValue(config, "keyword") ?? "",
   option: null,
+  selectedOptions: createInitialFeedSourceOptions(config),
   value: (() => {
+    const targets = getConfigArray(config, "targets");
+    const firstTarget = targets.find(
+      (target): target is string =>
+        typeof target === "string" && target.trim().length > 0,
+    );
+    if (firstTarget) {
+      return firstTarget;
+    }
+
     const target = getStringConfigValue(config, "target") ?? "";
     const service = getStringConfigValue(config, "service");
 
@@ -259,9 +331,8 @@ export const SourceNodePanel = ({
   const existingTargetLabel = getStringConfigValue(data.config, "target_label");
   const existingKeyword = getStringConfigValue(data.config, "keyword");
   const shouldShowKeywordSummary =
-    sourceService &&
     sourceMode &&
-    isSeBoardNewPostsSourceMode(sourceService.key, sourceMode.key) &&
+    isSourceKeywordSupported(sourceMode.target_schema) &&
     existingKeyword;
 
   const handleConnectService = (targetServiceKey: string) => {
