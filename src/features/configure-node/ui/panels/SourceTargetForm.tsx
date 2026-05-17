@@ -23,6 +23,7 @@ import {
   useInfiniteSourceTargetOptionsQuery,
 } from "@/entities/workflow";
 import {
+  FeedSourcePicker,
   RemoteOptionPicker,
   type RemoteOptionPickerItem,
   getApiErrorMessage,
@@ -114,6 +115,7 @@ export const SourceTargetForm = ({
 }: Props) => {
   const schemaType = getSourceTargetSchemaType(mode.target_schema);
   const isRemotePicker = isRemoteSourceTargetPicker(mode.target_schema);
+  const isFeedSourcePicker = schemaType === "feed_source_picker";
   const isFolderPicker = schemaType === "folder_picker";
   const isSheetPicker = schemaType === "sheet_picker";
   const isGroupedPicker = isGroupedSourceTargetOptionPicker(
@@ -172,6 +174,12 @@ export const SourceTargetForm = ({
   const items =
     targetOptions?.pages.flatMap((page) => page.items) ??
     ([] as SourceTargetOptionItemResponse[]);
+  const feedSelectedOptions = value.selectedOptions ?? [];
+  const feedCustomValues = value.customValues ?? [];
+  const feedMaxItems =
+    typeof mode.target_schema.max_items === "number"
+      ? mode.target_schema.max_items
+      : 10;
   const currentSpreadsheet =
     isGoogleSheetsPicker && path.length > 0 ? path[path.length - 1] : null;
   const [newSpreadsheetName, setNewSpreadsheetName] = useState("");
@@ -261,6 +269,78 @@ export const SourceTargetForm = ({
 
   const handleKeywordChange = (keyword: string) => {
     onChange({ ...value, keyword });
+  };
+
+  const getFeedPrimaryValue = (
+    selectedOptions: SourceTargetOptionItemResponse[],
+    customValues: string[],
+  ) => selectedOptions[0]?.id ?? customValues[0] ?? "";
+
+  const handleSelectFeedOption = (option: RemoteOptionPickerItem) => {
+    const sourceOption = items.find((item) => item.id === option.id);
+    if (!sourceOption) {
+      return;
+    }
+
+    if (feedCustomValues.includes(sourceOption.id)) {
+      return;
+    }
+
+    const nextSelectedOptions = feedSelectedOptions.some(
+      (selectedOption) => selectedOption.id === sourceOption.id,
+    )
+      ? feedSelectedOptions
+      : [...feedSelectedOptions, sourceOption];
+
+    onChange({
+      ...value,
+      option: null,
+      selectedOptions: nextSelectedOptions,
+      value: getFeedPrimaryValue(nextSelectedOptions, feedCustomValues),
+    });
+  };
+
+  const handleRemoveFeedOption = (id: string) => {
+    const nextSelectedOptions = feedSelectedOptions.filter(
+      (option) => option.id !== id,
+    );
+
+    onChange({
+      ...value,
+      option: null,
+      selectedOptions: nextSelectedOptions,
+      value: getFeedPrimaryValue(nextSelectedOptions, feedCustomValues),
+    });
+  };
+
+  const handleAddFeedCustomValue = (customValue: string) => {
+    if (feedSelectedOptions.some((option) => option.id === customValue)) {
+      return;
+    }
+
+    const nextCustomValues = feedCustomValues.includes(customValue)
+      ? feedCustomValues
+      : [...feedCustomValues, customValue];
+
+    onChange({
+      ...value,
+      option: null,
+      customValues: nextCustomValues,
+      value: getFeedPrimaryValue(feedSelectedOptions, nextCustomValues),
+    });
+  };
+
+  const handleRemoveFeedCustomValue = (customValue: string) => {
+    const nextCustomValues = feedCustomValues.filter(
+      (value) => value !== customValue,
+    );
+
+    onChange({
+      ...value,
+      option: null,
+      customValues: nextCustomValues,
+      value: getFeedPrimaryValue(feedSelectedOptions, nextCustomValues),
+    });
   };
 
   const handleCreateSpreadsheet = async () => {
@@ -378,6 +458,38 @@ export const SourceTargetForm = ({
             {validationMessage}
           </Text>
         ) : null}
+      </Box>
+    );
+  }
+
+  if (isFeedSourcePicker) {
+    return (
+      <Box>
+        {helperText ? (
+          <Text color="text.secondary" fontSize="sm" mb={2}>
+            {helperText}
+          </Text>
+        ) : null}
+        <FeedSourcePicker
+          customValues={feedCustomValues}
+          disabled={disabled}
+          emptyMessage="선택할 수 있는 출처가 없습니다."
+          errorMessage={isError ? getApiErrorMessage(error) : null}
+          hasMore={Boolean(hasNextPage)}
+          isLoading={isLoading}
+          isLoadingMore={isFetchingNextPage}
+          items={items}
+          maxItems={feedMaxItems}
+          searchValue={searchQuery}
+          selectedOptions={feedSelectedOptions}
+          onAddCustomValue={handleAddFeedCustomValue}
+          onLoadMore={() => void fetchNextPage()}
+          onRemoveCustomValue={handleRemoveFeedCustomValue}
+          onRemoveOption={handleRemoveFeedOption}
+          onRetry={() => void refetch()}
+          onSearchChange={setScopedSearchQuery}
+          onSelectOption={handleSelectFeedOption}
+        />
       </Box>
     );
   }

@@ -1,8 +1,10 @@
 import { type SourceTargetOptionItemResponse } from "@/entities/workflow";
 
 export type SourceTargetPickerValue = {
+  customValues?: string[];
   keyword: string;
   option: SourceTargetOptionItemResponse | null;
+  selectedOptions?: SourceTargetOptionItemResponse[];
   value: string;
 };
 
@@ -20,6 +22,7 @@ export const TARGET_SCHEMA_LABELS: Record<string, string> = {
   day_picker: "요일",
   email_picker: "이메일",
   file_picker: "파일",
+  feed_source_picker: "뉴스/글 출처",
   folder_picker: "폴더",
   label_picker: "라벨",
   page_picker: "페이지",
@@ -42,6 +45,7 @@ export const DAY_PICKER_OPTIONS = [
 const REMOTE_TARGET_SCHEMA_TYPES = new Set([
   "category_picker",
   "course_picker",
+  "feed_source_picker",
   "term_picker",
   "file_picker",
   "folder_picker",
