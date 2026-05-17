@@ -474,6 +474,15 @@ Issue 18의 목표는 Flowify Frontend 워크플로우 에디터 화면에서 vi
 | 1920px FHD | 90%, 100%, 125% | wide/compact 전환 안정성, panel height, selected node focus |
 | 2560px QHD | 90%, 100%, 125% | wide layout 안정성, panel이 과하게 벌어지지 않는지, zoom consistency |
 
+## Step 5 QA 기록
+
+- 1366px, 1440px, 1920px FHD, 2560px QHD 크기는 `src/shared/libs/dual-panel-layout.test.ts`의 safe area boundary 테스트로 자동 검증한다.
+- browser zoom 125%처럼 CSS viewport가 줄어드는 경우를 보완하기 위해 1093px x 614px layout boundary 케이스를 함께 검증한다.
+- 노드 선택 zoom/center는 `Canvas.tsx`에서 시작 placeholder, 도착 placeholder, 일반 노드가 모두 동일한 `NODE_FOCUS_ZOOM`과 `focusNode`/`focusCanvasPoint` 경로를 사용하도록 정리했다.
+- 패널 open 상태에서는 `dual-panel-layout.ts`의 `getSafeCenteredPosition()` 기준으로 editor canvas safe area 안에 위치를 고정한다.
+- 패널 내부 콘텐츠 overflow는 `InputPanel`, `OutputPanel`, `ServiceSelectionPanel`에서 outer panel은 숨기고 body 영역만 scroll 되도록 정리했다.
+- 실제 브라우저 확대율별 visual screenshot 검증은 별도 Playwright/브라우저 QA 도구가 준비되면 후속으로 보강한다.
+
 # 7. 위험 요소 및 후속 작업
 
 ## 구현 중 깨질 수 있는 부분
