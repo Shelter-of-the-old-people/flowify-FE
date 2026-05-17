@@ -107,7 +107,7 @@ const WizardCard = ({
       bg="white"
       border="1px solid"
       borderColor={WIZARD_CARD_BORDER}
-      borderRadius="20px"
+      borderRadius="12px"
       boxShadow="0 4px 4px rgba(0,0,0,0.25)"
       maxW={maxWidth}
       minW={minWidth}
@@ -279,7 +279,7 @@ const AuthPrompt = ({
       <Text fontSize="sm">뒤로</Text>
     </Box>
 
-    <Text fontSize="xl" fontWeight="bold" mb={3}>
+    <Text fontSize="lg" fontWeight="semibold" mb={3}>
       {authState.label}
     </Text>
     <Text color="text.secondary" fontSize="md" mb={6}>
@@ -326,7 +326,7 @@ const SourceModeList = ({
       <Text fontSize="sm">뒤로</Text>
     </Box>
 
-    <Text fontSize="xl" fontWeight="bold" mb={2}>
+    <Text fontSize="lg" fontWeight="semibold" mb={2}>
       {service.label}
     </Text>
     <Text color="text.secondary" fontSize="sm" mb={6}>
@@ -338,7 +338,7 @@ const SourceModeList = ({
         shouldHideSourceModeFromPrimaryList(service.key, mode.key) ? null : (
           <Box
             key={mode.key}
-            borderRadius="3xl"
+            borderRadius="8px"
             cursor="pointer"
             px={6}
             py={5}
@@ -423,7 +423,7 @@ const SourceTargetForm = ({
         <Text fontSize="sm">뒤로</Text>
       </Box>
 
-      <Text fontSize="xl" fontWeight="bold" mb={2}>
+      <Text fontSize="lg" fontWeight="semibold" mb={2}>
         대상 선택
       </Text>
       <Text color="text.secondary" fontSize="sm" mb={helperText ? 2 : 6}>
@@ -516,7 +516,7 @@ const StartNodeConfirm = ({
       <Text fontSize="sm">뒤로</Text>
     </Box>
 
-    <Text fontSize="xl" fontWeight="bold" mb={2}>
+    <Text fontSize="lg" fontWeight="semibold" mb={2}>
       시작 노드 확인
     </Text>
     <Text color="text.secondary" fontSize="sm" mb={6}>
@@ -524,7 +524,7 @@ const StartNodeConfirm = ({
     </Text>
 
     <VStack align="stretch" gap={3}>
-      <Box bg="gray.50" borderRadius="2xl" px={5} py={4}>
+      <Box bg="gray.50" borderRadius="8px" px={5} py={4}>
         <Text color="text.secondary" fontSize="sm">
           서비스
         </Text>
@@ -532,7 +532,7 @@ const StartNodeConfirm = ({
           {service.label}
         </Text>
       </Box>
-      <Box bg="gray.50" borderRadius="2xl" px={5} py={4}>
+      <Box bg="gray.50" borderRadius="8px" px={5} py={4}>
         <Text color="text.secondary" fontSize="sm">
           가져오는 방식
         </Text>
@@ -541,7 +541,7 @@ const StartNodeConfirm = ({
         </Text>
       </Box>
       {keyword ? (
-        <Box bg="gray.50" borderRadius="2xl" px={5} py={4}>
+        <Box bg="gray.50" borderRadius="8px" px={5} py={4}>
           <Text color="text.secondary" fontSize="sm">
             포함할 단어
           </Text>
@@ -550,7 +550,7 @@ const StartNodeConfirm = ({
           </Text>
         </Box>
       ) : null}
-      <Box bg="gray.50" borderRadius="2xl" px={5} py={4}>
+      <Box bg="gray.50" borderRadius="8px" px={5} py={4}>
         <Text color="text.secondary" fontSize="sm">
           가져오는 데이터
         </Text>
@@ -559,7 +559,7 @@ const StartNodeConfirm = ({
         </Text>
       </Box>
       {targetValue ? (
-        <Box bg="gray.50" borderRadius="2xl" px={5} py={4}>
+        <Box bg="gray.50" borderRadius="8px" px={5} py={4}>
           <Text color="text.secondary" fontSize="sm">
             선택한 대상
           </Text>
@@ -604,7 +604,7 @@ const SinkNodeConfirm = ({
       <Text fontSize="sm">뒤로</Text>
     </Box>
 
-    <Text fontSize="xl" fontWeight="bold" mb={2}>
+    <Text fontSize="lg" fontWeight="semibold" mb={2}>
       도착 노드 확인
     </Text>
     <Text color="text.secondary" fontSize="sm" mb={6}>
@@ -612,7 +612,7 @@ const SinkNodeConfirm = ({
     </Text>
 
     <VStack align="stretch" gap={3}>
-      <Box bg="gray.50" borderRadius="2xl" px={5} py={4}>
+      <Box bg="gray.50" borderRadius="8px" px={5} py={4}>
         <Text color="text.secondary" fontSize="sm">
           보낼 서비스
         </Text>
@@ -620,7 +620,7 @@ const SinkNodeConfirm = ({
           {service.label}
         </Text>
       </Box>
-      <Box bg="gray.50" borderRadius="2xl" px={5} py={4}>
+      <Box bg="gray.50" borderRadius="8px" px={5} py={4}>
         <Text color="text.secondary" fontSize="sm">
           보낼 데이터
         </Text>
@@ -1169,7 +1169,7 @@ export const ServiceSelectionPanel = () => {
         bg={isEndPlaceholder ? "white" : undefined}
         border={isEndPlaceholder ? "1px solid" : undefined}
         borderColor={isEndPlaceholder ? WIZARD_CARD_BORDER : undefined}
-        borderRadius={isEndPlaceholder ? "20px" : undefined}
+        borderRadius={isEndPlaceholder ? "12px" : undefined}
         boxShadow={isEndPlaceholder ? "0 4px 4px rgba(0,0,0,0.25)" : undefined}
         display={isEndPlaceholder ? "flex" : undefined}
         flexDirection={isEndPlaceholder ? "column" : undefined}
@@ -1205,7 +1205,7 @@ export const ServiceSelectionPanel = () => {
             justifyContent="space-between"
             px={3}
           >
-            <Text fontSize="xl" fontWeight="medium" letterSpacing="-0.4px">
+            <Text fontSize="lg" fontWeight="semibold">
               {getGuidelineTitle()}
             </Text>
             <Box cursor="pointer" onClick={handleOverlayClose}>
@@ -1214,7 +1214,7 @@ export const ServiceSelectionPanel = () => {
           </Box>
         ) : (
           <Text
-            fontSize="24px"
+            fontSize="20px"
             fontWeight="bold"
             lineHeight="shorter"
             pb="24px"

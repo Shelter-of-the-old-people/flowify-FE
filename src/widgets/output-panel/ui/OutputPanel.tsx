@@ -109,7 +109,7 @@ const ChoiceStepStatus = ({
     alignItems="center"
     gap={2}
     p={4}
-    borderRadius="xl"
+    borderRadius="8px"
     bg={tone === "error" ? "red.50" : "gray.50"}
     border="1px solid"
     borderColor={tone === "error" ? "red.100" : "gray.200"}
@@ -295,7 +295,7 @@ export const OutputPanel = ({ wizardController }: Props) => {
       bg="white"
       border="1px solid"
       borderColor="#f2f2f2"
-      borderRadius="20px"
+      borderRadius="12px"
       boxShadow="0 4px 4px rgba(0,0,0,0.25)"
       minH={0}
       overflow="hidden"
@@ -320,7 +320,7 @@ export const OutputPanel = ({ wizardController }: Props) => {
             justifyContent="space-between"
             px={3}
           >
-            <Text fontSize="xl" fontWeight="medium" letterSpacing="-0.4px">
+            <Text fontSize="lg" fontWeight="semibold">
               설정
             </Text>
             <Box cursor="pointer" onClick={handleClose}>
@@ -332,7 +332,7 @@ export const OutputPanel = ({ wizardController }: Props) => {
             {!canEditNodes ? (
               <Box
                 p={4}
-                borderRadius="xl"
+                borderRadius="8px"
                 bg="gray.50"
                 border="1px solid"
                 borderColor="gray.200"
@@ -435,7 +435,7 @@ export const OutputPanel = ({ wizardController }: Props) => {
             justifyContent="space-between"
             px={3}
           >
-            <Text fontSize="xl" fontWeight="medium" letterSpacing="-0.4px">
+            <Text fontSize="lg" fontWeight="semibold">
               가져올 곳 설정
             </Text>
             <Box cursor="pointer" onClick={handleClose}>
@@ -462,7 +462,7 @@ export const OutputPanel = ({ wizardController }: Props) => {
           >
             <Box display="flex" gap={2} alignItems="center">
               {renderActiveNodeIcon()}
-              <Text fontSize="xl" fontWeight="medium" letterSpacing="-0.4px">
+              <Text fontSize="lg" fontWeight="semibold">
                 가져올 곳
               </Text>
             </Box>
@@ -497,7 +497,7 @@ export const OutputPanel = ({ wizardController }: Props) => {
             justifyContent="space-between"
             px={3}
           >
-            <Text fontSize="xl" fontWeight="medium" letterSpacing="-0.4px">
+            <Text fontSize="lg" fontWeight="semibold">
               설정
             </Text>
             <Box cursor="pointer" onClick={handleClose}>
@@ -521,7 +521,7 @@ export const OutputPanel = ({ wizardController }: Props) => {
             justifyContent="space-between"
             px={3}
           >
-            <Text fontSize="xl" fontWeight="medium" letterSpacing="-0.4px">
+            <Text fontSize="lg" fontWeight="semibold">
               설정
             </Text>
             <Box cursor="pointer" onClick={handleClose}>
@@ -547,7 +547,7 @@ export const OutputPanel = ({ wizardController }: Props) => {
           >
             <Box display="flex" gap={2} alignItems="center">
               {renderActiveNodeIcon()}
-              <Text fontSize="xl" fontWeight="medium" letterSpacing="-0.4px">
+              <Text fontSize="lg" fontWeight="semibold">
                 보낼 곳
               </Text>
             </Box>
@@ -590,7 +590,7 @@ export const OutputPanel = ({ wizardController }: Props) => {
           >
             <Box display="flex" gap={2} alignItems="center">
               {renderActiveNodeIcon()}
-              <Text fontSize="xl" fontWeight="medium" letterSpacing="-0.4px">
+              <Text fontSize="lg" fontWeight="semibold">
                 처리 방식
               </Text>
             </Box>
@@ -623,7 +623,7 @@ export const OutputPanel = ({ wizardController }: Props) => {
           >
             <Box display="flex" gap={2} alignItems="center">
               {renderActiveNodeIcon()}
-              <Text fontSize="xl" fontWeight="medium" letterSpacing="-0.4px">
+              <Text fontSize="lg" fontWeight="semibold">
                 遺꾧린
               </Text>
             </Box>
@@ -659,7 +659,7 @@ export const OutputPanel = ({ wizardController }: Props) => {
           >
             <Box display="flex" gap={2} alignItems="center">
               {renderActiveNodeIcon()}
-              <Text fontSize="xl" fontWeight="medium" letterSpacing="-0.4px">
+              <Text fontSize="lg" fontWeight="semibold">
                 출력 데이터
               </Text>
             </Box>
@@ -699,7 +699,7 @@ export const OutputPanel = ({ wizardController }: Props) => {
                 bg="orange.50"
                 border="1px solid"
                 borderColor="orange.100"
-                borderRadius="2xl"
+                borderRadius="8px"
                 px={4}
                 py={4}
               >
@@ -783,7 +783,7 @@ export const OutputPanel = ({ wizardController }: Props) => {
           >
             <Box display="flex" gap={2} alignItems="center">
               {renderActiveNodeIcon()}
-              <Text fontSize="xl" fontWeight="medium" letterSpacing="-0.4px">
+              <Text fontSize="lg" fontWeight="semibold">
                 설정
               </Text>
             </Box>
@@ -817,7 +817,7 @@ export const OutputPanel = ({ wizardController }: Props) => {
             justifyContent="space-between"
             px={3}
           >
-            <Text fontSize="xl" fontWeight="medium" letterSpacing="-0.4px">
+            <Text fontSize="lg" fontWeight="semibold">
               설정
             </Text>
             <Box cursor="pointer" onClick={handleClose}>

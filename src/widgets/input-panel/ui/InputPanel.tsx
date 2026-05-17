@@ -150,7 +150,7 @@ export const InputPanel = () => {
       bg="white"
       border="1px solid"
       borderColor="#f2f2f2"
-      borderRadius="20px"
+      borderRadius="12px"
       boxShadow="0 4px 4px rgba(0,0,0,0.25)"
       minH={0}
       overflow="hidden"
@@ -183,7 +183,7 @@ export const InputPanel = () => {
               sourceMode={headerSourceMode}
             />
           ) : null}
-          <Text fontSize="xl" fontWeight="medium" letterSpacing="-0.4px">
+          <Text fontSize="lg" fontWeight="semibold">
             들어오는 데이터
           </Text>
         </Box>
@@ -280,7 +280,7 @@ export const InputPanel = () => {
                 <Text fontSize="md" fontWeight="bold" mb={3}>
                   데이터 처리 방식
                 </Text>
-                <Box px={4} py={4} borderRadius="2xl" bg="gray.50">
+                <Box px={4} py={4} borderRadius="8px" bg="gray.50">
                   <Text fontSize="md" fontWeight="semibold">
                     {selectedAction.label}
                   </Text>
@@ -304,7 +304,7 @@ export const InputPanel = () => {
                       key={`${option}-${index}`}
                       px={4}
                       py={4}
-                      borderRadius="2xl"
+                      borderRadius="8px"
                       bg="gray.50"
                     >
                       <Text fontSize="sm" fontWeight="medium">
@@ -327,7 +327,7 @@ export const InputPanel = () => {
                       key={`${input}-${index}`}
                       px={4}
                       py={4}
-                      borderRadius="2xl"
+                      borderRadius="8px"
                       bg="gray.50"
                     >
                       <Text fontSize="sm" fontWeight="medium">
@@ -354,7 +354,7 @@ export const InputPanel = () => {
                   bg="orange.50"
                   border="1px solid"
                   borderColor="orange.100"
-                  borderRadius="2xl"
+                  borderRadius="8px"
                   px={4}
                   py={4}
                 >
