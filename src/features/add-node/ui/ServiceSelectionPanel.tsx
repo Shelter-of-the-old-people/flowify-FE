@@ -50,6 +50,7 @@ import {
   storeOAuthConnectReturnPath,
   useDualPanelLayout,
 } from "@/shared";
+import { dualPanelLayoutSpec } from "@/shared/styles";
 
 import { isSinkServiceInRollout } from "../model/sink-rollout";
 import { isSourceModeInRollout } from "../model/source-rollout";
@@ -80,11 +81,14 @@ const START_END_PANEL_GAP = 48;
 const PLACEHOLDER_NODE_WIDTH = 100;
 const START_END_NODE_HEIGHT = 176;
 const EMPTY_TARGET_SENTINEL = "";
+const OVERLAY_SAFE_PADDING_X = dualPanelLayoutSpec.safePaddingX;
+const OVERLAY_SAFE_PADDING_Y = dualPanelLayoutSpec.safePaddingY;
+const START_WIZARD_MAX_WIDTH = `calc(100vw - ${OVERLAY_SAFE_PADDING_X * 2}px)`;
 
 const WizardCard = ({
   children,
   maxWidth,
-  minWidth = "520px",
+  minWidth = `min(520px, ${START_WIZARD_MAX_WIDTH})`,
   padding = 12,
   unstyled = false,
 }: {
@@ -103,7 +107,7 @@ const WizardCard = ({
       bg="white"
       border="1px solid"
       borderColor={WIZARD_CARD_BORDER}
-      borderRadius="20px"
+      borderRadius="12px"
       boxShadow="0 4px 4px rgba(0,0,0,0.25)"
       maxW={maxWidth}
       minW={minWidth}
@@ -145,8 +149,8 @@ const CatalogServiceGrid = ({
   setSearchQuery: (query: string) => void;
 }) => (
   <WizardCard
-    maxWidth={isPanelLayout ? "100%" : "820px"}
-    minWidth={isPanelLayout ? "0" : "820px"}
+    maxWidth={isPanelLayout ? "100%" : START_WIZARD_MAX_WIDTH}
+    minWidth={isPanelLayout ? "0" : `min(820px, ${START_WIZARD_MAX_WIDTH})`}
     padding={isPanelLayout ? 6 : 12}
     unstyled={isPanelLayout}
   >
@@ -275,7 +279,7 @@ const AuthPrompt = ({
       <Text fontSize="sm">뒤로</Text>
     </Box>
 
-    <Text fontSize="xl" fontWeight="bold" mb={3}>
+    <Text fontSize="lg" fontWeight="semibold" mb={3}>
       {authState.label}
     </Text>
     <Text color="text.secondary" fontSize="md" mb={6}>
@@ -322,7 +326,7 @@ const SourceModeList = ({
       <Text fontSize="sm">뒤로</Text>
     </Box>
 
-    <Text fontSize="xl" fontWeight="bold" mb={2}>
+    <Text fontSize="lg" fontWeight="semibold" mb={2}>
       {service.label}
     </Text>
     <Text color="text.secondary" fontSize="sm" mb={6}>
@@ -334,7 +338,7 @@ const SourceModeList = ({
         shouldHideSourceModeFromPrimaryList(service.key, mode.key) ? null : (
           <Box
             key={mode.key}
-            borderRadius="3xl"
+            borderRadius="8px"
             cursor="pointer"
             px={6}
             py={5}
@@ -419,7 +423,7 @@ const SourceTargetForm = ({
         <Text fontSize="sm">뒤로</Text>
       </Box>
 
-      <Text fontSize="xl" fontWeight="bold" mb={2}>
+      <Text fontSize="lg" fontWeight="semibold" mb={2}>
         대상 선택
       </Text>
       <Text color="text.secondary" fontSize="sm" mb={helperText ? 2 : 6}>
@@ -512,7 +516,7 @@ const StartNodeConfirm = ({
       <Text fontSize="sm">뒤로</Text>
     </Box>
 
-    <Text fontSize="xl" fontWeight="bold" mb={2}>
+    <Text fontSize="lg" fontWeight="semibold" mb={2}>
       시작 노드 확인
     </Text>
     <Text color="text.secondary" fontSize="sm" mb={6}>
@@ -520,7 +524,7 @@ const StartNodeConfirm = ({
     </Text>
 
     <VStack align="stretch" gap={3}>
-      <Box bg="gray.50" borderRadius="2xl" px={5} py={4}>
+      <Box bg="gray.50" borderRadius="8px" px={5} py={4}>
         <Text color="text.secondary" fontSize="sm">
           서비스
         </Text>
@@ -528,7 +532,7 @@ const StartNodeConfirm = ({
           {service.label}
         </Text>
       </Box>
-      <Box bg="gray.50" borderRadius="2xl" px={5} py={4}>
+      <Box bg="gray.50" borderRadius="8px" px={5} py={4}>
         <Text color="text.secondary" fontSize="sm">
           가져오는 방식
         </Text>
@@ -537,7 +541,7 @@ const StartNodeConfirm = ({
         </Text>
       </Box>
       {keyword ? (
-        <Box bg="gray.50" borderRadius="2xl" px={5} py={4}>
+        <Box bg="gray.50" borderRadius="8px" px={5} py={4}>
           <Text color="text.secondary" fontSize="sm">
             포함할 단어
           </Text>
@@ -546,7 +550,7 @@ const StartNodeConfirm = ({
           </Text>
         </Box>
       ) : null}
-      <Box bg="gray.50" borderRadius="2xl" px={5} py={4}>
+      <Box bg="gray.50" borderRadius="8px" px={5} py={4}>
         <Text color="text.secondary" fontSize="sm">
           가져오는 데이터
         </Text>
@@ -555,7 +559,7 @@ const StartNodeConfirm = ({
         </Text>
       </Box>
       {targetValue ? (
-        <Box bg="gray.50" borderRadius="2xl" px={5} py={4}>
+        <Box bg="gray.50" borderRadius="8px" px={5} py={4}>
           <Text color="text.secondary" fontSize="sm">
             선택한 대상
           </Text>
@@ -600,7 +604,7 @@ const SinkNodeConfirm = ({
       <Text fontSize="sm">뒤로</Text>
     </Box>
 
-    <Text fontSize="xl" fontWeight="bold" mb={2}>
+    <Text fontSize="lg" fontWeight="semibold" mb={2}>
       도착 노드 확인
     </Text>
     <Text color="text.secondary" fontSize="sm" mb={6}>
@@ -608,7 +612,7 @@ const SinkNodeConfirm = ({
     </Text>
 
     <VStack align="stretch" gap={3}>
-      <Box bg="gray.50" borderRadius="2xl" px={5} py={4}>
+      <Box bg="gray.50" borderRadius="8px" px={5} py={4}>
         <Text color="text.secondary" fontSize="sm">
           보낼 서비스
         </Text>
@@ -616,7 +620,7 @@ const SinkNodeConfirm = ({
           {service.label}
         </Text>
       </Box>
-      <Box bg="gray.50" borderRadius="2xl" px={5} py={4}>
+      <Box bg="gray.50" borderRadius="8px" px={5} py={4}>
         <Text color="text.secondary" fontSize="sm">
           보낼 데이터
         </Text>
@@ -870,12 +874,21 @@ export const ServiceSelectionPanel = () => {
 
     const centeredLeft =
       anchorScreenPosition.x - overlayRect.left + START_END_PANEL_GAP;
-    const maxLeft = Math.max(24, overlayRect.width - wrapperRect.width - 24);
-    const left = Math.min(Math.max(24, centeredLeft), maxLeft);
+    const maxLeft = Math.max(
+      OVERLAY_SAFE_PADDING_X,
+      overlayRect.width - wrapperRect.width - OVERLAY_SAFE_PADDING_X,
+    );
+    const left = Math.min(
+      Math.max(OVERLAY_SAFE_PADDING_X, centeredLeft),
+      maxLeft,
+    );
     const centeredTop =
       anchorScreenPosition.y - overlayRect.top - wrapperRect.height / 2;
-    const maxTop = Math.max(24, overlayRect.height - wrapperRect.height - 24);
-    const top = Math.min(Math.max(24, centeredTop), maxTop);
+    const maxTop = Math.max(
+      OVERLAY_SAFE_PADDING_Y,
+      overlayRect.height - wrapperRect.height - OVERLAY_SAFE_PADDING_Y,
+    );
+    const top = Math.min(Math.max(OVERLAY_SAFE_PADDING_Y, centeredTop), maxTop);
 
     wrapperElement.style.left = `${left}px`;
     wrapperElement.style.top = `${top}px`;
@@ -1156,15 +1169,26 @@ export const ServiceSelectionPanel = () => {
         bg={isEndPlaceholder ? "white" : undefined}
         border={isEndPlaceholder ? "1px solid" : undefined}
         borderColor={isEndPlaceholder ? WIZARD_CARD_BORDER : undefined}
-        borderRadius={isEndPlaceholder ? "20px" : undefined}
+        borderRadius={isEndPlaceholder ? "12px" : undefined}
         boxShadow={isEndPlaceholder ? "0 4px 4px rgba(0,0,0,0.25)" : undefined}
         display={isEndPlaceholder ? "flex" : undefined}
         flexDirection={isEndPlaceholder ? "column" : undefined}
         gap={isEndPlaceholder ? 3 : undefined}
         h={isEndPlaceholder ? `${layout.panelHeight}px` : undefined}
         left={isEndPlaceholder ? `${layout.outputPanelLeft}px` : 0}
+        maxH={
+          isEndPlaceholder
+            ? `${layout.panelHeight}px`
+            : `calc(100% - ${OVERLAY_SAFE_PADDING_Y * 2}px)`
+        }
+        maxW={
+          isEndPlaceholder
+            ? `${layout.panelWidth}px`
+            : `calc(100% - ${OVERLAY_SAFE_PADDING_X * 2}px)`
+        }
+        minH={0}
         onClick={(event) => event.stopPropagation()}
-        overflow={isEndPlaceholder ? "hidden" : undefined}
+        overflow={isEndPlaceholder ? "hidden" : "auto"}
         pointerEvents="auto"
         position="absolute"
         px={isEndPlaceholder ? 3 : undefined}
@@ -1181,7 +1205,7 @@ export const ServiceSelectionPanel = () => {
             justifyContent="space-between"
             px={3}
           >
-            <Text fontSize="xl" fontWeight="medium" letterSpacing="-0.4px">
+            <Text fontSize="lg" fontWeight="semibold">
               {getGuidelineTitle()}
             </Text>
             <Box cursor="pointer" onClick={handleOverlayClose}>
@@ -1190,7 +1214,7 @@ export const ServiceSelectionPanel = () => {
           </Box>
         ) : (
           <Text
-            fontSize="24px"
+            fontSize="20px"
             fontWeight="bold"
             lineHeight="shorter"
             pb="24px"
@@ -1202,6 +1226,7 @@ export const ServiceSelectionPanel = () => {
 
         <Box
           flex={isEndPlaceholder ? 1 : undefined}
+          minH={isEndPlaceholder ? 0 : undefined}
           overflow={isEndPlaceholder ? "auto" : undefined}
           p={isEndPlaceholder ? 3 : undefined}
           position="relative"

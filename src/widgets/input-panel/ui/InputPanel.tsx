@@ -150,9 +150,10 @@ export const InputPanel = () => {
       bg="white"
       border="1px solid"
       borderColor="#f2f2f2"
-      borderRadius="20px"
+      borderRadius="12px"
       boxShadow="0 4px 4px rgba(0,0,0,0.25)"
-      overflowY="auto"
+      minH={0}
+      overflow="hidden"
       px={3}
       py={6}
       zIndex={5}
@@ -182,7 +183,7 @@ export const InputPanel = () => {
               sourceMode={headerSourceMode}
             />
           ) : null}
-          <Text fontSize="xl" fontWeight="medium" letterSpacing="-0.4px">
+          <Text fontSize="lg" fontWeight="semibold">
             들어오는 데이터
           </Text>
         </Box>
@@ -191,7 +192,7 @@ export const InputPanel = () => {
         </Box>
       </Box>
 
-      <Box flex={1} overflow="auto" p={3}>
+      <Box flex={1} minH={0} overflow="auto" p={3}>
         {activeNode ? (
           <Box display="flex" flexDirection="column" gap={6}>
             <Box>
@@ -279,7 +280,7 @@ export const InputPanel = () => {
                 <Text fontSize="md" fontWeight="bold" mb={3}>
                   데이터 처리 방식
                 </Text>
-                <Box px={4} py={4} borderRadius="2xl" bg="gray.50">
+                <Box px={4} py={4} borderRadius="8px" bg="gray.50">
                   <Text fontSize="md" fontWeight="semibold">
                     {selectedAction.label}
                   </Text>
@@ -303,7 +304,7 @@ export const InputPanel = () => {
                       key={`${option}-${index}`}
                       px={4}
                       py={4}
-                      borderRadius="2xl"
+                      borderRadius="8px"
                       bg="gray.50"
                     >
                       <Text fontSize="sm" fontWeight="medium">
@@ -326,7 +327,7 @@ export const InputPanel = () => {
                       key={`${input}-${index}`}
                       px={4}
                       py={4}
-                      borderRadius="2xl"
+                      borderRadius="8px"
                       bg="gray.50"
                     >
                       <Text fontSize="sm" fontWeight="medium">
@@ -353,7 +354,7 @@ export const InputPanel = () => {
                   bg="orange.50"
                   border="1px solid"
                   borderColor="orange.100"
-                  borderRadius="2xl"
+                  borderRadius="8px"
                   px={4}
                   py={4}
                 >

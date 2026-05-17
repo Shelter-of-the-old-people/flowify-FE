@@ -33,6 +33,17 @@ export const EDITOR_CANVAS_AREA_ID = "workflow-editor-canvas-area";
 const clamp = (value: number, min: number, max: number) =>
   Math.max(min, Math.min(value, max));
 
+const getSafeCenteredPosition = (
+  canvasLength: number,
+  itemLength: number,
+  safePadding: number,
+) => {
+  const min = safePadding;
+  const max = Math.max(min, canvasLength - itemLength - safePadding);
+
+  return clamp((canvasLength - itemLength) / 2, min, max);
+};
+
 const readTargetSize = (targetId: string): LayoutTargetSize => {
   if (typeof window === "undefined") {
     return {
@@ -88,14 +99,19 @@ export const getDualPanelLayout = (
     canvasWidth >= wideMinCanvasWidth &&
     canvasHeight >= wideMinCanvasHeight
   ) {
-    const containerWidth = basePanelWidth * 2 + baseGap;
-    const containerHeight = basePanelHeight;
-    const containerLeft = Math.max(
-      (canvasWidth - containerWidth) / 2,
+    const panelWidth = Math.min(basePanelWidth, availableWidth);
+    const panelHeight = Math.min(basePanelHeight, availableHeight);
+    const gapWidth = baseGap;
+    const containerWidth = panelWidth * 2 + gapWidth;
+    const containerHeight = panelHeight;
+    const containerLeft = getSafeCenteredPosition(
+      canvasWidth,
+      containerWidth,
       safePaddingX,
     );
-    const containerTop = Math.max(
-      (canvasHeight - containerHeight) / 2,
+    const containerTop = getSafeCenteredPosition(
+      canvasHeight,
+      containerHeight,
       safePaddingY,
     );
 
@@ -103,16 +119,16 @@ export const getDualPanelLayout = (
       canvasWidth,
       canvasHeight,
       mode: "wide",
-      panelWidth: basePanelWidth,
-      panelHeight: basePanelHeight,
-      gapWidth: baseGap,
+      panelWidth,
+      panelHeight,
+      gapWidth,
       containerWidth,
       containerHeight,
       containerLeft,
       containerTop,
       inputPanelLeft: containerLeft,
       inputPanelTop: containerTop,
-      outputPanelLeft: containerLeft + basePanelWidth + baseGap,
+      outputPanelLeft: containerLeft + panelWidth + gapWidth,
       outputPanelTop: containerTop,
       chainCenterX: canvasWidth / 2,
       chainCenterY: canvasHeight / 2,
@@ -129,25 +145,29 @@ export const getDualPanelLayout = (
       availableHeight / basePanelHeight,
       1,
     );
+    const gapWidth = clamp(Math.round(baseGap * scale), compactMinGap, baseGap);
+    const maxPanelWidth = Math.max((availableWidth - gapWidth) / 2, 0);
     const panelWidth = clamp(
       Math.round(basePanelWidth * scale),
-      compactMinPanelWidth,
-      basePanelWidth,
+      Math.min(compactMinPanelWidth, maxPanelWidth),
+      Math.min(basePanelWidth, maxPanelWidth),
     );
+    const maxPanelHeight = Math.min(basePanelHeight, availableHeight);
     const panelHeight = clamp(
       Math.round(basePanelHeight * scale),
-      compactMinPanelHeight,
-      basePanelHeight,
+      Math.min(compactMinPanelHeight, maxPanelHeight),
+      maxPanelHeight,
     );
-    const gapWidth = clamp(Math.round(baseGap * scale), compactMinGap, baseGap);
     const containerWidth = panelWidth * 2 + gapWidth;
     const containerHeight = panelHeight;
-    const containerLeft = Math.max(
-      (canvasWidth - containerWidth) / 2,
+    const containerLeft = getSafeCenteredPosition(
+      canvasWidth,
+      containerWidth,
       safePaddingX,
     );
-    const containerTop = Math.max(
-      (canvasHeight - containerHeight) / 2,
+    const containerTop = getSafeCenteredPosition(
+      canvasHeight,
+      containerHeight,
       safePaddingY,
     );
 
@@ -171,25 +191,34 @@ export const getDualPanelLayout = (
     };
   }
 
-  const panelWidth = Math.min(availableWidth, stackedMaxPanelWidth);
-  const rawPanelHeight = Math.floor((availableHeight - stackedGap) / 2);
+  const panelWidth = Math.max(
+    0,
+    Math.min(availableWidth, stackedMaxPanelWidth),
+  );
+  const effectiveStackedGap =
+    availableHeight > stackedGap ? stackedGap : Math.max(availableHeight, 0);
+  const rawPanelHeight = Math.floor(
+    (availableHeight - effectiveStackedGap) / 2,
+  );
   const panelHeightCandidate = clamp(
     rawPanelHeight,
     stackedMinPanelHeight,
     stackedMaxPanelHeight,
   );
   const panelHeight =
-    panelHeightCandidate * 2 + stackedGap > availableHeight
+    panelHeightCandidate * 2 + effectiveStackedGap > availableHeight
       ? Math.max(rawPanelHeight, 0)
       : panelHeightCandidate;
   const containerWidth = panelWidth;
-  const containerHeight = panelHeight * 2 + stackedGap;
-  const containerLeft = Math.max(
-    (canvasWidth - containerWidth) / 2,
+  const containerHeight = panelHeight * 2 + effectiveStackedGap;
+  const containerLeft = getSafeCenteredPosition(
+    canvasWidth,
+    containerWidth,
     safePaddingX,
   );
-  const containerTop = Math.max(
-    (canvasHeight - containerHeight) / 2,
+  const containerTop = getSafeCenteredPosition(
+    canvasHeight,
+    containerHeight,
     safePaddingY,
   );
 
@@ -199,7 +228,7 @@ export const getDualPanelLayout = (
     mode: "stacked",
     panelWidth,
     panelHeight,
-    gapWidth: stackedGap,
+    gapWidth: effectiveStackedGap,
     containerWidth,
     containerHeight,
     containerLeft,
@@ -207,7 +236,7 @@ export const getDualPanelLayout = (
     inputPanelLeft: containerLeft,
     inputPanelTop: containerTop,
     outputPanelLeft: containerLeft,
-    outputPanelTop: containerTop + panelHeight + stackedGap,
+    outputPanelTop: containerTop + panelHeight + effectiveStackedGap,
     chainCenterX: canvasWidth / 2,
     chainCenterY: canvasHeight / 2,
   };

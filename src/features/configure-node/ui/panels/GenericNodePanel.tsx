@@ -23,7 +23,7 @@ export const GenericNodePanel = ({ nodeId, data }: NodePanelProps) => {
       title={presentation.title}
       description="선택한 설정으로 준비된 단계입니다."
     >
-      <Box bg="gray.50" borderRadius="xl" px={4} py={3}>
+      <Box bg="gray.50" borderRadius="8px" px={4} py={3}>
         <Text fontSize="sm" fontWeight="semibold">
           설정 정보
         </Text>
@@ -39,7 +39,7 @@ export const GenericNodePanel = ({ nodeId, data }: NodePanelProps) => {
         <Box
           as="pre"
           p={3}
-          borderRadius="lg"
+          borderRadius="8px"
           bg="bg.overlay"
           color="text.secondary"
           whiteSpace="pre-wrap"

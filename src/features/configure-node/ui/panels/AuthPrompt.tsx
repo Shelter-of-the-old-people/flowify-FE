@@ -42,7 +42,7 @@ export const AuthPrompt = ({ authState, isConnecting, onConnect }: Props) => {
       bg={toneStyle.bg}
       border="1px solid"
       borderColor={toneStyle.borderColor}
-      borderRadius="2xl"
+      borderRadius="8px"
       display="flex"
       flexDirection="column"
       gap={3}
