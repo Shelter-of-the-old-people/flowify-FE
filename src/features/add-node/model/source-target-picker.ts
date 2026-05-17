@@ -53,6 +53,10 @@ const REMOTE_TARGET_SCHEMA_TYPES = new Set([
   "sheet_picker",
 ]);
 
+const DEFAULT_KEYWORD_LABEL = "포함할 단어";
+const DEFAULT_KEYWORD_PLACEHOLDER = "예: 인공지능, 교육, 정책";
+const DEFAULT_KEYWORD_HELPER_TEXT = "비워두면 최신 글을 모두 가져옵니다.";
+
 export const getTargetSchemaType = (targetSchema: Record<string, unknown>) =>
   typeof targetSchema.type === "string" ? targetSchema.type : "text_input";
 
@@ -72,6 +76,29 @@ export const getTargetSchemaHelperText = (
   typeof targetSchema.helper_text === "string"
     ? targetSchema.helper_text
     : null;
+
+export const isTargetKeywordSupported = (
+  targetSchema: Record<string, unknown>,
+) => targetSchema.keyword_supported === true;
+
+export const getTargetKeywordLabel = (targetSchema: Record<string, unknown>) =>
+  typeof targetSchema.keyword_label === "string"
+    ? targetSchema.keyword_label
+    : DEFAULT_KEYWORD_LABEL;
+
+export const getTargetKeywordPlaceholder = (
+  targetSchema: Record<string, unknown>,
+) =>
+  typeof targetSchema.keyword_placeholder === "string"
+    ? targetSchema.keyword_placeholder
+    : DEFAULT_KEYWORD_PLACEHOLDER;
+
+export const getTargetKeywordHelperText = (
+  targetSchema: Record<string, unknown>,
+) =>
+  typeof targetSchema.keyword_helper_text === "string"
+    ? targetSchema.keyword_helper_text
+    : DEFAULT_KEYWORD_HELPER_TEXT;
 
 export const getTargetSchemaValidation = (
   targetSchema: Record<string, unknown>,

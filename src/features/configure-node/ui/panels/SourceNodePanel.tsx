@@ -14,7 +14,6 @@ import {
   getPrimarySourceModeLabel,
   getSourceModeTargetScopeKey,
   getTriggerKindLabel,
-  isSeBoardNewPostsSourceMode,
   useSourceCatalogQuery,
 } from "@/entities/workflow";
 import { buildGoogleSheetsSheetOptionId } from "@/entities/workflow/lib/google-sheets-target-option";
@@ -39,6 +38,7 @@ import {
   getGoogleSheetsSourceModeDescription,
   getSourceTargetSchemaValidationMessage,
   hasTargetSchema,
+  isSourceKeywordSupported,
   isSourceNodeSetupComplete,
 } from "../../model";
 
@@ -331,9 +331,8 @@ export const SourceNodePanel = ({
   const existingTargetLabel = getStringConfigValue(data.config, "target_label");
   const existingKeyword = getStringConfigValue(data.config, "keyword");
   const shouldShowKeywordSummary =
-    sourceService &&
     sourceMode &&
-    isSeBoardNewPostsSourceMode(sourceService.key, sourceMode.key) &&
+    isSourceKeywordSupported(sourceMode.target_schema) &&
     existingKeyword;
 
   const handleConnectService = (targetServiceKey: string) => {
