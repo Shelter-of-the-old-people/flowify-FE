@@ -483,6 +483,14 @@ Issue 18의 목표는 Flowify Frontend 워크플로우 에디터 화면에서 vi
 - 패널 내부 콘텐츠 overflow는 `InputPanel`, `OutputPanel`, `ServiceSelectionPanel`에서 outer panel은 숨기고 body 영역만 scroll 되도록 정리했다.
 - 실제 브라우저 확대율별 visual screenshot 검증은 별도 Playwright/브라우저 QA 도구가 준비되면 후속으로 보강한다.
 
+## Step 6 회귀 테스트 기록
+
+- workflow 저장/수정/실행 API, OAuth, connector schema, template schema, node data model 파일은 수정하지 않았다.
+- 변경 범위는 workflow editor의 canvas focus, panel layout, panel visual styling, QA 문서 기록으로 제한했다.
+- Gmail, Google Drive, Canvas, Notion 관련 catalog/schema/API 경로는 변경하지 않았다.
+- 회귀 검증 명령은 `pnpm tsc`, `pnpm test`, `pnpm build`로 수행한다.
+- Vite build의 500KB chunk warning은 기존 번들 크기 경고이며, responsive UI 변경으로 인한 실패가 아니다.
+
 # 7. 위험 요소 및 후속 작업
 
 ## 구현 중 깨질 수 있는 부분
